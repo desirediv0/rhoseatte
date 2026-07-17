@@ -161,6 +161,30 @@ export const createBundleCampaign = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "Bundle title is required");
   }
 
+  let parsedPricingSlabs = [];
+  if (pricingSlabs) {
+    if (typeof pricingSlabs === "string") {
+      try {
+        parsedPricingSlabs = JSON.parse(pricingSlabs);
+      } catch (e) {
+        parsedPricingSlabs = [];
+      }
+    } else if (Array.isArray(pricingSlabs)) {
+      parsedPricingSlabs = pricingSlabs;
+    }
+  }
+
+  let parsedRule = rule;
+  if (rule) {
+    if (typeof rule === "string") {
+      try {
+        parsedRule = JSON.parse(rule);
+      } catch (e) {
+        parsedRule = null;
+      }
+    }
+  }
+
   const slug = createSlug(title);
 
   // Check slug uniqueness
@@ -198,25 +222,25 @@ export const createBundleCampaign = asyncHandler(async (req, res, next) => {
     });
 
     // Create rule if provided
-    if (rule) {
+    if (parsedRule) {
       await tx.bundleRule.create({
         data: {
           bundleCampaignId: newCampaign.id,
-          categoryIds: rule.categoryIds || null,
-          subcategoryIds: rule.subcategoryIds || null,
-          brandIds: rule.brandIds || null,
-          attributeValueIds: rule.attributeValueIds || null,
-          productIds: rule.productIds || null,
-          minItems: rule.minItems || 2,
-          maxItems: rule.maxItems || null,
+          categoryIds: parsedRule.categoryIds || null,
+          subcategoryIds: parsedRule.subcategoryIds || null,
+          brandIds: parsedRule.brandIds || null,
+          attributeValueIds: parsedRule.attributeValueIds || null,
+          productIds: parsedRule.productIds || null,
+          minItems: parsedRule.minItems || 2,
+          maxItems: parsedRule.maxItems || null,
         },
       });
     }
 
     // Create pricing slabs
-    if (pricingSlabs && pricingSlabs.length > 0) {
+    if (parsedPricingSlabs && parsedPricingSlabs.length > 0) {
       await tx.bundlePricingSlab.createMany({
-        data: pricingSlabs.map((slab) => ({
+        data: parsedPricingSlabs.map((slab) => ({
           bundleCampaignId: newCampaign.id,
           itemCount: parseInt(slab.itemCount),
           price: parseFloat(slab.price),
@@ -260,6 +284,28 @@ export const updateBundleCampaign = asyncHandler(async (req, res, next) => {
     rule,
     pricingSlabs,
   } = req.body;
+
+  let parsedPricingSlabs = pricingSlabs;
+  if (pricingSlabs !== undefined) {
+    if (typeof pricingSlabs === "string") {
+      try {
+        parsedPricingSlabs = JSON.parse(pricingSlabs);
+      } catch (e) {
+        parsedPricingSlabs = [];
+      }
+    }
+  }
+
+  let parsedRule = rule;
+  if (rule !== undefined) {
+    if (typeof rule === "string") {
+      try {
+        parsedRule = JSON.parse(rule);
+      } catch (e) {
+        parsedRule = undefined;
+      }
+    }
+  }
 
   const existingCampaign = await prisma.bundleCampaign.findUnique({
     where: { id },
@@ -320,43 +366,43 @@ export const updateBundleCampaign = asyncHandler(async (req, res, next) => {
     });
 
     // Update or create rule
-    if (rule) {
+    if (parsedRule) {
       await tx.bundleRule.upsert({
         where: { bundleCampaignId: id },
         create: {
           bundleCampaignId: id,
-          categoryIds: rule.categoryIds || null,
-          subcategoryIds: rule.subcategoryIds || null,
-          brandIds: rule.brandIds || null,
-          attributeValueIds: rule.attributeValueIds || null,
-          productIds: rule.productIds || null,
-          minItems: rule.minItems || 2,
-          maxItems: rule.maxItems || null,
+          categoryIds: parsedRule.categoryIds || null,
+          subcategoryIds: parsedRule.subcategoryIds || null,
+          brandIds: parsedRule.brandIds || null,
+          attributeValueIds: parsedRule.attributeValueIds || null,
+          productIds: parsedRule.productIds || null,
+          minItems: parsedRule.minItems || 2,
+          maxItems: parsedRule.maxItems || null,
         },
         update: {
-          ...(rule.categoryIds !== undefined && { categoryIds: rule.categoryIds }),
-          ...(rule.subcategoryIds !== undefined && {
-            subcategoryIds: rule.subcategoryIds,
+          ...(parsedRule.categoryIds !== undefined && { categoryIds: parsedRule.categoryIds }),
+          ...(parsedRule.subcategoryIds !== undefined && {
+            subcategoryIds: parsedRule.subcategoryIds,
           }),
-          ...(rule.brandIds !== undefined && { brandIds: rule.brandIds }),
-          ...(rule.attributeValueIds !== undefined && {
-            attributeValueIds: rule.attributeValueIds,
+          ...(parsedRule.brandIds !== undefined && { brandIds: parsedRule.brandIds }),
+          ...(parsedRule.attributeValueIds !== undefined && {
+            attributeValueIds: parsedRule.attributeValueIds,
           }),
-          ...(rule.productIds !== undefined && { productIds: rule.productIds }),
-          ...(rule.minItems !== undefined && { minItems: rule.minItems }),
-          ...(rule.maxItems !== undefined && { maxItems: rule.maxItems }),
+          ...(parsedRule.productIds !== undefined && { productIds: parsedRule.productIds }),
+          ...(parsedRule.minItems !== undefined && { minItems: parsedRule.minItems }),
+          ...(parsedRule.maxItems !== undefined && { maxItems: parsedRule.maxItems }),
         },
       });
     }
 
     // Update pricing slabs - delete existing and recreate
-    if (pricingSlabs !== undefined) {
+    if (parsedPricingSlabs !== undefined) {
       await tx.bundlePricingSlab.deleteMany({
         where: { bundleCampaignId: id },
       });
-      if (pricingSlabs && pricingSlabs.length > 0) {
+      if (parsedPricingSlabs && parsedPricingSlabs.length > 0) {
         await tx.bundlePricingSlab.createMany({
-          data: pricingSlabs.map((slab) => ({
+          data: parsedPricingSlabs.map((slab) => ({
             bundleCampaignId: id,
             itemCount: parseInt(slab.itemCount),
             price: parseFloat(slab.price),
