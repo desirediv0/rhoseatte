@@ -106,7 +106,7 @@ export default function NightfallEditionSection() {
         </div>
       </div>
 
-      <div className="py-20 md:py-28 lg:py-32">
+      <div className="py-14 md:py-16 ">
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
           {/* Fragrance Stories — alternating layout */}
           {NIGHTFALL_FRAGRANCES.map((fragrance, index) => (
@@ -116,9 +116,8 @@ export default function NightfallEditionSection() {
               whileInView="visible"
               viewport={{ once: true, margin: "-80px" }}
               variants={staggerContainer}
-              className={`grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center mb-24 md:mb-32 last:mb-0 ${
-                index % 2 !== 0 ? "lg:[direction:rtl]" : ""
-              }`}
+              className={`grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center mb-24 md:mb-32 last:mb-0 ${index % 2 !== 0 ? "lg:[direction:rtl]" : ""
+                }`}
             >
               {/* Image */}
               <motion.div variants={fadeInUp} className={index % 2 !== 0 ? "lg:[direction:ltr]" : ""}>

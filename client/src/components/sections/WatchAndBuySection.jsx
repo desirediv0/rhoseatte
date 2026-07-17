@@ -3,10 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { fetchApi, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
-import Image from "next/image";
 import {
   IconPlayerPlay,
-  IconPlayerPause,
   IconVolume,
   IconVolumeOff,
   IconX,
@@ -352,7 +350,6 @@ export default function WatchAndBuySection() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   const scrollRef = useRef(null);
-  const autoScrollRef = useRef(null);
   const isPausedRef = useRef(false);
 
   useEffect(() => {
@@ -421,7 +418,7 @@ export default function WatchAndBuySection() {
 
   if (isLoading) {
     return (
-      <section className="py-20 md:py-28 lg:py-32 bg-white">
+      <section className="py-14 md:py-16  bg-white">
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
           <div className="text-center mb-12">
             <span className="text-[10px] uppercase tracking-[0.3em] text-gold block mb-3 font-medium">Luxury Films</span>
@@ -439,7 +436,7 @@ export default function WatchAndBuySection() {
 
   return (
     <>
-      <section className="py-20 md:py-28 lg:py-32 bg-white overflow-hidden">
+      <section className="py-14 md:py-16  bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
           {/* Section Header */}
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12 md:mb-14">

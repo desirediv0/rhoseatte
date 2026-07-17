@@ -46,7 +46,7 @@ export default function JournalSection() {
   }, []);
 
   return (
-    <section className="py-20 md:py-28 lg:py-32 bg-ivory overflow-hidden">
+    <section className="py-14 md:py-16  bg-ivory overflow-hidden">
       <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
         {/* Section Header */}
         <Reveal>

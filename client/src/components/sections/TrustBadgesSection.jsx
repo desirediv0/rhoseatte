@@ -39,7 +39,7 @@ const BADGES = [
 
 export default function TrustBadgesSection() {
   return (
-    <section className="py-20 md:py-28 lg:py-32 bg-white border-t border-line">
+    <section className="py-14 md:py-16  bg-white border-t border-line">
       <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
         <Reveal>
           <div className="text-center mb-14 md:mb-18">

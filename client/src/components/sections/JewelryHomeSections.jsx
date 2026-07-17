@@ -33,7 +33,7 @@ export function FeaturedCategoriesSection() {
   const displayCats = categories.length > 0 ? categories : FALLBACK_CATEGORIES;
 
   return (
-    <section className="py-20 md:py-28 lg:py-32 bg-white">
+    <section className="py-14 md:py-16  bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
         <div className="text-center mb-14">
           <span className="text-[10px] uppercase tracking-[0.3em] text-gold font-medium block mb-4">The Collections</span>
@@ -118,7 +118,7 @@ export function ColdChainBanner() {
   ];
 
   return (
-    <section className="py-20 md:py-28 lg:py-32 bg-white overflow-hidden">
+    <section className="py-14 md:py-16  bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 

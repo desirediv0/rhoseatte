@@ -191,7 +191,7 @@ const CategoryGrid = () => {
 
   if (loading) {
     return (
-      <section className="py-20 md:py-28 lg:py-32 bg-white">
+      <section className="py-14 md:py-16  bg-white">
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
           <SkeletonLoader />
         </div>
@@ -207,7 +207,7 @@ const CategoryGrid = () => {
   const smallCategories = categories.slice(1, 5);
 
   return (
-    <section className="py-20 md:py-28 lg:py-32 bg-white overflow-hidden">
+    <section className="py-14 md:py-16  bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
         {/* Section Header */}
         <Reveal>

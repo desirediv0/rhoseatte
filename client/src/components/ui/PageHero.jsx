@@ -18,7 +18,7 @@ export const PageHero = ({
   const sizes = {
     sm: "py-12 md:py-16",
     md: "py-16 md:py-20 lg:py-24",
-    lg: "py-20 md:py-28 lg:py-32",
+    lg: "py-14 md:py-16 ",
   };
 
   const isDark = variant === "dark";

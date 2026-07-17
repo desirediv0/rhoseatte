@@ -211,8 +211,8 @@ export default function HomePageContent() {
 
     const dbSection = dbSections.find(
       (s) =>
-          s.slug?.toLowerCase() === key.toLowerCase() ||
-          s.slug?.toLowerCase().replace(/-/g, "") === key.toLowerCase()
+        s.slug?.toLowerCase() === key.toLowerCase() ||
+        s.slug?.toLowerCase().replace(/-/g, "") === key.toLowerCase()
     );
 
     const defaultBanner = SECTION_METADATA[key] || {
@@ -233,48 +233,9 @@ export default function HomePageContent() {
       dateText: defaultBanner.dateText,
     };
 
-    const isEven = ["featured", "bestseller", "new"].includes(key.toLowerCase());
-
-    const BannerCard = () => (
-      <div className="lg:col-span-4 relative overflow-hidden group min-h-[360px] lg:min-h-full bg-noir" data-cursor="Explore" style={{ borderRadius: "8px" }}>
-        <Image
-          src={banner.bannerImage}
-          alt={banner.title}
-          fill
-          className="object-cover transition-transform duration-1000 ease-out group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-noir/80 via-noir/20 to-noir/10" />
-        <div className="absolute inset-3 border border-white/10 pointer-events-none" style={{ borderRadius: "6px" }} />
-
-        <div className="relative z-10 h-full flex flex-col justify-between p-7">
-          <div>
-            <span className="inline-block text-[9px] uppercase tracking-[0.3em] font-medium px-3 py-1.5 text-gold-light border border-gold/20 bg-noir/30 backdrop-blur-sm" style={{ borderRadius: "4px" }}>
-              {banner.tag}
-            </span>
-          </div>
-
-          <div className="text-white">
-            <h3 className="font-display text-2xl md:text-3xl tracking-tight mb-2">
-              {banner.title.charAt(0) + banner.title.slice(1).toLowerCase()}
-              {banner.subtitle && (
-                <em className="luxe-italic text-gold-light block text-xl md:text-2xl mt-1">
-                  {banner.subtitle.charAt(0) + banner.subtitle.slice(1).toLowerCase()}
-                </em>
-              )}
-            </h3>
-            {banner.dateText && (
-              <p className="text-[12px] text-white/50 leading-relaxed mb-6 font-light max-w-xs">{banner.dateText}</p>
-            )}
-            <Link href={banner.linkUrl} className="btn-luxe-white !px-5 !py-2.5">
-              Explore <IconArrowRight className="h-3 w-3" stroke={1.5} />
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
 
     return (
-      <section className={`py-16 md:py-20 lg:py-24 overflow-hidden ${sectionIndex % 2 === 1 ? "bg-ivory" : "bg-white"}`}>
+      <section className={`py-10 md:py-14  overflow-hidden ${sectionIndex % 2 === 1 ? "bg-ivory" : "bg-white"}`}>
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
           <Reveal>
             <div className="mb-10 md:mb-12">
