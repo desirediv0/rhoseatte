@@ -6,7 +6,7 @@ module.exports = {
       script: 'npm',
       args: 'start',
       env: {
-        PORT: 3006,
+        PORT: 3007,
         NODE_ENV: 'production'
       },
       error_file: "/root/.pm2/logs/rhoseatte-client-error.log",
@@ -35,7 +35,7 @@ module.exports = {
       script: 'npm',
       args: 'start',
       env: {
-        PORT: 4007,
+        PORT: 4008,
         NODE_ENV: 'production'
       },
       error_file: "/root/.pm2/logs/rhoseatte-server-error.log",
