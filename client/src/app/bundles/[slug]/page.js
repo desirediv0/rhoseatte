@@ -149,7 +149,7 @@ export default function BundleDetailPage({ params }) {
             className="object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#0A3B3F] to-[#1a6b70] flex items-center justify-center">
+          <div className="w-full h-full bg-gradient-to-br from-noir via-stone/90 to-gold/20 flex items-center justify-center">
             <span className="text-white text-5xl font-light tracking-widest">
               {bundle.bundleType}
             </span>
@@ -236,9 +236,9 @@ export default function BundleDetailPage({ params }) {
 
                       {/* Product Image */}
                       <div className="relative aspect-square overflow-hidden">
-                        {product.images?.[0] ? (
+                        {product.images?.[0]?.url ? (
                           <Image
-                            src={product.images[0]}
+                            src={product.images[0].url}
                             alt={product.name}
                             fill
                             className="object-cover"
@@ -260,6 +260,15 @@ export default function BundleDetailPage({ params }) {
                         <h3 className="text-sm font-medium text-[#111111] line-clamp-2">
                           {product.name}
                         </h3>
+                        {variant && variant.attributes && variant.attributes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {variant.attributes.map((attr, idx) => (
+                              <span key={idx} className="text-[10px] bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">
+                                {attr.attribute}: {attr.value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-sm text-gold-dark font-medium mt-1">
                           ₹{parseFloat(price).toLocaleString()}
                         </p>
@@ -355,7 +364,7 @@ export default function BundleDetailPage({ params }) {
                   selectedProducts.length === 0 ||
                   bundlePrice === 0
                 }
-                className="w-full py-3 bg-[#0A3B3F] text-white text-sm uppercase tracking-wider font-medium hover:bg-[#0d4d52] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 bg-noir text-white text-sm uppercase tracking-wider font-medium hover:bg-gold-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {addingToCart ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
