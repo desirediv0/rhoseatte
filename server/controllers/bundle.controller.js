@@ -132,14 +132,10 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
     isDeleted: false,
   };
 
-  const conditions = [];
-
-  if (rule.productIds && rule.productIds.length > 0) {
-    conditions.push({ id: { in: rule.productIds } });
-  }
+  const filterConditions = [];
 
   if (rule.categoryIds && rule.categoryIds.length > 0) {
-    conditions.push({
+    filterConditions.push({
       categories: {
         some: { categoryId: { in: rule.categoryIds } },
       },
@@ -147,7 +143,7 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
   }
 
   if (rule.subcategoryIds && rule.subcategoryIds.length > 0) {
-    conditions.push({
+    filterConditions.push({
       subCategories: {
         some: { subcategoryId: { in: rule.subcategoryIds } },
       },
@@ -155,11 +151,11 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
   }
 
   if (rule.brandIds && rule.brandIds.length > 0) {
-    conditions.push({ brandId: { in: rule.brandIds } });
+    filterConditions.push({ brandId: { in: rule.brandIds } });
   }
 
   if (rule.attributeValueIds && rule.attributeValueIds.length > 0) {
-    conditions.push({
+    filterConditions.push({
       variants: {
         some: {
           attributeValues: {
@@ -168,6 +164,24 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
         },
       },
     });
+  }
+
+  const conditions = [];
+  const hasFilters = filterConditions.length > 0;
+
+  if (rule.productIds && rule.productIds.length > 0) {
+    if (hasFilters) {
+      conditions.push({
+        OR: [
+          { id: { in: rule.productIds } },
+          { AND: filterConditions },
+        ],
+      });
+    } else {
+      conditions.push({ id: { in: rule.productIds } });
+    }
+  } else if (hasFilters) {
+    conditions.push(...filterConditions);
   }
 
   if (conditions.length > 0) {
