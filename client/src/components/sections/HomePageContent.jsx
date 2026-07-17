@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { fetchApi } from "@/lib/utils";
 import Link from "next/link";
-import Image from "next/image";
 import BrandCarousel from "@/components/sections/BrandCarousel";
 import { ProductCard } from "@/components/products/ProductCard";
 import Reveal from "@/components/ui/Reveal";

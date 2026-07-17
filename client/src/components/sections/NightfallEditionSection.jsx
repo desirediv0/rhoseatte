@@ -109,7 +109,7 @@ export default function NightfallEditionSection() {
       <div className="py-14 md:py-16 ">
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
           {/* Fragrance Stories — alternating layout */}
-          {NIGHTFALL_FRAGRANCES.map((fragrance, index) => (
+          {NIGHTFALL_FRAGRANCES.slice(0, 1).map((fragrance, index) => (
             <motion.div
               key={fragrance.name}
               initial="hidden"

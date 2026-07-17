@@ -22,8 +22,8 @@ export default function Home() {
         <HeroSectionStore />
         <CategoryGrid />
         <WatchAndBuySection />
-        <HomePageContent />
         <NightfallEditionSection />
+        <HomePageContent />
         <ColdChainBanner />
         <TrustBadgesSection />
         <JournalSection />
