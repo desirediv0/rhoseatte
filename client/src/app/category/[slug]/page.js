@@ -97,7 +97,7 @@ export default function CategoryPage() {
     if (loading && !category) {
         return (
             <div className="min-h-screen" style={{ background: "#F7FAFC" }}>
-                <div className="py-12 md:py-14" style={{ background: "linear-gradient(135deg, #002216, #003E29)" }}>
+                <div className="py-12 md:py-14" style={{ background: "linear-gradient(135deg, #111111, #1A1A1A)" }}>
                     <div className="max-w-7xl mx-auto px-6 animate-pulse">
                         <div className="h-3 bg-white/10 rounded w-1/4 mb-4" />
                         <div className="h-9 bg-white/15 rounded w-1/2 mb-3" />
@@ -123,7 +123,7 @@ export default function CategoryPage() {
                     </div>
                     <h2 className="text-xl   text-gray-900 mb-2">Category Not Found</h2>
                     <p className="text-gray-500 mb-6">{error}</p>
-                    <Link href="/categories" className="inline-flex items-center px-5 py-2.5 text-white rounded-xl font-semibold hover:opacity-90 transition-all border border-[#D4AF37]/20" style={{ background: "#003E29" }}>
+                    <Link href="/categories" className="inline-flex items-center px-5 py-2.5 text-white rounded-xl font-semibold hover:opacity-90 transition-all border border-[#D4AF37]/20" style={{ background: "#111111" }}>
                         <ChevronLeft className="w-4 h-4 mr-1 text-[#D4AF37]" /> Back to Categories
                     </Link>
                 </div>
@@ -138,7 +138,7 @@ export default function CategoryPage() {
             {/* Hero */}
             <section
                 className="relative py-10 md:py-14 overflow-hidden"
-                style={{ background: "linear-gradient(135deg, #002216 0%, #003E29 60%, #005a3c 100%)" }}
+                style={{ background: "linear-gradient(135deg, #111111 0%, #1A1A1A 60%, #222222 100%)" }}
             >
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
                     <div className="absolute -top-20 right-0 w-72 h-72 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #D4AF37, transparent 70%)" }} />
@@ -248,7 +248,7 @@ export default function CategoryPage() {
                         </div>
                         <h2 className="text-xl   mb-2" style={{ color: "#0A2540" }}>No Products Found</h2>
                         <p className="text-gray-500 mb-6">This category doesn&apos;t have any products yet.</p>
-                        <Link href="/products" className="inline-flex items-center px-6 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition-colors border border-[#D4AF37]/30" style={{ background: "#003E29" }}>
+                        <Link href="/products" className="inline-flex items-center px-6 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition-colors border border-[#D4AF37]/30" style={{ background: "#111111" }}>
                             Browse All Collections
                         </Link>
                     </div>

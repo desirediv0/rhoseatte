@@ -873,12 +873,12 @@ export const getQuizAnalytics = asyncHandler(async (req, res) => {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const dailyResponses = await prisma.$queryRaw`
     SELECT 
-      DATE(created_at) as date,
+      DATE("createdAt") as date,
       COUNT(*) as total,
       COUNT(CASE WHEN completed = true THEN 1 END) as completed
-    FROM fragrance_quiz_responses
-    WHERE created_at >= ${thirtyDaysAgo}
-    GROUP BY DATE(created_at)
+    FROM "FragranceQuizResponse"
+    WHERE "createdAt" >= ${thirtyDaysAgo}
+    GROUP BY DATE("createdAt")
     ORDER BY date ASC
   `;
 
@@ -887,8 +887,8 @@ export const getQuizAnalytics = asyncHandler(async (req, res) => {
     SELECT 
       device,
       COUNT(*) as count
-    FROM fragrance_quiz_responses
-    WHERE created_at >= ${startDate} AND device IS NOT NULL
+    FROM "FragranceQuizResponse"
+    WHERE "createdAt" >= ${startDate} AND device IS NOT NULL
     GROUP BY device
     ORDER BY count DESC
   `;
