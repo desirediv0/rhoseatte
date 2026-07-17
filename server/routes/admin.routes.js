@@ -38,7 +38,7 @@ const router = express.Router();
 router.post("/login", loginAdmin);
 
 // Register admin - require authentication and Super Admin role
-router.post("/register", registerAdmin);
+router.post("/register", verifyAdminJWT, hasRole("SUPER_ADMIN"), registerAdmin);
 
 // Admin Profile Routes
 router.get("/profile", verifyAdminJWT, getAdminProfile);
