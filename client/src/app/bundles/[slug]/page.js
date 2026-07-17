@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { fetchApi } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { IconCheck, IconShoppingCart, IconX } from "@tabler/icons-react";
 
 export default function BundleDetailPage({ params }) {
-  const { slug } = use(params);
+  const slug = params?.slug;
   const { addBundleToCart } = useCart();
   const [bundle, setBundle] = useState(null);
   const [products, setProducts] = useState([]);
@@ -211,11 +211,10 @@ export default function BundleDetailPage({ params }) {
                     <button
                       key={product.id}
                       onClick={() => toggleProduct(product.id)}
-                      className={`relative bg-white overflow-hidden text-left transition-all ${
-                        isSelected
-                          ? "ring-2 ring-gold-dark shadow-md"
-                          : "hover:shadow-md"
-                      }`}
+                      className={`relative bg-white overflow-hidden text-left transition-all ${isSelected
+                        ? "ring-2 ring-gold-dark shadow-md"
+                        : "hover:shadow-md"
+                        }`}
                       style={{
                         border: "1px solid #EAEAEA",
                         borderRadius: "8px",
@@ -223,11 +222,10 @@ export default function BundleDetailPage({ params }) {
                     >
                       {/* Selection Indicator */}
                       <div
-                        className={`absolute top-2 right-2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? "bg-gold-dark text-white"
-                            : "bg-white/80 text-gray-400"
-                        }`}
+                        className={`absolute top-2 right-2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isSelected
+                          ? "bg-gold-dark text-white"
+                          : "bg-white/80 text-gray-400"
+                          }`}
                       >
                         {isSelected ? (
                           <IconCheck size={14} />
@@ -304,11 +302,10 @@ export default function BundleDetailPage({ params }) {
                     {bundle.pricingSlabs.map((slab, idx) => (
                       <div
                         key={idx}
-                        className={`flex justify-between text-xs p-2 rounded ${
-                          selectedProducts.length === slab.itemCount
-                            ? "bg-green-50 text-green-700 font-medium"
-                            : "text-gray-600"
-                        }`}
+                        className={`flex justify-between text-xs p-2 rounded ${selectedProducts.length === slab.itemCount
+                          ? "bg-green-50 text-green-700 font-medium"
+                          : "text-gray-600"
+                          }`}
                       >
                         <span>
                           {slab.label || `${slab.itemCount} Products`}
