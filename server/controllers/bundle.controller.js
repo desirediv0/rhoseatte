@@ -170,16 +170,7 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
   const hasFilters = filterConditions.length > 0;
 
   if (rule.productIds && rule.productIds.length > 0) {
-    if (hasFilters) {
-      conditions.push({
-        OR: [
-          { id: { in: rule.productIds } },
-          { AND: filterConditions },
-        ],
-      });
-    } else {
-      conditions.push({ id: { in: rule.productIds } });
-    }
+    conditions.push({ id: { in: rule.productIds } });
   } else if (hasFilters) {
     conditions.push(...filterConditions);
   }
