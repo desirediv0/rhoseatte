@@ -203,7 +203,7 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
             where: { isPrimary: true },
             take: 1,
           },
-          attributeValues: {
+          attributes: {
             include: {
               attributeValue: {
                 include: { attribute: true },
@@ -242,7 +242,7 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
       salePrice: v.salePrice,
       quantity: v.quantity,
       image: v.images[0] ? getFileUrl(v.images[0].url) : null,
-      attributes: v.attributeValues.map((av) => ({
+      attributes: v.attributes.map((av) => ({
         attribute: av.attributeValue.attribute.name,
         value: av.attributeValue.value,
         hexCode: av.attributeValue.hexCode,
