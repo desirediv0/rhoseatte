@@ -5,7 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { IconArrowRight } from "@tabler/icons-react";
 
-const NIGHTFALL_FRAGRANCES = [
+export const NIGHTFALL_FRAGRANCES = [
   {
     name: "Velvet Allure",
     tagline: "A sophisticated embrace",
@@ -109,91 +109,8 @@ export default function NightfallEditionSection() {
       <div className="py-14 md:py-16 ">
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
           {/* Fragrance Stories — alternating layout */}
-          {NIGHTFALL_FRAGRANCES.slice(0, 1).map((fragrance, index) => (
-            <motion.div
-              key={fragrance.name}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-80px" }}
-              variants={staggerContainer}
-              className={`grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center mb-24 md:mb-32 last:mb-0 ${index % 2 !== 0 ? "lg:[direction:rtl]" : ""
-                }`}
-            >
-              {/* Image */}
-              <motion.div variants={fadeInUp} className={index % 2 !== 0 ? "lg:[direction:ltr]" : ""}>
-                <div className="relative overflow-hidden aspect-[4/5] group" style={{ borderRadius: "8px" }}>
-                  <Image
-                    src={fragrance.image}
-                    alt={fragrance.name}
-                    fill
-                    className="object-cover transition-transform ease-out group-hover:scale-105"
-                    style={{ transitionDuration: "1400ms" }}
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                  />
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: "linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%)" }}
-                  />
-                </div>
-              </motion.div>
-
-              {/* Content */}
-              <motion.div variants={fadeInUp} className={`space-y-7 ${index % 2 !== 0 ? "lg:[direction:ltr]" : ""}`}>
-                <div>
-                  <span className="text-[10px] uppercase tracking-[0.3em] text-gold font-medium block mb-3">
-                    0{index + 1} — {fragrance.mood[0]}
-                  </span>
-                  <h3 className="font-display text-3xl md:text-4xl lg:text-[2.75rem] text-noir tracking-tight leading-tight">
-                    {fragrance.name}
-                  </h3>
-                  <p className="text-gold-dark text-[14px] italic mt-2 font-light">{fragrance.tagline}</p>
-                </div>
-
-                <p className="text-stone text-[14px] md:text-[15px] leading-relaxed font-light">
-                  {fragrance.description}
-                </p>
-
-                {/* Notes */}
-                <div className="space-y-5">
-                  {fragrance.notes.map((note) => (
-                    <div key={note.type}>
-                      <span className="text-[9px] uppercase tracking-[0.25em] text-gold font-medium block mb-2.5">
-                        {note.type} Notes
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {note.ingredients.map((ingredient) => (
-                          <span
-                            key={ingredient}
-                            className="px-3 py-1.5 text-[11px] tracking-wide text-stone border border-line"
-                            style={{ borderRadius: "4px" }}
-                          >
-                            {ingredient}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Mood */}
-                <div>
-                  <span className="text-[9px] uppercase tracking-[0.25em] text-gold font-medium block mb-2.5">
-                    Mood
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {fragrance.mood.map((m) => (
-                      <span
-                        key={m}
-                        className="px-3 py-1.5 text-[11px] tracking-wide text-noir border border-noir/10"
-                        style={{ borderRadius: "4px" }}
-                      >
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
+          {NIGHTFALL_FRAGRANCES.map((fragrance, index) => (
+            <FragranceStoryRow key={fragrance.name} fragrance={fragrance} index={index} />
           ))}
 
           {/* Scent Personality */}
@@ -310,3 +227,117 @@ export default function NightfallEditionSection() {
     </section>
   );
 }
+
+export function FragranceStoryRow({ fragrance, index }) {
+  return (
+    <motion.div
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-80px" }}
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: { staggerChildren: 0.12, delayChildren: 0.2 },
+        },
+      }}
+      className={`grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center mb-24 md:mb-32 last:mb-0 ${index % 2 !== 0 ? "lg:[direction:rtl]" : ""}`}
+    >
+      {/* Image */}
+      <motion.div
+        variants={{
+          hidden: { opacity: 0, y: 30 },
+          visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+          },
+        }}
+        className={index % 2 !== 0 ? "lg:[direction:ltr]" : ""}
+      >
+        <div className="relative overflow-hidden aspect-[4/5] group" style={{ borderRadius: "8px" }}>
+          <Image
+            src={fragrance.image}
+            alt={fragrance.name}
+            fill
+            className="object-cover transition-transform ease-out group-hover:scale-105"
+            style={{ transitionDuration: "1400ms" }}
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%)" }}
+          />
+        </div>
+      </motion.div>
+
+      {/* Content */}
+      <motion.div
+        variants={{
+          hidden: { opacity: 0, y: 30 },
+          visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+          },
+        }}
+        className={`space-y-7 ${index % 2 !== 0 ? "lg:[direction:ltr]" : ""}`}
+      >
+        <div>
+          <span className="text-[10px] uppercase tracking-[0.3em] text-gold font-medium block mb-3">
+            0{index + 1} — {fragrance.mood[0]}
+          </span>
+          <h3 className="font-display text-3xl md:text-4xl lg:text-[2.75rem] text-noir tracking-tight leading-tight">
+            {fragrance.name}
+          </h3>
+          <p className="text-gold-dark text-[14px] italic mt-2 font-light">{fragrance.tagline}</p>
+        </div>
+
+        <p className="text-stone text-[14px] md:text-[15px] leading-relaxed font-light">
+          {fragrance.description}
+        </p>
+
+        {/* Notes */}
+        <div className="space-y-5">
+          {fragrance.notes.map((note) => (
+            <div key={note.type}>
+              <span className="text-[9px] uppercase tracking-[0.25em] text-gold font-medium block mb-2.5">
+                {note.type} Notes
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {note.ingredients.map((ingredient) => (
+                  <span
+                    key={ingredient}
+                    className="px-3 py-1.5 text-[11px] tracking-wide text-stone border border-line"
+                    style={{ borderRadius: "4px" }}
+                  >
+                    {ingredient}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mood */}
+        <div>
+          <span className="text-[9px] uppercase tracking-[0.25em] text-gold font-medium block mb-2.5">
+            Mood
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {fragrance.mood.map((m) => (
+              <span
+                key={m}
+                className="px-3 py-1.5 text-[11px] tracking-wide text-noir border border-noir/10"
+                style={{ borderRadius: "4px" }}
+              >
+                {m}
+              </span>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+

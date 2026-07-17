@@ -189,7 +189,7 @@ export const createBundleCampaign = asyncHandler(async (req, res, next) => {
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         displayOrder: parseInt(displayOrder),
-        showOnWebsite,
+        showOnWebsite: showOnWebsite === "true" || showOnWebsite === true,
         discountType,
         bundlePrice: bundlePrice ? parseFloat(bundlePrice) : null,
         metaTitle,
@@ -309,7 +309,7 @@ export const updateBundleCampaign = asyncHandler(async (req, res, next) => {
         ...(displayOrder !== undefined && {
           displayOrder: parseInt(displayOrder),
         }),
-        ...(showOnWebsite !== undefined && { showOnWebsite }),
+        ...(showOnWebsite !== undefined && { showOnWebsite: showOnWebsite === "true" || showOnWebsite === true }),
         ...(discountType && { discountType }),
         ...(bundlePrice !== undefined && {
           bundlePrice: bundlePrice ? parseFloat(bundlePrice) : null,

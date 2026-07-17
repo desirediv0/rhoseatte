@@ -12,6 +12,7 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { IconArrowRight, IconArrowLeft } from "@tabler/icons-react";
+import { FragranceStoryRow, NIGHTFALL_FRAGRANCES } from "@/components/sections/NightfallEditionSection";
 
 const SECTION_METADATA = {
   featured: {
@@ -291,6 +292,20 @@ export default function HomePageContent() {
 
         return (
           <div key={sec.id || key}>
+            {key === "latest" && (
+              <div className="py-14 md:py-16 bg-white">
+                <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
+                  <FragranceStoryRow fragrance={NIGHTFALL_FRAGRANCES[0]} index={0} />
+                </div>
+              </div>
+            )}
+            {key === "trending" && (
+              <div className="py-14 md:py-16 bg-white">
+                <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
+                  <FragranceStoryRow fragrance={NIGHTFALL_FRAGRANCES[1]} index={1} />
+                </div>
+              </div>
+            )}
             {renderSection(key, idx)}
             {idx === 0 && <BrandCarousel tag="NEW" title="Discover Our Collections" />}
             {idx === 3 && <BrandCarousel tag="LUXURY" title="Artisan Fragrances" />}
