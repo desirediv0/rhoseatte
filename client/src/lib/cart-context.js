@@ -281,12 +281,10 @@ export function CartProvider({ children }) {
                 await fetchCart();
                 return res.data;
             } else {
-                toast.error("Please login to add bundles to cart");
-                throw new Error("Login required for bundles");
+                throw new Error("Please login to add bundles to cart");
             }
         } catch (err) {
             setError(err.message);
-            toast.error(err.message || "Failed to add bundle to cart");
             throw err;
         } finally {
             setLoading(false);
