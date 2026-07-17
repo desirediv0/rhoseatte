@@ -156,7 +156,7 @@ function ReelCard({ reel, onClick }) {
 }
 
 function ReelViewer({ reels, currentIndex, onClose, onNavigate }) {
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef(null);
 
@@ -164,16 +164,16 @@ function ReelViewer({ reels, currentIndex, onClose, onNavigate }) {
   const product = currentReel?.products?.[0];
 
   useEffect(() => {
-    setIsMuted(false);
+    setIsMuted(true);
     setIsPlaying(false);
   }, [currentIndex]);
 
   useEffect(() => {
     if (!videoRef.current) return;
-    videoRef.current.muted = false;
+    videoRef.current.muted = true;
     videoRef.current.play().catch(() => { });
     setIsPlaying(true);
-    setIsMuted(false);
+    setIsMuted(true);
   }, [currentIndex]);
 
   const handleVideoClick = () => {
