@@ -13,7 +13,7 @@ export default defineConfig({
   },
   // Add the preview configuration for production builds
   preview: {
-    port: 4178,
+    port: 4179,
     host: "0.0.0.0",
     allowedHosts: [
       "admin.rhoseatte.com",
@@ -22,7 +22,7 @@ export default defineConfig({
   },
   // Add server configuration for development
   server: {
-    port: 4178,
+    port: 4179,
     host: "0.0.0.0",
     allowedHosts: [
       "admin.rhoseatte.com",
