@@ -30,8 +30,10 @@ const cardVariant = {
 
 /* ─── Bundle Card ──────────────────────────────────────── */
 function BundleCard({ bundle, index }) {
-  const lowestSlab = bundle.pricingSlabs?.[0];
-  const highestSlab = bundle.pricingSlabs?.[bundle.pricingSlabs.length - 1];
+  const lowestSlab = Array.isArray(bundle.pricingSlabs) ? bundle.pricingSlabs[0] : undefined;
+  const highestSlab = Array.isArray(bundle.pricingSlabs) && bundle.pricingSlabs.length > 0
+    ? bundle.pricingSlabs[bundle.pricingSlabs.length - 1]
+    : undefined;
 
   return (
     <motion.div variants={cardVariant}>
