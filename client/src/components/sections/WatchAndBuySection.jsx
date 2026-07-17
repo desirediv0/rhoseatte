@@ -176,22 +176,43 @@ function ReelViewer({ reels, currentIndex, onClose, onNavigate }) {
     setIsMuted(true);
   }, [currentIndex]);
 
-  const handleVideoClick = () => {
+  const handleVideoClick = async () => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
-      videoRef.current.play();
-      setIsPlaying(true);
+      try {
+        videoRef.current.muted = false;
+        setIsMuted(false);
+        await videoRef.current.play();
+        setIsPlaying(true);
+      } catch {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
     } else {
-      videoRef.current.pause();
-      setIsPlaying(false);
+      if (!videoRef.current.muted) {
+        videoRef.current.muted = true;
+        setIsMuted(true);
+      } else {
+        videoRef.current.muted = false;
+        setIsMuted(false);
+      }
     }
   };
 
-  const toggleMute = (e) => {
+  const toggleMute = async (e) => {
     e.stopPropagation();
     if (!videoRef.current) return;
-    videoRef.current.muted = !videoRef.current.muted;
-    setIsMuted(videoRef.current.muted);
+    try {
+      videoRef.current.muted = false;
+      setIsMuted(false);
+      if (videoRef.current.paused) {
+        await videoRef.current.play();
+        setIsPlaying(true);
+      }
+    } catch {
+      videoRef.current.muted = !videoRef.current.muted;
+      setIsMuted(videoRef.current.muted);
+    }
   };
 
   useEffect(() => {
@@ -276,6 +297,16 @@ function ReelViewer({ reels, currentIndex, onClose, onNavigate }) {
               <IconVolume className="h-4 w-4 text-white" stroke={1.5} />
             )}
           </button>
+
+          {/* Tap for sound indicator */}
+          {isMuted && isPlaying && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                <IconVolumeOff className="h-4 w-4 text-white" stroke={1.5} />
+                <span className="text-white text-[12px] font-medium">Tap for sound</span>
+              </div>
+            </div>
+          )}
 
           {/* Play/Pause indicator */}
           {!isPlaying && (
