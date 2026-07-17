@@ -179,11 +179,11 @@ export function BundleCampaignForm({
               displayOrder: b.displayOrder ?? "",
               showOnWebsite: b.showOnWebsite ?? true,
               isActive: b.isActive ?? true,
-              categoryIds: b.categoryIds || [],
-              subcategoryIds: b.subcategoryIds || [],
-              brandIds: b.brandIds || [],
-              attributeValueIds: b.attributeValueIds || [],
-              productIds: b.productIds || [],
+              categoryIds: b.rule?.categoryIds || b.categoryIds || [],
+              subcategoryIds: b.rule?.subcategoryIds || b.subcategoryIds || [],
+              brandIds: b.rule?.brandIds || b.brandIds || [],
+              attributeValueIds: b.rule?.attributeValueIds || b.attributeValueIds || [],
+              productIds: b.rule?.productIds || b.productIds || [],
               pricingSlabs:
                 b.pricingSlabs?.length > 0
                   ? b.pricingSlabs.map((s: any) => ({
@@ -195,13 +195,14 @@ export function BundleCampaignForm({
               metaTitle: b.metaTitle || "",
               metaDescription: b.metaDescription || "",
             });
-            if (b.productIds?.length > 0) {
+            const ruleProductIds = b.rule?.productIds || b.productIds;
+            if (ruleProductIds?.length > 0) {
               try {
                 const prodRes = await productsApi.getProducts({ limit: 1000 });
                 if (prodRes.data.success) {
                   const allProds = prodRes.data.data?.products || [];
                   setSelectedProducts(
-                    allProds.filter((p: any) => b.productIds.includes(p.id))
+                    allProds.filter((p: any) => ruleProductIds.includes(p.id))
                   );
                 }
               } catch {
@@ -472,6 +473,9 @@ export function BundleCampaignForm({
                   required
                   className="border-[#E5E7EB] focus:border-primary"
                 />
+                <p className="text-[11px] text-[#9CA3AF]">
+                  Example: "Summer Collection 2026" (Customer-facing title)
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -508,6 +512,9 @@ export function BundleCampaignForm({
                   placeholder='e.g. 50ML, FESTIVAL, COMBO'
                   className="border-[#E5E7EB] focus:border-primary"
                 />
+                <p className="text-[11px] text-[#9CA3AF]">
+                  Example: "50ml" or "Custom Combo" (Used for filtering and badging)
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -675,6 +682,9 @@ export function BundleCampaignForm({
             <p className="text-sm text-[#9CA3AF] mt-1">
               Define which products are eligible for this bundle
             </p>
+            <div className="text-xs text-[#6B7280] mt-2 bg-[#F9FAFB] p-2.5 rounded border border-[#E5E7EB]">
+              <strong>Rule Guide (Example):</strong> If you select category "50ml Perfumes" and brand "Rhoseatte", only products matching both will be selectable in the bundle. Leaving categories/brands empty allows all active products.
+            </div>
           </CardHeader>
           <CardContent className="px-6 pb-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -879,18 +889,37 @@ export function BundleCampaignForm({
                         className="rounded border-[#E5E7EB]"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-[#4B5563] truncate">
+                        <p className="text-sm font-medium text-[#1F2937] truncate">
                           {product.name}
                         </p>
-                        <p className="text-xs text-[#9CA3AF]">
-                          {product.sku || ""}
-                        </p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {product.brand?.name && (
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-1 rounded">
+                              Brand: {product.brand.name}
+                            </span>
+                          )}
+                          {product.categories?.[0]?.name && (
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-1 rounded">
+                              Category: {product.categories[0].name}
+                            </span>
+                          )}
+                          {product.variants?.[0] && (
+                            <span className="text-[10px] bg-amber-50 text-amber-700 px-1 rounded">
+                              Sku: {product.variants[0].sku || product.sku}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {product.regularPrice && (
-                        <span className="text-sm text-[#4B5563] font-medium">
-                          ₹{product.regularPrice}
+                      <div className="flex flex-col items-end text-right">
+                        <span className="text-sm text-[#1F2937] font-semibold">
+                          ₹{product.variants?.[0]?.price || product.regularPrice || product.price || 0}
                         </span>
-                      )}
+                        {product.variants?.[0]?.attributes && product.variants[0].attributes.length > 0 && (
+                          <span className="text-[10px] text-gray-500 mt-0.5">
+                            {product.variants[0].attributes.map((a: any) => `${a.attribute}: ${a.value}`).join(", ")}
+                          </span>
+                        )}
+                      </div>
                     </label>
                   ))}
                 </div>
@@ -898,21 +927,27 @@ export function BundleCampaignForm({
 
               {selectedProducts.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedProducts.map((product: any) => (
-                    <span
-                      key={product.id}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-[#F3F4F6] rounded-md text-xs text-[#4B5563]"
-                    >
-                      {product.name}
-                      <button
-                        type="button"
-                        onClick={() => toggleProduct(product)}
-                        className="hover:text-[#EF4444]"
+                  {selectedProducts.map((product: any) => {
+                    const price = product.variants?.[0]?.price || product.regularPrice || product.price || 0;
+                    const attrs = product.variants?.[0]?.attributes && product.variants[0].attributes.length > 0
+                      ? ` (${product.variants[0].attributes.map((a: any) => a.value).join(", ")})`
+                      : "";
+                    return (
+                      <span
+                        key={product.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F3F4F6] rounded-md text-xs text-[#1F2937] font-medium border border-[#E5E7EB]"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
+                        <span>{product.name}{attrs} - ₹{price}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleProduct(product)}
+                          className="text-[#9CA3AF] hover:text-[#EF4444] transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -929,6 +964,11 @@ export function BundleCampaignForm({
               <p className="text-sm text-[#9CA3AF] mt-1">
                 Define quantity-based pricing tiers
               </p>
+              <div className="text-xs text-[#6B7280] mt-2 bg-[#F9FAFB] p-2.5 rounded border border-[#E5E7EB] max-w-xl">
+                <strong>Pricing Guide (Example):</strong> <br />
+                - Item Count: <strong>2</strong>, Price: <strong>1499</strong>, Label: <strong>"Buy any 2 for ₹1499"</strong><br />
+                - Item Count: <strong>3</strong>, Price: <strong>1999</strong>, Label: <strong>"Buy any 3 for ₹1999"</strong>
+              </div>
             </div>
             <Button
               type="button"

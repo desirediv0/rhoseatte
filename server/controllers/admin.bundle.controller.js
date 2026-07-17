@@ -155,6 +155,13 @@ export const createBundleCampaign = asyncHandler(async (req, res, next) => {
     metaDescription,
     rule,
     pricingSlabs = [],
+    productIds,
+    categoryIds,
+    subcategoryIds,
+    brandIds,
+    attributeValueIds,
+    minItems,
+    maxItems,
   } = req.body;
 
   if (!title) {
@@ -184,6 +191,28 @@ export const createBundleCampaign = asyncHandler(async (req, res, next) => {
       }
     }
   }
+
+  const parseJsonArray = (val) => {
+    if (!val) return null;
+    if (typeof val === "string") {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return Array.isArray(val) ? val : null;
+  };
+
+  const finalProductIds = parseJsonArray(productIds) || (parsedRule && parseJsonArray(parsedRule.productIds)) || null;
+  const finalCategoryIds = parseJsonArray(categoryIds) || (parsedRule && parseJsonArray(parsedRule.categoryIds)) || null;
+  const finalSubcategoryIds = parseJsonArray(subcategoryIds) || (parsedRule && parseJsonArray(parsedRule.subcategoryIds)) || null;
+  const finalBrandIds = parseJsonArray(brandIds) || (parsedRule && parseJsonArray(parsedRule.brandIds)) || null;
+  const finalAttributeValueIds = parseJsonArray(attributeValueIds) || (parsedRule && parseJsonArray(parsedRule.attributeValueIds)) || null;
+
+  const finalMinItems = parseInt(minItems || (parsedRule && parsedRule.minItems) || 2);
+  const finalMaxItems = (maxItems || (parsedRule && parsedRule.maxItems)) ? parseInt(maxItems || (parsedRule && parsedRule.maxItems)) : null;
 
   const slug = createSlug(title);
 
@@ -221,18 +250,18 @@ export const createBundleCampaign = asyncHandler(async (req, res, next) => {
       },
     });
 
-    // Create rule if provided
-    if (parsedRule) {
+    // Create rule
+    if (finalProductIds || finalCategoryIds || finalSubcategoryIds || finalBrandIds || finalAttributeValueIds || parsedRule) {
       await tx.bundleRule.create({
         data: {
           bundleCampaignId: newCampaign.id,
-          categoryIds: parsedRule.categoryIds || null,
-          subcategoryIds: parsedRule.subcategoryIds || null,
-          brandIds: parsedRule.brandIds || null,
-          attributeValueIds: parsedRule.attributeValueIds || null,
-          productIds: parsedRule.productIds || null,
-          minItems: parsedRule.minItems || 2,
-          maxItems: parsedRule.maxItems || null,
+          categoryIds: finalCategoryIds,
+          subcategoryIds: finalSubcategoryIds,
+          brandIds: finalBrandIds,
+          attributeValueIds: finalAttributeValueIds,
+          productIds: finalProductIds,
+          minItems: finalMinItems,
+          maxItems: finalMaxItems,
         },
       });
     }
@@ -283,6 +312,13 @@ export const updateBundleCampaign = asyncHandler(async (req, res, next) => {
     metaDescription,
     rule,
     pricingSlabs,
+    productIds,
+    categoryIds,
+    subcategoryIds,
+    brandIds,
+    attributeValueIds,
+    minItems,
+    maxItems,
   } = req.body;
 
   let parsedPricingSlabs = pricingSlabs;
@@ -306,6 +342,28 @@ export const updateBundleCampaign = asyncHandler(async (req, res, next) => {
       }
     }
   }
+
+  const parseJsonArray = (val) => {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === "string") {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : undefined;
+      } catch (e) {
+        return undefined;
+      }
+    }
+    return Array.isArray(val) ? val : undefined;
+  };
+
+  const finalProductIds = parseJsonArray(productIds) !== undefined ? parseJsonArray(productIds) : (parsedRule && parseJsonArray(parsedRule.productIds));
+  const finalCategoryIds = parseJsonArray(categoryIds) !== undefined ? parseJsonArray(categoryIds) : (parsedRule && parseJsonArray(parsedRule.categoryIds));
+  const finalSubcategoryIds = parseJsonArray(subcategoryIds) !== undefined ? parseJsonArray(subcategoryIds) : (parsedRule && parseJsonArray(parsedRule.subcategoryIds));
+  const finalBrandIds = parseJsonArray(brandIds) !== undefined ? parseJsonArray(brandIds) : (parsedRule && parseJsonArray(parsedRule.brandIds));
+  const finalAttributeValueIds = parseJsonArray(attributeValueIds) !== undefined ? parseJsonArray(attributeValueIds) : (parsedRule && parseJsonArray(parsedRule.attributeValueIds));
+
+  const finalMinItems = minItems !== undefined ? parseInt(minItems) : (parsedRule && parsedRule.minItems !== undefined ? parseInt(parsedRule.minItems) : undefined);
+  const finalMaxItems = maxItems !== undefined ? (maxItems ? parseInt(maxItems) : null) : (parsedRule && parsedRule.maxItems !== undefined ? (parsedRule.maxItems ? parseInt(parsedRule.maxItems) : null) : undefined);
 
   const existingCampaign = await prisma.bundleCampaign.findUnique({
     where: { id },
@@ -366,31 +424,27 @@ export const updateBundleCampaign = asyncHandler(async (req, res, next) => {
     });
 
     // Update or create rule
-    if (parsedRule) {
+    if (finalProductIds !== undefined || finalCategoryIds !== undefined || finalSubcategoryIds !== undefined || finalBrandIds !== undefined || finalAttributeValueIds !== undefined || finalMinItems !== undefined || finalMaxItems !== undefined || parsedRule) {
       await tx.bundleRule.upsert({
         where: { bundleCampaignId: id },
         create: {
           bundleCampaignId: id,
-          categoryIds: parsedRule.categoryIds || null,
-          subcategoryIds: parsedRule.subcategoryIds || null,
-          brandIds: parsedRule.brandIds || null,
-          attributeValueIds: parsedRule.attributeValueIds || null,
-          productIds: parsedRule.productIds || null,
-          minItems: parsedRule.minItems || 2,
-          maxItems: parsedRule.maxItems || null,
+          categoryIds: finalCategoryIds !== undefined ? finalCategoryIds : null,
+          subcategoryIds: finalSubcategoryIds !== undefined ? finalSubcategoryIds : null,
+          brandIds: finalBrandIds !== undefined ? finalBrandIds : null,
+          attributeValueIds: finalAttributeValueIds !== undefined ? finalAttributeValueIds : null,
+          productIds: finalProductIds !== undefined ? finalProductIds : null,
+          minItems: finalMinItems !== undefined ? finalMinItems : 2,
+          maxItems: finalMaxItems !== undefined ? finalMaxItems : null,
         },
         update: {
-          ...(parsedRule.categoryIds !== undefined && { categoryIds: parsedRule.categoryIds }),
-          ...(parsedRule.subcategoryIds !== undefined && {
-            subcategoryIds: parsedRule.subcategoryIds,
-          }),
-          ...(parsedRule.brandIds !== undefined && { brandIds: parsedRule.brandIds }),
-          ...(parsedRule.attributeValueIds !== undefined && {
-            attributeValueIds: parsedRule.attributeValueIds,
-          }),
-          ...(parsedRule.productIds !== undefined && { productIds: parsedRule.productIds }),
-          ...(parsedRule.minItems !== undefined && { minItems: parsedRule.minItems }),
-          ...(parsedRule.maxItems !== undefined && { maxItems: parsedRule.maxItems }),
+          ...(finalCategoryIds !== undefined && { categoryIds: finalCategoryIds }),
+          ...(finalSubcategoryIds !== undefined && { subcategoryIds: finalSubcategoryIds }),
+          ...(finalBrandIds !== undefined && { brandIds: finalBrandIds }),
+          ...(finalAttributeValueIds !== undefined && { attributeValueIds: finalAttributeValueIds }),
+          ...(finalProductIds !== undefined && { productIds: finalProductIds }),
+          ...(finalMinItems !== undefined && { minItems: finalMinItems }),
+          ...(finalMaxItems !== undefined && { maxItems: finalMaxItems }),
         },
       });
     }
