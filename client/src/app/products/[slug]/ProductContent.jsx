@@ -41,7 +41,9 @@ export default function ProductContent({ slug }) {
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [effectivePriceInfo, setEffectivePriceInfo] = useState(null);
-  const [activeTab, setActiveTab] = useState("description");
+  const [openSections, setOpenSections] = useState({
+    fragranceNotes: true,
+  });
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -603,41 +605,56 @@ export default function ProductContent({ slug }) {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Accordion Sections */}
       <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10 mb-16">
-        <div className="flex gap-0 overflow-x-auto no-scrollbar" style={{ borderBottom: "1px solid #EAEAEA" }}>
-          {[{ k: "description", l: "Description" }, { k: "additional", l: "Details" }, { k: "reviews", l: `Reviews (${product.reviewCount || 0})` }, { k: "shipping", l: "Shipping & Returns" }].map(({ k, l }) => (
-            <button key={k} onClick={() => setActiveTab(k)} className="px-7 py-4 text-[10px] font-semibold uppercase tracking-[0.2em] -mb-[1px] transition-all whitespace-nowrap" style={{ borderBottom: activeTab === k ? "2px solid #B8976A" : "2px solid transparent", color: activeTab === k ? "#111111" : "#666666" }}>{l}</button>
-          ))}
-        </div>
-        <div className="py-10 max-w-4xl">
-          {activeTab === "description" && <div className="text-[14px] leading-relaxed font-light tracking-wide" style={{ color: "#666666" }} dangerouslySetInnerHTML={{ __html: product.description || "No description." }} />}
-          {activeTab === "additional" && (
-            <div style={{ border: "1px solid #EAEAEA", borderRadius: "8px", overflow: "hidden" }}>
-              <table className="w-full text-[13px]">
-                <tbody>
-                  {[["Style", "Premium Collection"], ["Care", "Follow the enclosed care instructions"], ["Origin", "Premium imported materials"]].map(([k, v], i) => (
-                    <tr key={k} style={{ borderBottom: "1px solid #EAEAEA", backgroundColor: i % 2 === 0 ? "#FAFAFA" : "#fff" }}>
-                      <td className="py-4 px-6 font-semibold w-40 text-[10px] uppercase tracking-[0.18em]" style={{ color: "#111111" }}>{k}</td>
-                      <td className="py-4 px-6 font-light tracking-wide" style={{ color: "#666666" }}>{v}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {activeTab === "reviews" && <ReviewSection product={product} />}
-          {activeTab === "shipping" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[{ t: "Shipping", i: IconTruck, r: [["Metro", "24–48h"], ["India", "3–5 days"], ["Free", "All India"]] },
-              { t: "Returns", i: IconRefresh, r: [["Window", "7 days"], ["Support", "WhatsApp"], ["Pickup", "Doorstep"]] }].map(({ t, i: I, r }) => (
-                <div key={t} className="p-8" style={{ border: "1px solid #EAEAEA", borderRadius: "8px", backgroundColor: "#FAFAFA" }}>
-                  <h3 className="font-display text-xl mb-6 flex items-center gap-3" style={{ color: "#111111" }}><I className="h-4 w-4" style={{ color: "#B8976A" }} stroke={1.5} />{t}</h3>
-                  <dl className="space-y-4">{r.map(([k, v]) => <div key={k} className="text-[12px] flex items-baseline gap-4"><dt className="w-20 font-semibold uppercase tracking-[0.18em] text-[9px]" style={{ color: "#666666" }}>{k}</dt><dd className="tracking-wide" style={{ color: "rgba(17,17,17,0.7)" }}>{v}</dd></div>)}</dl>
+        {/* Description - always visible */}
+        {product.description && (
+          <div className="mb-10 max-w-4xl">
+            <p className="text-[10px] font-medium uppercase tracking-[0.25em] mb-4" style={{ color: "#111111" }}>Description</p>
+            <div className="text-[14px] leading-relaxed font-light tracking-wide" style={{ color: "#666666" }} dangerouslySetInnerHTML={{ __html: product.description }} />
+          </div>
+        )}
+
+        {/* Collapsible sections */}
+        <div className="max-w-4xl space-y-0" style={{ borderTop: "1px solid #EAEAEA" }}>
+          {[
+            { key: "fragranceNotes", label: "Fragrance Notes" },
+            { key: "feelings", label: "Feelings" },
+            { key: "occasions", label: "Occasions" },
+            { key: "behindThePerfume", label: "Behind the Perfume" },
+            { key: "shippingReturn", label: "Shipping & Return" },
+            { key: "legalInfo", label: "Legal Information" },
+          ].map(({ key, label }) => {
+            const content = product[key];
+            if (!content) return null;
+            const isOpen = !!openSections[key];
+            return (
+              <div key={key} style={{ borderBottom: "1px solid #EAEAEA" }}>
+                <button
+                  onClick={() => setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))}
+                  className="flex items-center justify-between w-full py-5 text-left transition-colors"
+                >
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "#111111" }}>{label}</span>
+                  <IconChevronRight
+                    className="h-4 w-4 transition-transform duration-300"
+                    style={{ color: "#666666", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}
+                    stroke={1.5}
+                  />
+                </button>
+                <div
+                  className="overflow-hidden transition-all duration-500"
+                  style={{ maxHeight: isOpen ? "800px" : "0", opacity: isOpen ? 1 : 0, marginBottom: isOpen ? "24px" : "0" }}
+                >
+                  <div className="text-[14px] leading-relaxed font-light tracking-wide" style={{ color: "#666666" }} dangerouslySetInnerHTML={{ __html: content }} />
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Reviews */}
+        <div className="mt-16 max-w-4xl">
+          <ReviewSection product={product} />
         </div>
       </div>
 

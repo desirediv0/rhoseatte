@@ -1281,6 +1281,12 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     visibility,
     gender,
     notes: notesJson,
+    fragranceNotes,
+    feelings,
+    occasions,
+    behindThePerfume,
+    shippingReturn,
+    legalInfo,
   } = req.body;
 
   // Check if product exists
@@ -1491,6 +1497,12 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
           ...(gender !== undefined && {
             gender: ["MEN", "WOMEN", "UNISEX"].includes(gender) ? gender : "UNISEX",
           }),
+          ...(fragranceNotes !== undefined && { fragranceNotes }),
+          ...(feelings !== undefined && { feelings }),
+          ...(occasions !== undefined && { occasions }),
+          ...(behindThePerfume !== undefined && { behindThePerfume }),
+          ...(shippingReturn !== undefined && { shippingReturn }),
+          ...(legalInfo !== undefined && { legalInfo }),
         },
       });
 

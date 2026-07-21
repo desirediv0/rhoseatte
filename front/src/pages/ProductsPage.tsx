@@ -131,6 +131,13 @@ export function ProductForm({
     metaDescription: "",
     keywords: "",
     tags: [] as string[],
+    // Rich text sections
+    fragranceNotes: "",
+    feelings: "",
+    occasions: "",
+    behindThePerfume: "",
+    shippingReturn: "",
+    legalInfo: "",
     // single brand association
     brandId: "",
     topBrandIds: [] as string[],
@@ -196,6 +203,16 @@ export function ProductForm({
   const editorRef = useRef<any>(null);
   const [editorContent, setEditorContent] = useState<string>("");
   const hasInitializedEditor = useRef(false);
+
+  // Section editors state
+  const [sectionContents, setSectionContents] = useState<Record<string, string>>({
+    fragranceNotes: "",
+    feelings: "",
+    occasions: "",
+    behindThePerfume: "",
+    shippingReturn: "",
+    legalInfo: "",
+  });
 
   // Memoize editor config to prevent re-renders when other state changes
   const editorConfig = useMemo(
@@ -279,6 +296,41 @@ export function ProductForm({
     }),
     []
   );
+
+  // Reusable section rich text editor
+  const SectionEditor = ({
+    label,
+    field,
+    placeholder,
+  }: {
+    label: string;
+    field: string;
+    placeholder?: string;
+  }) => {
+    return (
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">{label}</Label>
+        <div className="border rounded-md overflow-hidden">
+          <JoditEditor
+            value={sectionContents[field] || ""}
+            config={{
+              ...editorConfig,
+              height: 250,
+              placeholder:
+                placeholder || `Enter ${label.toLowerCase()} content...`,
+            }}
+            onBlur={(content: string) => {
+              setSectionContents((prev) => ({ ...prev, [field]: content }));
+              setProduct((prev) => ({ ...prev, [field]: content }));
+            }}
+            onChange={(content: string) => {
+              setProduct((prev) => ({ ...prev, [field]: content }));
+            }}
+          />
+        </div>
+      </div>
+    );
+  };
 
   // Fetch sub-categories when categories change
   useEffect(() => {
@@ -534,6 +586,16 @@ export function ProductForm({
             const existingDescription = productData.description || "";
             setEditorContent(existingDescription);
 
+            // Set section editor contents
+            setSectionContents({
+              fragranceNotes: productData.fragranceNotes || "",
+              feelings: productData.feelings || "",
+              occasions: productData.occasions || "",
+              behindThePerfume: productData.behindThePerfume || "",
+              shippingReturn: productData.shippingReturn || "",
+              legalInfo: productData.legalInfo || "",
+            });
+
             setProduct({
               name: productData.name || "",
               description: productData.description || "",
@@ -593,6 +655,13 @@ export function ProductForm({
               metaDescription: productData.metaDescription || "",
               keywords: productData.keywords || "",
               tags: productData.tags || [],
+              // Rich text sections
+              fragranceNotes: productData.fragranceNotes || "",
+              feelings: productData.feelings || "",
+              occasions: productData.occasions || "",
+              behindThePerfume: productData.behindThePerfume || "",
+              shippingReturn: productData.shippingReturn || "",
+              legalInfo: productData.legalInfo || "",
               topBrandIds: productData.topBrandIds || [],
               newBrandIds: productData.newBrandIds || [],
               hotBrandIds: productData.hotBrandIds || [],
@@ -975,6 +1044,14 @@ export function ProductForm({
       formData.append("visibility", product.visibility);
       formData.append("gender", product.gender || "UNISEX");
       formData.append("hasVariants", String(hasVariants));
+      // Add rich text sections
+      formData.append("fragranceNotes", product.fragranceNotes || "");
+      formData.append("feelings", product.feelings || "");
+      formData.append("occasions", product.occasions || "");
+      formData.append("behindThePerfume", product.behindThePerfume || "");
+      formData.append("shippingReturn", product.shippingReturn || "");
+      formData.append("legalInfo", product.legalInfo || "");
+
       // Add SEO fields
       formData.append("metaTitle", product.metaTitle || "");
       // Auto-generate meta description from description if not provided
@@ -2253,6 +2330,48 @@ export function ProductForm({
                   </Button>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Product Details Sections */}
+          <div className="space-y-4 rounded-lg border p-4 bg-gray-50">
+            <h2 className="text-xl font-semibold border-b pb-2">
+              Product Details Sections
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Add rich content for each accordion section on the product page. Leave empty to hide a section.
+            </p>
+            <div className="grid gap-6">
+              <SectionEditor
+                label="Fragrance Notes"
+                field="fragranceNotes"
+                placeholder="Enter fragrance notes (e.g., Top Notes, Middle Notes, Base Notes)..."
+              />
+              <SectionEditor
+                label="Feelings"
+                field="feelings"
+                placeholder="Describe the feelings this fragrance evokes..."
+              />
+              <SectionEditor
+                label="Occasions"
+                field="occasions"
+                placeholder="Describe suitable occasions..."
+              />
+              <SectionEditor
+                label="Behind the Perfume"
+                field="behindThePerfume"
+                placeholder="Tell the story behind this perfume..."
+              />
+              <SectionEditor
+                label="Shipping & Return"
+                field="shippingReturn"
+                placeholder="Enter shipping and return policy..."
+              />
+              <SectionEditor
+                label="Legal Information"
+                field="legalInfo"
+                placeholder="Enter legal information..."
+              />
             </div>
           </div>
 
