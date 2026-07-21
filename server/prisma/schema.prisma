@@ -266,6 +266,12 @@ model Product {
   ourProduct        Boolean              @default(false)
   visibility        ProductVisibility    @default(PUBLIC)
   gender            ProductGender        @default(UNISEX)
+  fragranceNotes    String?              @db.Text
+  feelings          String?              @db.Text
+  occasions         String?              @db.Text
+  behindThePerfume  String?              @db.Text
+  shippingReturn    String?              @db.Text
+  legalInfo         String?              @db.Text
   brandId           String?
   brand             Brand?               @relation(fields: [brandId], references: [id])
   orderItems        OrderItem[]
@@ -283,6 +289,20 @@ model Product {
   pricingSlabs      PricingSlab[]
   videoReelProducts VideoReelProduct[]
   fragranceQuizRuleProducts FragranceQuizRuleProduct[]
+  notes             ProductNote[]
+}
+
+model ProductNote {
+  id        String   @id @default(uuid())
+  productId String
+  title     String
+  image     String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model ProductImage {

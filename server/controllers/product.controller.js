@@ -399,6 +399,9 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
       images: {
         orderBy: { isPrimary: "desc" },
       },
+      notes: {
+        orderBy: { order: "asc" },
+      },
       variants: {
         where: { isActive: true },
         include: {
@@ -475,6 +478,10 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
     images: product.images.map((image) => ({
       ...image,
       url: getFileUrl(image.url),
+    })),
+    notes: product.notes.map((note) => ({
+      ...note,
+      image: getFileUrl(note.image),
     })),
     // Format variants with proper image URLs and attributes
     variants: await Promise.all(
@@ -1583,6 +1590,9 @@ export const getSecretProductBySlug = asyncHandler(async (req, res) => {
       images: {
         orderBy: { isPrimary: "desc" },
       },
+      notes: {
+        orderBy: { order: "asc" },
+      },
       variants: {
         where: { isActive: true },
         include: {
@@ -1689,6 +1699,10 @@ export const getSecretProductBySlug = asyncHandler(async (req, res) => {
     images: product.images.map((image) => ({
       ...image,
       url: getFileUrl(image.url),
+    })),
+    notes: product.notes.map((note) => ({
+      ...note,
+      image: getFileUrl(note.image),
     })),
     variants: formattedVariants,
     avgRating,

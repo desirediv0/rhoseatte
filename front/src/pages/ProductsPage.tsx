@@ -143,6 +143,11 @@ export function ProductForm({
     shippingWeight: "",
   });
 
+  // Product notes state
+  const [productNotes, setProductNotes] = useState<
+    { id?: string; title: string; image: string; file?: File; isNew?: boolean }[]
+  >([]);
+
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
 
@@ -598,6 +603,15 @@ export function ProductForm({
               shippingWeight: productData.variants?.[0]?.shippingWeight?.toString() || "",
             });
 
+            // Set product notes for edit mode
+            setProductNotes(
+              (productData.notes || []).map((note: any) => ({
+                id: note.id,
+                title: note.title || "",
+                image: note.image || "",
+              }))
+            );
+
             // Set selected categories (for radio buttons, not checkboxes)
             setSelectedCategories(productCategories);
 
@@ -723,6 +737,31 @@ export function ProductForm({
     } else {
       setProduct((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  // Product notes helpers
+  const handleAddNote = () => {
+    setProductNotes((prev) => [...prev, { title: "", image: "", isNew: true }]);
+  };
+
+  const handleRemoveNote = (index: number) => {
+    setProductNotes((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleNoteTitleChange = (index: number, title: string) => {
+    setProductNotes((prev) =>
+      prev.map((note, i) => (i === index ? { ...note, title } : note))
+    );
+  };
+
+  const handleNoteImageChange = (index: number, file: File | null) => {
+    if (!file) return;
+    const imageUrl = URL.createObjectURL(file);
+    setProductNotes((prev) =>
+      prev.map((note, i) =>
+        i === index ? { ...note, file, image: imageUrl, isNew: true } : note
+      )
+    );
   };
 
   // Handle attribute value selection
@@ -1068,6 +1107,21 @@ export function ProductForm({
       formData.append("topBrandIds", JSON.stringify(product.topBrandIds || []));
       formData.append("newBrandIds", JSON.stringify(product.newBrandIds || []));
       formData.append("hotBrandIds", JSON.stringify(product.hotBrandIds || []));
+
+      // Add product notes data and files
+      const notesForSubmit = productNotes.map((note, index) => ({
+        id: note.id,
+        title: note.title,
+        order: index,
+        // Existing image URL is only sent for notes without a new file
+        image: !note.file ? note.image : undefined,
+      }));
+      formData.append("notes", JSON.stringify(notesForSubmit));
+      productNotes.forEach((note, index) => {
+        if (note.file) {
+          formData.append(`noteImages_${index}`, note.file);
+        }
+      });
 
       let response;
       let savedProductId = productId;
@@ -2110,6 +2164,97 @@ export function ProductForm({
               )}
             </div>
           )}
+
+          {/* Product Notes Section */}
+          <div className="space-y-4 rounded-lg border p-4 bg-gray-50">
+            <div className="flex items-center justify-between border-b pb-2">
+              <h2 className="text-xl font-semibold">Product Notes</h2>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddNote}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add Note
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Add note images with labels (e.g., Mandarin, Pear, Orange Blossom). These will be displayed on the product page.
+            </p>
+
+            {productNotes.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No notes added yet. Click &ldquo;Add Note&rdquo; to add product notes.
+              </p>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {productNotes.map((note, index) => (
+                <div key={index} className="space-y-3 rounded-md border p-3 bg-background">
+                  <div className="space-y-2">
+                    <Label htmlFor={`note-title-${index}`}>Note Title</Label>
+                    <Input
+                      id={`note-title-${index}`}
+                      value={note.title}
+                      onChange={(e) => handleNoteTitleChange(index, e.target.value)}
+                      placeholder="e.g., Mandarin"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Note Image</Label>
+                    {note.image ? (
+                      <div className="relative aspect-square rounded-md overflow-hidden border">
+                        <img
+                          src={note.image}
+                          alt={note.title || `Note ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6"
+                          onClick={() =>
+                            setProductNotes((prev) =>
+                              prev.map((n, i) =>
+                                i === index ? { ...n, image: "", file: undefined } : n
+                              )
+                            )
+                          }
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center aspect-square rounded-md border border-dashed cursor-pointer hover:bg-muted transition-colors">
+                        <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                        <span className="text-xs text-muted-foreground">Click to upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) =>
+                            handleNoteImageChange(index, e.target.files?.[0] || null)
+                          }
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => handleRemoveNote(index)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* SEO Section */}
           <div className="space-y-4 rounded-lg border p-4 bg-gray-50">

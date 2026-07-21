@@ -414,6 +414,29 @@ export default function ProductContent({ slug }) {
               <span className="text-[11px] tracking-[0.12em] uppercase" style={{ color: "#666666" }}>({product.reviewCount || 0} reviews)</span>
             </div>
 
+            {/* Product Notes */}
+            {product.notes && product.notes.length > 0 && (
+              <div className="mb-7">
+                <p className="text-[10px] font-medium uppercase tracking-[0.25em] mb-4" style={{ color: "#111111" }}>Notes</p>
+                <div className="flex flex-wrap gap-4">
+                  {product.notes.map((note) => (
+                    <div key={note.id} className="flex flex-col items-center gap-2">
+                      <div className="relative w-16 h-16 overflow-hidden" style={{ borderRadius: "18px" }}>
+                        <Image
+                          src={getImageUrl(note.image)}
+                          alt={note.title || "Note"}
+                          fill
+                          className="object-cover"
+                          sizes="64px"
+                        />
+                      </div>
+                      <span className="text-[11px] font-light tracking-wide" style={{ color: "#666666" }}>{note.title}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Price */}
             <div className="mb-7 pb-7" style={{ borderBottom: "1px solid #EAEAEA" }}><PriceDisplay /></div>
 

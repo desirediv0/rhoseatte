@@ -40,6 +40,102 @@ const buildProductSeo = (name, description, metaTitle, metaDescription) => {
   };
 };
 
+// Helper to process product notes (create/update/delete) with S3 image handling
+const processProductNotes = async (tx, notesJson, productId, files, existingNotes = []) => {
+  let notes = [];
+  if (notesJson) {
+    try {
+      notes = typeof notesJson === "string" ? JSON.parse(notesJson) : notesJson;
+      if (!Array.isArray(notes)) notes = [];
+    } catch (e) {
+      console.error("Error parsing notes:", e);
+      notes = [];
+    }
+  }
+
+  const existingMap = new Map(existingNotes.map((n) => [n.id, n]));
+  const keptIds = new Set();
+
+  // Group note image files by index (noteImages_0, noteImages_1, ...)
+  const noteImageFiles = {};
+  (files || []).forEach((file) => {
+    const match = file.fieldname.match(/^noteImages_(\d+)$/);
+    if (match) {
+      const idx = parseInt(match[1]);
+      if (!noteImageFiles[idx]) noteImageFiles[idx] = [];
+      noteImageFiles[idx].push(file);
+    }
+  });
+
+  const resultNotes = [];
+
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    const noteFiles = noteImageFiles[i] || [];
+    const file = noteFiles[0];
+
+    if (note.id && existingMap.has(note.id)) {
+      // Existing note - update
+      keptIds.add(note.id);
+      const existing = existingMap.get(note.id);
+      let imageUrl = existing.image;
+
+      if (file) {
+        try {
+          await deleteFromS3(existing.image);
+          imageUrl = await processAndUploadImage(file, `products/${productId}/notes`);
+        } catch (e) {
+          console.error("Error updating note image:", e);
+        }
+      }
+
+      const updated = await tx.productNote.update({
+        where: { id: note.id },
+        data: {
+          title: note.title || existing.title,
+          image: imageUrl,
+          order: note.order !== undefined ? note.order : existing.order,
+        },
+      });
+      resultNotes.push(updated);
+    } else {
+      // New note
+      if (!file) {
+        console.warn(`Note ${i} has no image, skipping`);
+        continue;
+      }
+      try {
+        const imageUrl = await processAndUploadImage(file, `products/${productId}/notes`);
+        const created = await tx.productNote.create({
+          data: {
+            productId,
+            title: note.title || "",
+            image: imageUrl,
+            order: note.order !== undefined ? note.order : i,
+          },
+        });
+        resultNotes.push(created);
+      } catch (e) {
+        console.error("Error creating note:", e);
+      }
+    }
+  }
+
+  // Delete notes that are no longer present
+  for (const [id, note] of existingMap) {
+    if (!keptIds.has(id)) {
+      try {
+        await deleteFromS3(note.image);
+        await tx.productNote.delete({ where: { id } });
+      } catch (e) {
+        console.error("Error deleting note:", e);
+      }
+    }
+  }
+
+  return resultNotes;
+};
+
 // Get products by type (featured, bestseller, trending, new, etc.)
 export const getProductsByType = asyncHandler(async (req, res, next) => {
   const { productType } = req.params;
@@ -387,6 +483,10 @@ export const getProductById = asyncHandler(async (req, res, next) => {
       ...image,
       url: getFileUrl(image.url),
     })),
+    notes: product.notes.map((note) => ({
+      ...note,
+      image: getFileUrl(note.image),
+    })),
     variants: product.variants.map((variant) => {
       const formatted = formatVariantWithAttributes(variant);
       return {
@@ -443,6 +543,13 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     ourProduct,
     visibility,
     gender,
+    notes: notesJson,
+    fragranceNotes,
+    feelings,
+    occasions,
+    behindThePerfume,
+    shippingReturn,
+    legalInfo,
   } = req.body;
 
   // Validation checks with better error handling
@@ -596,6 +703,12 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           ourProduct: ourProduct === "true" || ourProduct === true,
           visibility: visibility === "SECRET" ? "SECRET" : "PUBLIC",
           gender: ["MEN", "WOMEN", "UNISEX"].includes(gender) ? gender : "UNISEX",
+          fragranceNotes,
+          feelings,
+          occasions,
+          behindThePerfume,
+          shippingReturn,
+          legalInfo,
         },
       });
 
@@ -1023,6 +1136,15 @@ export const createProduct = asyncHandler(async (req, res, next) => {
         }
       }
 
+      // Process product notes
+      await processProductNotes(
+        prisma,
+        notesJson,
+        newProduct.id,
+        req.files,
+        []
+      );
+
       // Return product with relations
       return await prisma.product.findUnique({
         where: { id: newProduct.id },
@@ -1033,6 +1155,9 @@ export const createProduct = asyncHandler(async (req, res, next) => {
             },
           },
           images: true,
+          notes: {
+            orderBy: { order: "asc" },
+          },
           variants: {
             include: {
               attributes: {
@@ -1070,6 +1195,10 @@ export const createProduct = asyncHandler(async (req, res, next) => {
         images: result.images.map((image) => ({
           ...image,
           url: getFileUrl(image.url),
+        })),
+        notes: result.notes.map((note) => ({
+          ...note,
+          image: getFileUrl(note.image),
         })),
         variants: result.variants.map((variant) => ({
           ...variant,
@@ -1151,6 +1280,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     ourProduct,
     visibility,
     gender,
+    notes: notesJson,
   } = req.body;
 
   // Check if product exists
@@ -1163,6 +1293,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
         },
       },
       images: true,
+      notes: {
+        orderBy: { order: "asc" },
+      },
       variants: {
         include: {
           attributes: {
@@ -2405,6 +2538,15 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
         }
       }
 
+      // Process product notes
+      await processProductNotes(
+        prisma,
+        notesJson,
+        productId,
+        req.files,
+        product.notes || []
+      );
+
       // Get the current state of variants to ensure we have the latest data
       const refreshedVariants = await prisma.$queryRaw`
         SELECT * FROM "ProductVariant" WHERE "productId" = ${productId};
@@ -2420,6 +2562,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
             },
           },
           images: true,
+          notes: {
+            orderBy: { order: "asc" },
+          },
           variants: {
             include: {
               attributes: {
@@ -2478,6 +2623,10 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
         ...image,
         url: getFileUrl(image.url),
       })),
+      notes: result.notes.map((note) => ({
+        ...note,
+        image: getFileUrl(note.image),
+      })),
       variants: formatVariantsWithAttributes(result.variants).map(
         (variant) => ({
           ...variant,
@@ -2518,6 +2667,7 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
     where: { id: productId },
     include: {
       orderItems: { take: 1 },
+      notes: true,
     },
   });
 
@@ -2529,6 +2679,22 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
   const orderCount = await prisma.orderItem.count({
     where: { productId },
   });
+
+  // Delete note images from storage before soft-deleting product
+  if (product.notes && product.notes.length > 0) {
+    for (const note of product.notes) {
+      try {
+        await deleteFromS3(note.image);
+        console.log(`🗑️ Deleted note image from S3: ${note.image}`);
+      } catch (error) {
+        console.error(`❌ Failed to delete note image from S3: ${note.image}`, error);
+      }
+    }
+    // Delete note records from database
+    await prisma.productNote.deleteMany({
+      where: { productId },
+    });
+  }
 
   // Soft delete - never hard delete products referenced by orders
   await prisma.product.update({
