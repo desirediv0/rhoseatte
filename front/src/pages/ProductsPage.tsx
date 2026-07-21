@@ -58,6 +58,85 @@ import {
 
 import { useLanguage } from "@/context/LanguageContext";
 
+// Top-level reusable section rich text editor (avoids remount on every render)
+function SectionEditor({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (content: string) => void;
+}) {
+  const config = useMemo(
+    () => ({
+      height: 250,
+      placeholder: placeholder || `Enter ${label.toLowerCase()} content...`,
+      toolbar: true,
+      toolbarButtonSize: "middle" as const,
+      toolbarAdaptive: false,
+      showCharsCounter: true,
+      showWordsCounter: true,
+      showXPathInStatusbar: false,
+      askBeforePasteHTML: false,
+      askBeforePasteFromWord: false,
+      defaultActionOnPaste: "insert_as_html" as const,
+      buttons: [
+        "bold", "italic", "underline", "strikethrough", "|",
+        "superscript", "subscript", "|",
+        "align", "|",
+        "ul", "ol", "|",
+        "outdent", "indent", "|",
+        "font", "fontsize", "brush", "paragraph", "|",
+        "image", "link", "|",
+        "undo", "redo", "|",
+        "hr", "eraser", "copyformat", "|",
+        "fullsize", "selectall", "print", "|",
+        "source", "|",
+        "table", "|",
+        "find", "|",
+        "symbol", "|",
+        "about",
+      ],
+      removeButtons: [],
+      zIndex: 0,
+      readonly: false,
+      activeButtonsInReadOnly: ["source", "fullsize"],
+      toolbarSticky: false,
+      toolbarStickyOffset: 0,
+      showPlaceholder: true,
+      language: "en",
+      direction: "ltr" as const,
+      tabIndex: -1,
+      useSearch: true,
+      spellcheck: true,
+      enter: "p" as const,
+      enterBlock: "div" as const,
+      defaultMode: 1,
+      useSplitMode: false,
+      colorPickerDefaultTab: "background" as const,
+      imageDefaultWidth: 300,
+    }),
+    [label, placeholder]
+  );
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">{label}</Label>
+      <div className="border rounded-md overflow-hidden">
+        <JoditEditor
+          value={value || ""}
+          config={config}
+          onBlur={onChange}
+          onChange={onChange}
+        />
+      </div>
+    </div>
+  );
+}
+
 function useCategories() {
   const [categoriesData, setCategoriesData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -296,41 +375,6 @@ export function ProductForm({
     }),
     []
   );
-
-  // Reusable section rich text editor
-  const SectionEditor = ({
-    label,
-    field,
-    placeholder,
-  }: {
-    label: string;
-    field: string;
-    placeholder?: string;
-  }) => {
-    return (
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">{label}</Label>
-        <div className="border rounded-md overflow-hidden">
-          <JoditEditor
-            value={sectionContents[field] || ""}
-            config={{
-              ...editorConfig,
-              height: 250,
-              placeholder:
-                placeholder || `Enter ${label.toLowerCase()} content...`,
-            }}
-            onBlur={(content: string) => {
-              setSectionContents((prev) => ({ ...prev, [field]: content }));
-              setProduct((prev) => ({ ...prev, [field]: content }));
-            }}
-            onChange={(content: string) => {
-              setProduct((prev) => ({ ...prev, [field]: content }));
-            }}
-          />
-        </div>
-      </div>
-    );
-  };
 
   // Fetch sub-categories when categories change
   useEffect(() => {
@@ -2344,33 +2388,57 @@ export function ProductForm({
             <div className="grid gap-6">
               <SectionEditor
                 label="Fragrance Notes"
-                field="fragranceNotes"
+                value={sectionContents.fragranceNotes}
                 placeholder="Enter fragrance notes (e.g., Top Notes, Middle Notes, Base Notes)..."
+                onChange={(content) => {
+                  setSectionContents((prev) => ({ ...prev, fragranceNotes: content }));
+                  setProduct((prev) => ({ ...prev, fragranceNotes: content }));
+                }}
               />
               <SectionEditor
                 label="Feelings"
-                field="feelings"
+                value={sectionContents.feelings}
                 placeholder="Describe the feelings this fragrance evokes..."
+                onChange={(content) => {
+                  setSectionContents((prev) => ({ ...prev, feelings: content }));
+                  setProduct((prev) => ({ ...prev, feelings: content }));
+                }}
               />
               <SectionEditor
                 label="Occasions"
-                field="occasions"
+                value={sectionContents.occasions}
                 placeholder="Describe suitable occasions..."
+                onChange={(content) => {
+                  setSectionContents((prev) => ({ ...prev, occasions: content }));
+                  setProduct((prev) => ({ ...prev, occasions: content }));
+                }}
               />
               <SectionEditor
                 label="Behind the Perfume"
-                field="behindThePerfume"
+                value={sectionContents.behindThePerfume}
                 placeholder="Tell the story behind this perfume..."
+                onChange={(content) => {
+                  setSectionContents((prev) => ({ ...prev, behindThePerfume: content }));
+                  setProduct((prev) => ({ ...prev, behindThePerfume: content }));
+                }}
               />
               <SectionEditor
                 label="Shipping & Return"
-                field="shippingReturn"
+                value={sectionContents.shippingReturn}
                 placeholder="Enter shipping and return policy..."
+                onChange={(content) => {
+                  setSectionContents((prev) => ({ ...prev, shippingReturn: content }));
+                  setProduct((prev) => ({ ...prev, shippingReturn: content }));
+                }}
               />
               <SectionEditor
                 label="Legal Information"
-                field="legalInfo"
+                value={sectionContents.legalInfo}
                 placeholder="Enter legal information..."
+                onChange={(content) => {
+                  setSectionContents((prev) => ({ ...prev, legalInfo: content }));
+                  setProduct((prev) => ({ ...prev, legalInfo: content }));
+                }}
               />
             </div>
           </div>
