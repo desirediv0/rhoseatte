@@ -483,6 +483,7 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
       ...note,
       image: getFileUrl(note.image),
     })),
+    lifestyleImage: product.lifestyleImage ? getFileUrl(product.lifestyleImage) : null,
     // Format variants with proper image URLs and attributes
     variants: await Promise.all(
       product.variants.map(async (variant) => {
@@ -1704,6 +1705,7 @@ export const getSecretProductBySlug = asyncHandler(async (req, res) => {
       ...note,
       image: getFileUrl(note.image),
     })),
+    lifestyleImage: product.lifestyleImage ? getFileUrl(product.lifestyleImage) : null,
     variants: formattedVariants,
     avgRating,
     reviewCount: product._count.reviews,

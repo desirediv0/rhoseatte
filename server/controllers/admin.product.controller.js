@@ -1004,6 +1004,27 @@ export const createProduct = asyncHandler(async (req, res, next) => {
         }
       }
 
+      // Upload lifestyle image if provided
+      let lifestyleImageUrl = null;
+      const lifestyleImageFile = req.files?.find(
+        (f) => f.fieldname === "lifestyleImage"
+      );
+      if (lifestyleImageFile) {
+        try {
+          lifestyleImageUrl = await processAndUploadImage(
+            lifestyleImageFile,
+            `products/${newProduct.id}/lifestyle`
+          );
+          console.log(`✅ Lifestyle image uploaded: ${lifestyleImageUrl}`);
+          await prisma.product.update({
+            where: { id: newProduct.id },
+            data: { lifestyleImage: lifestyleImageUrl },
+          });
+        } catch (error) {
+          console.error("❌ Error uploading lifestyle image:", error);
+        }
+      }
+
       // Upload product images if provided
       if (req.files && req.files.length > 0) {
         console.log(
@@ -1029,8 +1050,17 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           }
         }
 
-        for (let i = 0; i < req.files.length; i++) {
-          const file = req.files[i];
+        // Filter only product images (skip variant, note, lifestyle images)
+        const productImageFiles = req.files.filter(
+          (f) =>
+            f.fieldname === "images" ||
+            (!f.fieldname.startsWith("variantImages_") &&
+              !f.fieldname.startsWith("noteImages_") &&
+              f.fieldname !== "lifestyleImage")
+        );
+
+        for (let i = 0; i < productImageFiles.length; i++) {
+          const file = productImageFiles[i];
           console.log(`📸 Processing image ${i + 1}: ${file.originalname}`);
           try {
             console.log(
@@ -1289,6 +1319,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     behindThePerfume,
     shippingReturn,
     legalInfo,
+    lifestyleDescription,
   } = req.body;
 
   // Check if product exists
@@ -1505,6 +1536,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
           ...(behindThePerfume !== undefined && { behindThePerfume }),
           ...(shippingReturn !== undefined && { shippingReturn }),
           ...(legalInfo !== undefined && { legalInfo }),
+          ...(lifestyleDescription !== undefined && { lifestyleDescription }),
         },
       });
 
@@ -2500,9 +2532,17 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
           }
         }
 
-        // Upload new images
-        for (let i = 0; i < req.files.length; i++) {
-          const file = req.files[i];
+        // Upload new images (filter out variant, note, lifestyle images)
+        const productImageFiles = req.files.filter(
+          (f) =>
+            f.fieldname === "images" ||
+            (!f.fieldname.startsWith("variantImages_") &&
+              !f.fieldname.startsWith("noteImages_") &&
+              f.fieldname !== "lifestyleImage")
+        );
+
+        for (let i = 0; i < productImageFiles.length; i++) {
+          const file = productImageFiles[i];
           const imageUrl = await processAndUploadImage(
             file,
             `products/${productId}`
@@ -2549,6 +2589,31 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
         } catch (error) {
           console.error("Error updating primary image:", error);
           // Continue with response even if image upload fails
+        }
+      }
+
+      // Handle lifestyle image upload/update
+      const lifestyleImageFile = req.files?.find(
+        (f) => f.fieldname === "lifestyleImage"
+      );
+      if (lifestyleImageFile) {
+        try {
+          // Delete old lifestyle image if exists
+          if (product.lifestyleImage) {
+            await deleteFromS3(product.lifestyleImage);
+            console.log(`🗑️ Deleted old lifestyle image: ${product.lifestyleImage}`);
+          }
+          const lifestyleImageUrl = await processAndUploadImage(
+            lifestyleImageFile,
+            `products/${productId}/lifestyle`
+          );
+          await prisma.product.update({
+            where: { id: productId },
+            data: { lifestyleImage: lifestyleImageUrl },
+          });
+          console.log(`✅ Lifestyle image updated: ${lifestyleImageUrl}`);
+        } catch (error) {
+          console.error("❌ Error updating lifestyle image:", error);
         }
       }
 
@@ -2684,6 +2749,16 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
       notes: true,
     },
   });
+
+  // Delete lifestyle image from storage if exists
+  if (product?.lifestyleImage) {
+    try {
+      await deleteFromS3(product.lifestyleImage);
+      console.log(`🗑️ Deleted lifestyle image from S3: ${product.lifestyleImage}`);
+    } catch (error) {
+      console.error(`❌ Failed to delete lifestyle image from S3: ${product.lifestyleImage}`, error);
+    }
+  }
 
   if (!product) {
     throw new ApiError(404, "Product not found");

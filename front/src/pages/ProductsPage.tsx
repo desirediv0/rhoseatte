@@ -217,6 +217,7 @@ export function ProductForm({
     behindThePerfume: "",
     shippingReturn: "",
     legalInfo: "",
+    lifestyleDescription: "",
     // single brand association
     brandId: "",
     topBrandIds: [] as string[],
@@ -233,6 +234,10 @@ export function ProductForm({
   const [productNotes, setProductNotes] = useState<
     { id?: string; title: string; image: string; file?: File; isNew?: boolean }[]
   >([]);
+
+  // Lifestyle image state
+  const [lifestyleImageFile, setLifestyleImageFile] = useState<File | null>(null);
+  const [lifestyleImagePreview, setLifestyleImagePreview] = useState<string>("");
 
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
