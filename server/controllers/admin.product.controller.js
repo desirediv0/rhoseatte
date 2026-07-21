@@ -550,6 +550,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     behindThePerfume,
     shippingReturn,
     legalInfo,
+    lifestyleDescription,
   } = req.body;
 
   // Validation checks with better error handling
@@ -709,6 +710,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           behindThePerfume,
           shippingReturn,
           legalInfo,
+          lifestyleDescription,
         },
       });
 

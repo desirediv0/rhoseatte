@@ -272,6 +272,8 @@ model Product {
   behindThePerfume  String?              @db.Text
   shippingReturn    String?              @db.Text
   legalInfo         String?              @db.Text
+  lifestyleImage    String?
+  lifestyleDescription String?           @db.Text
   brandId           String?
   brand             Brand?               @relation(fields: [brandId], references: [id])
   orderItems        OrderItem[]
