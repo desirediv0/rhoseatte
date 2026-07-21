@@ -296,6 +296,7 @@ export function ProductForm({
     behindThePerfume: "",
     shippingReturn: "",
     legalInfo: "",
+    lifestyleDescription: "",
   });
 
   // Memoize editor config to prevent re-renders when other state changes
@@ -643,7 +644,13 @@ export function ProductForm({
               behindThePerfume: productData.behindThePerfume || "",
               shippingReturn: productData.shippingReturn || "",
               legalInfo: productData.legalInfo || "",
+              lifestyleDescription: productData.lifestyleDescription || "",
             });
+
+            // Set lifestyle image preview for edit mode
+            if (productData.lifestyleImage) {
+              setLifestyleImagePreview(productData.lifestyleImage);
+            }
 
             setProduct({
               name: productData.name || "",
@@ -711,6 +718,7 @@ export function ProductForm({
               behindThePerfume: productData.behindThePerfume || "",
               shippingReturn: productData.shippingReturn || "",
               legalInfo: productData.legalInfo || "",
+              lifestyleDescription: productData.lifestyleDescription || "",
               topBrandIds: productData.topBrandIds || [],
               newBrandIds: productData.newBrandIds || [],
               hotBrandIds: productData.hotBrandIds || [],
@@ -1100,6 +1108,12 @@ export function ProductForm({
       formData.append("behindThePerfume", product.behindThePerfume || "");
       formData.append("shippingReturn", product.shippingReturn || "");
       formData.append("legalInfo", product.legalInfo || "");
+      formData.append("lifestyleDescription", product.lifestyleDescription || "");
+
+      // Add lifestyle image if selected
+      if (lifestyleImageFile) {
+        formData.append("lifestyleImage", lifestyleImageFile);
+      }
 
       // Add SEO fields
       formData.append("metaTitle", product.metaTitle || "");
@@ -2445,6 +2459,77 @@ export function ProductForm({
                   setProduct((prev) => ({ ...prev, legalInfo: content }));
                 }}
               />
+            </div>
+          </div>
+
+          {/* Lifestyle Section */}
+          <div className="space-y-4 rounded-lg border p-4 bg-gray-50">
+            <h2 className="text-xl font-semibold border-b pb-2">
+              Lifestyle Section
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Add a large lifestyle image with a description. This will appear on the product page above &ldquo;You Might Also Like&rdquo;.
+            </p>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Lifestyle Image</Label>
+                {lifestyleImagePreview ? (
+                  <div className="relative aspect-[4/3] rounded-md overflow-hidden border">
+                    <img
+                      src={lifestyleImagePreview}
+                      alt="Lifestyle preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8"
+                      onClick={() => {
+                        setLifestyleImageFile(null);
+                        setLifestyleImagePreview("");
+                        setProduct((prev) => ({ ...prev, lifestyleImage: "" }));
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center aspect-[4/3] rounded-md border border-dashed cursor-pointer hover:bg-muted transition-colors">
+                    <ImageIcon className="h-10 w-10 text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground">Click to upload lifestyle image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        if (file) {
+                          setLifestyleImageFile(file);
+                          setLifestyleImagePreview(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Lifestyle Description</Label>
+                <SectionEditor
+                  label=""
+                  value={sectionContents.lifestyleDescription}
+                  placeholder="Enter lifestyle description..."
+                  onChange={(content) => {
+                    setSectionContents((prev) => ({ ...prev, lifestyleDescription: content }));
+                    setProduct((prev) => ({ ...prev, lifestyleDescription: content }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Rich text description shown next to the lifestyle image.
+                </p>
+              </div>
             </div>
           </div>
 

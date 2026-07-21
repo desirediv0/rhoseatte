@@ -658,6 +658,34 @@ export default function ProductContent({ slug }) {
         </div>
       </div>
 
+      {/* Lifestyle Section */}
+      {(product.lifestyleImage || product.lifestyleDescription) && (
+        <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14 items-center">
+            {product.lifestyleImage && (
+              <div className="relative aspect-[4/3] overflow-hidden" style={{ borderRadius: "8px" }}>
+                <Image
+                  src={getImageUrl(product.lifestyleImage)}
+                  alt={`${product.name} lifestyle`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              </div>
+            )}
+            {product.lifestyleDescription && (
+              <div className={product.lifestyleImage ? "" : "md:col-span-2 max-w-2xl mx-auto text-center"}>
+                <div
+                  className="text-[14px] leading-relaxed font-light tracking-wide"
+                  style={{ color: "#666666" }}
+                  dangerouslySetInnerHTML={{ __html: product.lifestyleDescription }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Related */}
       {relatedProducts.length > 0 && (
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10 pb-20">
