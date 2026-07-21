@@ -265,6 +265,7 @@ model Product {
   hotBrandIds       String[]             @default([])
   ourProduct        Boolean              @default(false)
   visibility        ProductVisibility    @default(PUBLIC)
+  gender            ProductGender        @default(UNISEX)
   brandId           String?
   brand             Brand?               @relation(fields: [brandId], references: [id])
   orderItems        OrderItem[]
@@ -586,6 +587,12 @@ enum PartnerRequestStatus {
 enum ProductVisibility {
   PUBLIC
   SECRET
+}
+
+enum ProductGender {
+  MEN
+  WOMEN
+  UNISEX
 }
 
 model UserCoupon {

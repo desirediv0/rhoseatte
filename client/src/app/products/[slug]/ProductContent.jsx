@@ -394,8 +394,19 @@ export default function ProductContent({ slug }) {
               <span className="text-[10px] uppercase tracking-[0.25em] font-medium mb-4" style={{ color: "#B8976A" }}>{product.brand.name}</span>
             )}
 
-            {/* Title */}
-            <h1 className="font-display text-3xl md:text-[2.6rem] leading-[1.1] tracking-tight mb-4" style={{ color: "#111111" }}>{product.name}</h1>
+            {/* Title + Gender */}
+            <div className="flex items-start gap-3 mb-4 flex-wrap">
+              <h1 className="font-display text-3xl md:text-[2.6rem] leading-[1.1] tracking-tight" style={{ color: "#111111" }}>{product.name}</h1>
+              {product.gender && (
+                <Link
+                  href={`/products?gender=${product.gender}`}
+                  className="mt-1.5 inline-flex items-center px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: "#4a4a8a", color: "#fff", borderRadius: "4px" }}
+                >
+                  {product.gender}
+                </Link>
+              )}
+            </div>
 
             {/* Rating */}
             <div className="flex items-center gap-2.5 mb-6">

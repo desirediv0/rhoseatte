@@ -18,6 +18,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     maxPrice,
     featured,
     productType,
+    gender,
     color, // For backward compatibility
     size, // For backward compatibility
     attributeValueIds, // Comma-separated attribute value IDs for filtering
@@ -87,6 +88,10 @@ export const getAllProducts = asyncHandler(async (req, res) => {
       productType: {
         array_contains: [productType],
       },
+    }),
+    // Filter by gender
+    ...(gender && ["MEN", "WOMEN", "UNISEX"].includes(gender) && {
+      gender,
     }),
     // Filter by price range via variants
     ...((minPrice || maxPrice) && {
@@ -338,6 +343,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
           }))
           : [],
       })),
+      gender: product.gender,
       basePrice,
       hasSale,
       regularPrice,

@@ -72,6 +72,7 @@ function ProductsContent() {
   const productType = searchParams.get("productType") || "";
   const colorId = searchParams.get("color") || "";
   const sizeId = searchParams.get("size") || "";
+  const genderParam = searchParams.get("gender") || "";
   const minPrice = searchParams.get("minPrice") || "";
   const maxPrice = searchParams.get("maxPrice") || "";
   const sortParam = searchParams.get("sort") || "createdAt";
@@ -92,7 +93,7 @@ function ProductsContent() {
   const [selectedColors, setSelectedColors] = useState(colorId ? [colorId] : []);
   const [selectedSizes, setSelectedSizes] = useState(sizeId ? [sizeId] : []);
   const [selectedAttributes, setSelectedAttributes] = useState({});
-  const [openSections, setOpenSections] = useState({ categories: true, price: true, color: true, size: true });
+  const [openSections, setOpenSections] = useState({ categories: true, gender: true, price: true, color: true, size: true });
 
   const [priceRange, setPriceRange] = useState({ min: minPrice || 0, max: maxPrice || 1000 });
   const [searchInput, setSearchInput] = useState(searchQuery);
@@ -100,7 +101,8 @@ function ProductsContent() {
 
   const [filters, setFilters] = useState({
     search: searchQuery, category: categorySlug, productType,
-    color: colorId, size: sizeId, minPrice, maxPrice,
+    color: colorId, size: sizeId, gender: genderParam,
+    minPrice, maxPrice,
     sort: sortParam, order: orderParam,
   });
 
@@ -146,6 +148,7 @@ function ProductsContent() {
           });
           if (filters.search) q.append("search", filters.search);
           if (filters.category) q.append("category", filters.category);
+          if (filters.gender) q.append("gender", filters.gender);
           if (filters.minPrice) q.append("minPrice", filters.minPrice);
           if (filters.maxPrice) q.append("maxPrice", filters.maxPrice);
 
@@ -178,7 +181,7 @@ function ProductsContent() {
         pairs.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v)).replace(/%20/g, "+")}`);
     };
     add("search", f.search); add("category", f.category); add("productType", f.productType);
-    add("color", f.color); add("size", f.size);
+    add("color", f.color); add("size", f.size); add("gender", f.gender);
     add("minPrice", f.minPrice); add("maxPrice", f.maxPrice);
     if (f.sort !== "createdAt" || f.order !== "desc") { add("sort", f.sort); add("order", f.order); }
     if (f.page > 1) add("page", f.page);
@@ -202,7 +205,7 @@ function ProductsContent() {
   };
 
   const clearFilters = () => {
-    const cf = { search: "", category: "", productType: "", color: "", size: "", minPrice: "", maxPrice: "", sort: "createdAt", order: "desc" };
+    const cf = { search: "", category: "", productType: "", color: "", size: "", gender: "", minPrice: "", maxPrice: "", sort: "createdAt", order: "desc" };
     setFilters(cf); setSelectedColors([]); setSelectedSizes([]); setSelectedAttributes({});
     setPriceRange({ min: 0, max: 1000 });
     updateURL(cf); setPagination((p) => ({ ...p, page: 1 }));
@@ -234,6 +237,7 @@ function ProductsContent() {
     filters.search, filters.category, filters.productType,
     selectedColors.length > 0, selectedSizes.length > 0,
     filters.minPrice, filters.maxPrice,
+    filters.gender,
   ].filter(Boolean).length;
 
   const getColsClass = () => {
@@ -287,6 +291,37 @@ function ProductsContent() {
             </li>
           ))}
         </ul>
+      </FilterSection>
+
+      <FilterSection
+        title="Gender"
+        isOpen={!!openSections.gender}
+        onToggle={() => setOpenSections((p) => ({ ...p, gender: !p.gender }))}
+      >
+        <div className="flex flex-wrap gap-2">
+          {[
+            { value: "MEN", label: "Men" },
+            { value: "WOMEN", label: "Women" },
+            { value: "UNISEX", label: "Unisex" },
+          ].map(({ value, label }) => {
+            const active = filters.gender === value;
+            return (
+              <button
+                key={value}
+                onClick={() => handleFilterChange("gender", active ? "" : value)}
+                className="px-4 py-2 text-[11px] tracking-[0.08em] transition-all duration-300 font-light"
+                style={{
+                  border: active ? "1px solid #111111" : "1px solid #EAEAEA",
+                  backgroundColor: active ? "#111111" : "transparent",
+                  color: active ? "#fff" : "#666666",
+                  borderRadius: "6px",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </FilterSection>
 
       <FilterSection

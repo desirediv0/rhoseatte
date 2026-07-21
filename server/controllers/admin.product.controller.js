@@ -442,6 +442,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     keywords,
     ourProduct,
     visibility,
+    gender,
   } = req.body;
 
   // Validation checks with better error handling
@@ -594,6 +595,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
             : [],
           ourProduct: ourProduct === "true" || ourProduct === true,
           visibility: visibility === "SECRET" ? "SECRET" : "PUBLIC",
+          gender: ["MEN", "WOMEN", "UNISEX"].includes(gender) ? gender : "UNISEX",
         },
       });
 
@@ -1148,6 +1150,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     keywords,
     ourProduct,
     visibility,
+    gender,
   } = req.body;
 
   // Check if product exists
@@ -1351,6 +1354,9 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
           }),
           ...(visibility !== undefined && {
             visibility: visibility === "SECRET" ? "SECRET" : "PUBLIC",
+          }),
+          ...(gender !== undefined && {
+            gender: ["MEN", "WOMEN", "UNISEX"].includes(gender) ? gender : "UNISEX",
           }),
         },
       });

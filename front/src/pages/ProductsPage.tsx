@@ -125,6 +125,7 @@ export function ProductForm({
     productType: [] as string[],
     isActive: true,
     visibility: "PUBLIC" as string,
+    gender: "UNISEX" as string,
     // SEO fields
     metaTitle: "",
     metaDescription: "",
@@ -581,6 +582,7 @@ export function ProductForm({
                   ? productData.isActive
                   : true,
               visibility: productData.visibility || "PUBLIC",
+              gender: productData.gender || "UNISEX",
               // SEO fields
               metaTitle: productData.metaTitle || "",
               metaDescription: productData.metaDescription || "",
@@ -932,6 +934,7 @@ export function ProductForm({
       formData.append("productType", JSON.stringify(product.productType));
       formData.append("isActive", String(product.isActive));
       formData.append("visibility", product.visibility);
+      formData.append("gender", product.gender || "UNISEX");
       formData.append("hasVariants", String(hasVariants));
       // Add SEO fields
       formData.append("metaTitle", product.metaTitle || "");
@@ -1815,6 +1818,23 @@ export function ProductForm({
                     >
                       <option value="PUBLIC">Public Product</option>
                       <option value="SECRET">Secret Collection</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="gender" className="text-sm font-medium">Gender</Label>
+                    <select
+                      id="gender"
+                      name="gender"
+                      value={product.gender}
+                      onChange={(e) =>
+                        setProduct((prev) => ({ ...prev, gender: e.target.value }))
+                      }
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="MEN">Men</option>
+                      <option value="WOMEN">Women</option>
+                      <option value="UNISEX">Unisex</option>
                     </select>
                   </div>
 

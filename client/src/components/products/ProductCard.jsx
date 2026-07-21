@@ -198,9 +198,16 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
             <Link href={`/products/${product.slug}`}>
               <h3 className="font-display text-[15px] mb-0.5 line-clamp-1 text-noir hover:text-gold-dark transition-colors">{product.name}</h3>
             </Link>
-            {product.category?.name && (
-              <span className="text-[10px] uppercase tracking-[0.2em] text-stone">{product.category.name}</span>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {product.category?.name && (
+                <span className="text-[10px] uppercase tracking-[0.2em] text-stone">{product.category.name}</span>
+              )}
+              {product.gender && (
+                <span className="text-[9px] uppercase tracking-[0.15em] text-white px-2 py-0.5 font-medium" style={{ backgroundColor: "#4a4a8a", borderRadius: "4px" }}>
+                  {product.gender}
+                </span>
+              )}
+            </div>
             {showPrice ? (
               <div className="flex items-center gap-2 mt-2.5">
                 <span className="text-[15px] font-semibold text-noir">{formatCurrency(displayPrice)}</span>
@@ -254,6 +261,11 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
 
         {/* Badges */}
         <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
+          {product.gender && (
+            <span className="text-[9px] uppercase tracking-[0.15em] text-white px-2.5 py-1.5 font-medium" style={{ backgroundColor: "#4a4a8a", borderRadius: "4px" }}>
+              {product.gender}
+            </span>
+          )}
           {showFlashSaleBadge && (
             <span className="text-[9px] uppercase tracking-[0.15em] text-noir px-2.5 py-1.5 bg-gold font-medium" style={{ borderRadius: "4px" }}>
               Flash Sale
@@ -308,9 +320,16 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
 
       {/* Info section */}
       <div className="flex flex-col p-4 pb-5">
-        {product.category?.name && (
-          <span className="text-[9px] uppercase tracking-[0.25em] text-stone mb-1.5">{product.category.name}</span>
-        )}
+        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+          {product.category?.name && (
+            <span className="text-[9px] uppercase tracking-[0.25em] text-stone">{product.category.name}</span>
+          )}
+          {product.gender && (
+            <span className="text-[8px] uppercase tracking-[0.15em] text-white px-2 py-0.5 font-medium" style={{ backgroundColor: "#4a4a8a", borderRadius: "4px" }}>
+              {product.gender}
+            </span>
+          )}
+        </div>
 
         <Link href={`/products/${product.slug}`} className="block w-full">
           <h3 className="font-display text-[15px] leading-snug text-noir group-hover:text-gold-dark transition-colors duration-300 line-clamp-1 mb-2">
