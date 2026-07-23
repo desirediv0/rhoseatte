@@ -1541,3 +1541,54 @@ model FragranceQuizResponseAnswer {
   @@index([responseId])
   @@index([questionId])
 }
+
+model EmailCampaign {
+  id             String              @id @default(uuid())
+  subject        String
+  htmlContent    String              @db.Text
+  plainText      String?             @db.Text
+  status         EmailCampaignStatus @default(DRAFT)
+  totalRecipients Int                @default(0)
+  sentCount      Int                 @default(0)
+  failedCount    Int                 @default(0)
+  createdById    String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  sentAt         DateTime?
+  logs           EmailLog[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model EmailLog {
+  id          String      @id @default(uuid())
+  campaignId  String
+  email       String
+  userName    String?
+  status      EmailLogStatus @default(PENDING)
+  errorMessage String?
+  retryCount  Int         @default(0)
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  campaign    EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([status])
+  @@index([email])
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SENDING
+  COMPLETED
+  FAILED
+}
+
+enum EmailLogStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRYING
+}
