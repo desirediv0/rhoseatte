@@ -5,7 +5,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import sendEmail from "../utils/sendEmail.js";
-import { getOrderConfirmationTemplate } from "../email/temp/EmailTemplate.js";
+import { getOrderConfirmationTemplate, getAdminNewOrderTemplate, getOrderCancelledTemplate, getAdminOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
 import { getFileUrl } from "../utils/deleteFromS3.js";
 import { processReferralReward } from "./referral.controller.js";
 import { decrypt } from "../utils/encryption.js";
@@ -1051,6 +1051,31 @@ export const paymentVerification = asyncHandler(async (req, res) => {
             shippingAddress: shippingAddress,
           }),
         });
+
+        // Send admin notification email
+        try {
+          const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.STORE_EMAIL;
+          if (adminEmail) {
+            await sendEmail({
+              email: adminEmail,
+              subject: `🔔 New Order #${result.order.orderNumber} - ₹${parseFloat(result.order.total).toFixed(2)}`,
+              html: getAdminNewOrderTemplate({
+                orderNumber: result.order.orderNumber,
+                customerName: user.name || "Guest",
+                customerEmail: user.email,
+                customerPhone: user.phone || "",
+                orderDate: result.order.createdAt,
+                paymentMethod: result.payment.paymentMethod || "Online",
+                total: parseFloat(result.order.total).toFixed(2),
+                items: emailItems,
+                shippingAddress: shippingAddress,
+              }),
+            });
+            console.log(`Admin notification email sent for order ${result.order.orderNumber}`);
+          }
+        } catch (adminEmailError) {
+          console.error("Admin notification email error:", adminEmailError);
+        }
       }
     } catch (emailError) {
       console.error("Order confirmation email error:", emailError);
@@ -1554,6 +1579,49 @@ export const cancelOrder = asyncHandler(async (req, res) => {
       console.error("Failed to cancel Shiprocket order:", error.message);
       // Non-critical - order is already cancelled in our system
     }
+  }
+
+  // Send cancellation emails
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, name: true },
+    });
+
+    // Send cancellation email to user
+    if (user && user.email) {
+      await sendEmail({
+        email: user.email,
+        subject: `Order #${order.orderNumber} Cancelled - ${process.env.STORE_NAME || "Rhoseatte"}`,
+        html: getOrderCancelledTemplate({
+          userName: user.name || "Customer",
+          orderNumber: order.orderNumber,
+          reason: reason || "Cancelled",
+          refundAmount: order.razorpayPayment ? parseFloat(order.total) : null,
+        }),
+      });
+      console.log(`Cancellation email sent to user ${user.email}`);
+    }
+
+    // Send cancellation notification to admin
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.STORE_EMAIL;
+    if (adminEmail) {
+      await sendEmail({
+        email: adminEmail,
+        subject: `❌ Order #${order.orderNumber} Cancelled by Customer`,
+        html: getAdminOrderCancelledTemplate({
+          orderNumber: order.orderNumber,
+          customerName: user?.name || "Guest",
+          customerEmail: user?.email || "No email",
+          reason: reason || "No reason provided",
+          total: parseFloat(order.total).toFixed(2),
+          cancelledBy: "user",
+        }),
+      });
+      console.log(`Admin cancellation notification sent for order ${order.orderNumber}`);
+    }
+  } catch (emailError) {
+    console.error("Cancellation email error:", emailError);
   }
 
   res
@@ -2465,6 +2533,31 @@ export const createCashOrder = asyncHandler(async (req, res) => {
             shippingAddress: shippingAddress,
           }),
         });
+
+        // Send admin notification email for COD order
+        try {
+          const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.STORE_EMAIL;
+          if (adminEmail) {
+            await sendEmail({
+              email: adminEmail,
+              subject: `🔔 New COD Order #${result.order.orderNumber} - ₹${parseFloat(result.order.total).toFixed(2)}`,
+              html: getAdminNewOrderTemplate({
+                orderNumber: result.order.orderNumber,
+                customerName: user.name || "Guest",
+                customerEmail: user.email,
+                customerPhone: user.phone || "",
+                orderDate: result.order.createdAt,
+                paymentMethod: "Cash on Delivery",
+                total: parseFloat(result.order.total).toFixed(2),
+                items: emailItems,
+                shippingAddress: shippingAddress,
+              }),
+            });
+            console.log(`Admin notification email sent for COD order ${result.order.orderNumber}`);
+          }
+        } catch (adminEmailError) {
+          console.error("Admin notification email error:", adminEmailError);
+        }
       }
     } catch (emailError) {
       console.error("Order confirmation email error:", emailError);

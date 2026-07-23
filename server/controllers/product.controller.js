@@ -441,6 +441,15 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
           },
         },
       },
+      videoReelProducts: {
+        where: {
+          videoReel: { isActive: true },
+        },
+        include: {
+          videoReel: true,
+        },
+        orderBy: { position: "asc" },
+      },
     },
   });
 
@@ -484,6 +493,13 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
       image: getFileUrl(note.image),
     })),
     lifestyleImage: product.lifestyleImage ? getFileUrl(product.lifestyleImage) : null,
+    // Format videos from video reels
+    videos: (product.videoReelProducts || []).map((vrp) => ({
+      id: vrp.videoReel.id,
+      title: vrp.videoReel.title,
+      videoUrl: vrp.videoReel.videoUrl ? getFileUrl(vrp.videoReel.videoUrl) : null,
+      position: vrp.position,
+    })),
     // Format variants with proper image URLs and attributes
     variants: await Promise.all(
       product.variants.map(async (variant) => {

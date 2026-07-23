@@ -15,6 +15,8 @@ import {
   User,
   Truck,
   CheckCircle,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency, debugData, cn } from "@/lib/utils";
@@ -93,6 +95,7 @@ export default function OrderDetailsPage() {
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   interface OrderItem {
     id: string;
@@ -357,6 +360,34 @@ export default function OrderDetailsPage() {
     } catch (error: unknown) {
       console.error("Error updating order status:", error);
       toast.error(t('orders.actions.status_update_error'));
+    }
+  };
+
+  // Handle manual sync to Shiprocket
+  const handleSyncToShiprocket = async () => {
+    if (!id) return;
+
+    try {
+      setIsSyncing(true);
+      const response = await orders.syncToShiprocket(id);
+
+      if (response && response.data && response.data.success) {
+        toast.success("Order synced to Shiprocket successfully!");
+        // Refresh order details to show updated Shiprocket data
+        await fetchOrderDetails();
+      } else {
+        toast.error(response.data?.message || "Failed to sync to Shiprocket");
+      }
+    } catch (error: unknown) {
+      console.error("Error syncing to Shiprocket:", error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response: { data?: { message?: string } } };
+        toast.error(axiosError.response?.data?.message || "Failed to sync to Shiprocket");
+      } else {
+        toast.error("Failed to sync to Shiprocket");
+      }
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -1084,59 +1115,186 @@ export default function OrderDetailsPage() {
           {orderDetails.shiprocket && (
             <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl">
               <CardHeader className="px-6 pt-6 pb-4">
-                <CardTitle className="text-lg font-semibold text-[#1F2937] flex items-center">
-                  <Truck className="mr-2 h-5 w-5 text-[#4CAF50]" />
-                  Shiprocket Information
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#ECFDF5] border border-[#D1FAE5]">
+                      <Truck className="h-5 w-5 text-[#22C55E]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-semibold text-[#1F2937]">
+                        Shiprocket Shipment
+                      </CardTitle>
+                      <p className="text-sm text-[#9CA3AF]">Courier management & live tracking</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {orderDetails.shiprocket.orderId && (
+                      <Badge className="bg-[#ECFDF5] text-[#22C55E] border-[#D1FAE5] text-xs">
+                        ✓ Synced to Shiprocket
+                      </Badge>
+                    )}
+                    {orderDetails.shiprocket.status && (
+                      <Badge className={cn(
+                        "text-xs font-medium border",
+                        orderDetails.shiprocket.status === "PICKUP_SCHEDULED"
+                          ? "bg-[#FEF3C7] text-[#D97706] border-[#FCD34D]"
+                          : orderDetails.shiprocket.status === "AWB_ASSIGNED"
+                          ? "bg-[#EFF6FF] text-[#3B82F6] border-[#DBEAFE]"
+                          : "bg-[#F3F4F6] text-[#6B7280] border-[#E5E7EB]"
+                      )}>
+                        {orderDetails.shiprocket.status.replace(/_/g, " ")}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="px-6 pb-6">
-                <div className="space-y-3">
-                  {orderDetails.shiprocket.orderId && (
-                    <div>
-                      <p className="text-xs text-[#9CA3AF] mb-1">Shiprocket Order ID</p>
-                      <p className="font-mono text-sm text-[#1F2937] bg-[#F3F4F6] px-2 py-1 rounded border border-[#E5E7EB]">
-                        {orderDetails.shiprocket.orderId}
-                      </p>
+                {orderDetails.shiprocket.orderId ? (
+                  <div className="space-y-4">
+                    {/* AWB Code with Track Live */}
+                    {orderDetails.shiprocket.awbCode && (
+                      <div className="p-4 bg-[#ECFDF5] border border-[#D1FAE5] rounded-xl">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-[#22C55E] font-medium mb-1">AWB / TRACKING NUMBER</p>
+                            <p className="font-mono text-xl font-bold text-[#1F2937]">
+                              {orderDetails.shiprocket.awbCode}
+                            </p>
+                          </div>
+                          <a
+                            href={`https://shiprocket.co/tracking/${orderDetails.shiprocket.awbCode}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#22C55E] text-white rounded-lg hover:bg-[#16A34A] transition-colors"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Track Live
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Details Grid */}
+                    <div className="grid grid-cols-3 gap-4">
+                      {orderDetails.shiprocket.courierName && (
+                        <div className="p-3 bg-[#F9FAFB] rounded-lg">
+                          <p className="text-xs text-[#9CA3AF] mb-1">COURIER</p>
+                          <p className="font-medium text-[#1F2937]">{orderDetails.shiprocket.courierName}</p>
+                        </div>
+                      )}
+                      {orderDetails.shiprocket.orderId && (
+                        <div className="p-3 bg-[#F9FAFB] rounded-lg">
+                          <p className="text-xs text-[#9CA3AF] mb-1">SR ORDER ID</p>
+                          <p className="font-mono text-sm font-medium text-[#1F2937]">{orderDetails.shiprocket.orderId}</p>
+                        </div>
+                      )}
+                      {orderDetails.shiprocket.shipmentId && (
+                        <div className="p-3 bg-[#F9FAFB] rounded-lg">
+                          <p className="text-xs text-[#9CA3AF] mb-1">SHIPMENT ID</p>
+                          <p className="font-mono text-sm font-medium text-[#1F2937]">{orderDetails.shiprocket.shipmentId}</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {orderDetails.shiprocket.shipmentId && (
-                    <div>
-                      <p className="text-xs text-[#9CA3AF] mb-1">Shipment ID</p>
-                      <p className="font-mono text-sm text-[#1F2937] bg-[#F3F4F6] px-2 py-1 rounded border border-[#E5E7EB]">
-                        {orderDetails.shiprocket.shipmentId}
-                      </p>
-                    </div>
-                  )}
-                  {orderDetails.shiprocket.awbCode && (
-                    <div>
-                      <p className="text-xs text-[#9CA3AF] mb-1">AWB Code</p>
-                      <p className="font-mono text-sm text-[#1F2937] bg-[#F3F4F6] px-2 py-1 rounded border border-[#E5E7EB]">
-                        {orderDetails.shiprocket.awbCode}
-                      </p>
-                    </div>
-                  )}
-                  {orderDetails.shiprocket.courierName && (
-                    <div>
-                      <p className="text-xs text-[#9CA3AF] mb-1">Courier</p>
-                      <p className="font-medium text-[#1F2937]">
-                        {orderDetails.shiprocket.courierName}
-                      </p>
-                    </div>
-                  )}
-                  {orderDetails.shiprocket.status && (
-                    <div>
-                      <p className="text-xs text-[#9CA3AF] mb-1">Shiprocket Status</p>
-                      <Badge
-                        className={cn(
-                          "text-xs font-medium border",
-                          getStatusBadgeClass(orderDetails.shiprocket.status)
-                        )}
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const response = await orders.getShippingLabel(id!);
+                            if (response.data.success && response.data.data.label?.label_url) {
+                              window.open(response.data.data.label.label_url, '_blank');
+                            } else {
+                              toast.error("Failed to generate label");
+                            }
+                          } catch (error) {
+                            toast.error("Failed to download label");
+                          }
+                        }}
+                        className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
                       >
-                        {orderDetails.shiprocket.status}
-                      </Badge>
+                        Download Label
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const response = await orders.getOrderInvoice(id!);
+                            if (response.data.success && response.data.data.invoice?.invoice_url) {
+                              window.open(response.data.data.invoice.invoice_url, '_blank');
+                            } else {
+                              toast.error("Failed to generate invoice");
+                            }
+                          } catch (error) {
+                            toast.error("Failed to download invoice");
+                          }
+                        }}
+                        className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                      >
+                        Print Invoice
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          if (!confirm("Are you sure you want to cancel this shipment?")) return;
+                          try {
+                            const response = await orders.cancelShiprocketShipment(id!);
+                            if (response.data.success) {
+                              toast.success("Shipment cancelled successfully");
+                              await fetchOrderDetails();
+                            } else {
+                              toast.error(response.data?.message || "Failed to cancel shipment");
+                            }
+                          } catch (error) {
+                            toast.error("Failed to cancel shipment");
+                          }
+                        }}
+                        className="border-[#EF4444] text-[#EF4444] hover:bg-[#FEF2F2]"
+                      >
+                        Cancel Shipment
+                      </Button>
                     </div>
-                  )}
-                </div>
+
+                    {/* Info Note */}
+                    <div className="flex items-start gap-2 p-3 bg-[#EFF6FF] border border-[#DBEAFE] rounded-lg">
+                      <CheckCircle className="h-4 w-4 text-[#3B82F6] mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-[#1E40AF]">
+                        Shipment booked in Shiprocket. AWB assigned. Click "Track Live" for live location updates.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#F3F4F6] mb-4">
+                      <Truck className="h-8 w-8 text-[#9CA3AF]" />
+                    </div>
+                    <p className="font-semibold text-[#1F2937] mb-1">Not synced to Shiprocket yet</p>
+                    <p className="text-sm text-[#9CA3AF] mb-4">
+                      Click "Sync to Shiprocket" to create shipment and get AWB number.
+                    </p>
+                    <Button
+                      onClick={handleSyncToShiprocket}
+                      disabled={isSyncing}
+                      className="bg-[#22C55E] hover:bg-[#16A34A] text-white"
+                    >
+                      {isSyncing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Syncing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Sync to Shiprocket
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

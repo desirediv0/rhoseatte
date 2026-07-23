@@ -415,3 +415,34 @@ export const getActiveVideoReels = asyncHandler(async (req, res, next) => {
     )
   );
 });
+
+// Get video reels for a specific product (for product form edit mode)
+export const getVideoReelsByProductId = asyncHandler(async (req, res, next) => {
+  const { productId } = req.params;
+
+  if (!productId) {
+    throw new ApiError(400, "Product ID is required");
+  }
+
+  const videoReelProducts = await prisma.videoReelProduct.findMany({
+    where: { productId },
+    include: {
+      videoReel: true,
+    },
+    orderBy: { position: "asc" },
+  });
+
+  const reels = videoReelProducts.map((vrp) => ({
+    id: vrp.videoReel.id,
+    title: vrp.videoReel.title,
+    videoUrl: vrp.videoReel.videoUrl ? getFileUrl(vrp.videoReel.videoUrl) : null,
+    rawVideoUrl: vrp.videoReel.videoUrl,
+    position: vrp.position,
+    isActive: vrp.videoReel.isActive,
+    createdAt: vrp.videoReel.createdAt,
+  }));
+
+  res.status(200).json(
+    new ApiResponsive(200, { reels }, "Video reels fetched successfully")
+  );
+});

@@ -650,6 +650,47 @@ export default function ProductContent({ slug }) {
               </div>
             );
           })}
+
+          {/* Product Videos Section */}
+          {product.videos && product.videos.length > 0 && (
+            <div style={{ borderBottom: "1px solid #EAEAEA" }}>
+              <button
+                onClick={() => setOpenSections((prev) => ({ ...prev, videos: !prev.videos }))}
+                className="flex items-center justify-between w-full py-5 text-left transition-colors"
+              >
+                <span className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "#111111" }}>Videos</span>
+                <IconChevronRight
+                  className="h-4 w-4 transition-transform duration-300"
+                  style={{ color: "#666666", transform: openSections.videos ? "rotate(90deg)" : "rotate(0deg)" }}
+                  stroke={1.5}
+                />
+              </button>
+              <div
+                className="overflow-hidden transition-all duration-500"
+                style={{ maxHeight: openSections.videos ? "2000px" : "0", opacity: openSections.videos ? 1 : 0, marginBottom: openSections.videos ? "24px" : "0" }}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {product.videos.map((video, i) => (
+                    <div key={video.id || i} className="rounded-lg overflow-hidden" style={{ border: "1px solid #EAEAEA" }}>
+                      <div className="aspect-video w-full bg-black">
+                        <video
+                          src={video.videoUrl}
+                          controls
+                          preload="metadata"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      {video.title && (
+                        <div className="px-3 py-2">
+                          <p className="text-[13px] font-medium" style={{ color: "#111111" }}>{video.title}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Reviews */}

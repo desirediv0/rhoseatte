@@ -13,6 +13,7 @@ import {
   attributes,
   subCategories,
   moq,
+  videoReels,
 } from "@/api/adminService";
 import api from "@/api/api";
 import { Button } from "@/components/ui/button";
@@ -238,6 +239,11 @@ export function ProductForm({
   // Lifestyle image state
   const [lifestyleImageFile, setLifestyleImageFile] = useState<File | null>(null);
   const [lifestyleImagePreview, setLifestyleImagePreview] = useState<string>("");
+
+  // Product videos state
+  const [productVideos, setProductVideos] = useState<
+    { id?: string; file?: File; url: string; title: string; isNew?: boolean }[]
+  >([]);
 
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
@@ -554,6 +560,89 @@ export function ProductForm({
     });
   };
 
+  // Video dropzone handlers
+  const onVideoDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) {
+      toast.error("No valid video files selected");
+      return;
+    }
+
+    const validFiles = acceptedFiles.filter((file) => {
+      const isValidType = file.type.startsWith("video/");
+      const isValidSize = file.size <= 100 * 1024 * 1024; // 100MB
+
+      if (!isValidType) {
+        toast.error(`${file.name} is not a valid video file`);
+        return false;
+      }
+      if (!isValidSize) {
+        toast.error(`${file.name} is too large. Maximum size is 100MB`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    const newVideos = validFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+      title: file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
+      isNew: true,
+    }));
+
+    setProductVideos((prev) => [...prev, ...newVideos]);
+    toast.success(`${validFiles.length} video(s) added successfully`);
+  }, []);
+
+  const {
+    getRootProps: getVideoRootProps,
+    getInputProps: getVideoInputProps,
+    isDragActive: isVideoDragActive,
+  } = useDropzone({
+    onDrop: onVideoDrop,
+    accept: {
+      "video/mp4": [],
+      "video/webm": [],
+      "video/quicktime": [],
+      "video/x-msvideo": [],
+    },
+    maxSize: 100 * 1024 * 1024, // 100MB
+    multiple: true,
+    onDropRejected: (rejectedFiles) => {
+      rejectedFiles.forEach((file) => {
+        const errors = file.errors.map((e) => e.message).join(", ");
+        toast.error(`${file.file.name}: ${errors}`);
+      });
+    },
+  });
+
+  const removeVideo = (index: number) => {
+    const video = productVideos[index];
+    if (video.url.startsWith("blob:")) {
+      URL.revokeObjectURL(video.url);
+    }
+    setProductVideos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateVideoTitle = (index: number, title: string) => {
+    setProductVideos((prev) =>
+      prev.map((v, i) => (i === index ? { ...v, title } : v))
+    );
+  };
+
+  // Delete existing video reel from server
+  const deleteVideoReel = async (reelId: string, index: number) => {
+    try {
+      await videoReels.deleteReel(reelId);
+      toast.success("Video deleted successfully");
+      setProductVideos((prev) => prev.filter((_, i) => i !== index));
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      toast.error("Failed to delete video");
+    }
+  };
+
   // Fetch attributes and their values
   useEffect(() => {
     const fetchAttributes = async () => {
@@ -750,6 +839,22 @@ export function ProductForm({
                   isPrimary: img.isPrimary || false,
                 }))
               );
+            }
+
+            // Load existing video reels for this product
+            try {
+              const videoResponse = await videoReels.getReelsByProductId(productId);
+              if (videoResponse.data.success && videoResponse.data.data?.reels) {
+                const existingVideos = videoResponse.data.data.reels.map((reel: any) => ({
+                  id: reel.id,
+                  url: reel.videoUrl,
+                  title: reel.title || "",
+                  isNew: false,
+                }));
+                setProductVideos(existingVideos);
+              }
+            } catch (videoError) {
+              console.error("Error loading product videos:", videoError);
             }
 
             if (productData.variants && productData.variants.length > 0) {
@@ -1430,6 +1535,27 @@ export function ProductForm({
             console.error("Error saving MOQ:", error);
             // Don't fail the whole operation if MOQ save fails
             toast.error("Product saved but MOQ settings failed to update");
+          }
+        }
+
+        // Upload new product videos as VideoReels
+        if (savedProductId && productVideos.length > 0) {
+          const newVideos = productVideos.filter((v) => v.isNew && v.file);
+          if (newVideos.length > 0) {
+            try {
+              for (const video of newVideos) {
+                await videoReels.createReel({
+                  title: video.title || "Product Video",
+                  productIds: [savedProductId],
+                  video: video.file!,
+                  isActive: true,
+                });
+              }
+              toast.success(`${newVideos.length} video(s) uploaded successfully`);
+            } catch (videoError) {
+              console.error("Error uploading videos:", videoError);
+              toast.error("Product saved but some videos failed to upload");
+            }
           }
         }
 
@@ -2460,6 +2586,151 @@ export function ProductForm({
                 }}
               />
             </div>
+          </div>
+
+          {/* Product Videos Section */}
+          <div className="space-y-4 rounded-lg border p-4 bg-gray-50">
+            <h2 className="text-xl font-semibold border-b pb-2">
+              Progress of Product
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Upload product videos (max 100MB each). These videos will be displayed on the product page.
+            </p>
+
+            {/* Video Dropzone */}
+            <div className="space-y-2">
+              <div
+                {...getVideoRootProps()}
+                className={`border-2 border-dashed rounded-md p-8 cursor-pointer transition-colors text-center bg-white ${
+                  isVideoDragActive
+                    ? "border-blue-400 bg-blue-50"
+                    : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+                }`}
+              >
+                <input {...getVideoInputProps()} />
+                <svg
+                  className="h-10 w-10 mx-auto mb-2 text-muted-foreground"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                {isVideoDragActive ? (
+                  <p className="text-blue-600 font-medium">
+                    Drop your videos here...
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-muted-foreground">
+                      Drag & drop videos here, or click to select
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      MP4, WebM, MOV, AVI (max 100MB each)
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Fallback file input */}
+              <div className="mt-2">
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                  multiple
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      const files = Array.from(e.target.files);
+                      onVideoDrop(files);
+                      e.target.value = "";
+                    }
+                  }}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                />
+              </div>
+            </div>
+
+            {/* Video previews */}
+            {productVideos.length > 0 && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Uploaded Videos</Label>
+                  <Badge variant="outline" className="text-xs">
+                    {productVideos.length} video{productVideos.length !== 1 ? "s" : ""}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {productVideos.map((video, index) => (
+                    <div
+                      key={index}
+                      className="relative group rounded-md overflow-hidden border bg-white"
+                    >
+                      {/* Video preview */}
+                      <div className="relative aspect-video bg-gray-900">
+                        <video
+                          src={video.url}
+                          className="w-full h-full object-cover"
+                          preload="metadata"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="bg-black/50 rounded-full p-2">
+                            <svg
+                              className="h-8 w-8 text-white"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        </div>
+                        {!video.isNew && (
+                          <span className="absolute top-2 left-2 bg-green-500 text-white text-xs py-1 px-2 rounded-full">
+                            Saved
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Video title input */}
+                      <div className="p-2">
+                        <input
+                          type="text"
+                          value={video.title}
+                          onChange={(e) =>
+                            updateVideoTitle(index, e.target.value)
+                          }
+                          placeholder="Video title..."
+                          className="w-full text-sm border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+
+                      {/* Delete button */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            if (video.isNew) {
+                              removeVideo(index);
+                            } else if (video.id) {
+                              deleteVideoReel(video.id, index);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Lifestyle Section */}

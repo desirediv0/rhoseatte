@@ -4,6 +4,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import sendEmail from "../utils/sendEmail.js";
+import { getOrderCancelledTemplate, getAdminOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
 import {
   generateAccessAndRefreshTokens,
   setCookies,
@@ -1448,6 +1450,69 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
       cancelledBy: req.user.id,
     },
   });
+
+  // Cancel Shiprocket order if it exists (outside transaction, non-blocking)
+  if (order.shiprocketOrderId) {
+    try {
+      const { cancelShiprocketOrder, getShiprocketSettings } = await import("../utils/shiprocket.js");
+      const settings = await getShiprocketSettings();
+      if (settings.isEnabled) {
+        await cancelShiprocketOrder(order.shiprocketOrderId);
+        // Update order shiprocket status
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { shiprocketStatus: "CANCELLED" },
+        });
+        console.log(`User cancelled Shiprocket order ${order.shiprocketOrderId}`);
+      }
+    } catch (error) {
+      console.error("Failed to cancel Shiprocket order:", error.message);
+      // Non-critical - order is already cancelled in our system
+    }
+  }
+
+  // Send cancellation emails
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { email: true, name: true },
+    });
+
+    // Send cancellation email to user
+    if (user && user.email) {
+      await sendEmail({
+        email: user.email,
+        subject: `Order #${order.orderNumber} Cancelled - ${process.env.STORE_NAME || "Rhoseatte"}`,
+        html: getOrderCancelledTemplate({
+          userName: user.name || "Customer",
+          orderNumber: order.orderNumber,
+          reason: reason || "Cancelled by customer",
+          refundAmount: order.paymentMethod !== "CASH" ? parseFloat(order.total) : null,
+        }),
+      });
+      console.log(`Cancellation email sent to user ${user.email}`);
+    }
+
+    // Send cancellation notification to admin
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.STORE_EMAIL;
+    if (adminEmail) {
+      await sendEmail({
+        email: adminEmail,
+        subject: `❌ Order #${order.orderNumber} Cancelled by Customer`,
+        html: getAdminOrderCancelledTemplate({
+          orderNumber: order.orderNumber,
+          customerName: user?.name || "Guest",
+          customerEmail: user?.email || "No email",
+          reason: reason || "No reason provided",
+          total: parseFloat(order.total).toFixed(2),
+          cancelledBy: "user",
+        }),
+      });
+      console.log(`Admin cancellation notification sent for order ${order.orderNumber}`);
+    }
+  } catch (emailError) {
+    console.error("Cancellation email error:", emailError);
+  }
 
   // TODO: Handle inventory restock and payment refund logic
 

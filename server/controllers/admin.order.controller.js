@@ -3,7 +3,9 @@ import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import { razorpay } from "../app.js";
-import { cancelShiprocketOrder, getShiprocketSettings } from "../utils/shiprocket.js";
+import { cancelShiprocketOrder, getShiprocketSettings, processOrderForShipping } from "../utils/shiprocket.js";
+import sendEmail from "../utils/sendEmail.js";
+import { getOrderCancelledTemplate, getAdminOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
 
 // Get all orders with pagination, filtering, and sorting
 export const getOrders = asyncHandler(async (req, res, next) => {
@@ -409,7 +411,7 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
       }
     }
 
-    // If shipping, create or update tracking
+    // If shipping, create or update tracking AND sync to Shiprocket
     if (status === "SHIPPED") {
       const existingTracking = await tx.tracking.findUnique({
         where: { orderId },
@@ -451,6 +453,19 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
             },
           },
         });
+      }
+
+      // Auto-sync to Shiprocket if enabled and not already synced
+      try {
+        const shiprocketSettings = await getShiprocketSettings();
+        if (shiprocketSettings.isEnabled && !order.shiprocketOrderId) {
+          console.log(`Auto-syncing order ${order.orderNumber} to Shiprocket...`);
+          await processOrderForShipping(orderId);
+          console.log(`Order ${order.orderNumber} synced to Shiprocket successfully`);
+        }
+      } catch (shiprocketError) {
+        // Non-critical: log error but don't fail the order status update
+        console.error(`Failed to auto-sync order ${order.orderNumber} to Shiprocket:`, shiprocketError.message);
       }
     }
 

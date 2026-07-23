@@ -516,6 +516,21 @@ export const orders = {
   updateOrderStatus: (orderId: string, data: { status: string }) => {
     return api.patch(`/api/admin/orders/${orderId}/status`, data);
   },
+  syncToShiprocket: (orderId: string) => {
+    return api.post(`/api/admin/shiprocket/orders/${orderId}/sync`);
+  },
+  getOrderTracking: (orderId: string) => {
+    return api.get(`/api/admin/shiprocket/orders/${orderId}/tracking`);
+  },
+  getShippingLabel: (orderId: string) => {
+    return api.get(`/api/admin/shiprocket/orders/${orderId}/label`);
+  },
+  getOrderInvoice: (orderId: string) => {
+    return api.get(`/api/admin/shiprocket/orders/${orderId}/invoice`);
+  },
+  cancelShiprocketShipment: (orderId: string) => {
+    return api.post(`/api/admin/shiprocket/orders/${orderId}/cancel`);
+  },
   getOrderStats: async () => {
     try {
       const response = await api.get("/api/admin/orders-stats");
@@ -1317,6 +1332,9 @@ export const videoReels = {
   },
   toggleActive: (reelId: string) => {
     return api.patch(`/api/admin/video-reels/${reelId}/toggle-active`);
+  },
+  getReelsByProductId: (productId: string) => {
+    return api.get(`/api/admin/video-reels/product/${productId}`);
   },
 };
 

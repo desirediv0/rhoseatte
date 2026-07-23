@@ -44,6 +44,7 @@ export const updateSettings = asyncHandler(async (req, res) => {
         isEnabled,
         email,
         password,
+        bookingMode,
         defaultLength,
         defaultBreadth,
         defaultHeight,
@@ -70,6 +71,10 @@ export const updateSettings = asyncHandler(async (req, res) => {
         // Clear token to force re-authentication
         updateData.token = null;
         updateData.tokenExpiry = null;
+    }
+
+    if (bookingMode !== undefined && (bookingMode === "AUTO" || bookingMode === "MANUAL")) {
+        updateData.bookingMode = bookingMode;
     }
 
     if (defaultLength !== undefined) {

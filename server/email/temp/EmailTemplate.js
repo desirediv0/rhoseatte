@@ -212,6 +212,7 @@ export const getOrderConfirmationTemplate = (data, storeConfig = null) => {
     const store = storeConfig || getStoreConfig();
     const hasDiscount = data.discount && parseFloat(data.discount) > 0;
     const hasCoupon = data.couponCode && data.couponCode.trim() !== "";
+    const hasTracking = data.awbCode && data.awbCode.trim() !== "";
 
     return `
 <!DOCTYPE html>
@@ -238,6 +239,11 @@ export const getOrderConfirmationTemplate = (data, storeConfig = null) => {
         .savings-text { color: #003E29; font-weight: 600; font-size: 15px; }
         .coupon-badge { display: inline-block; background: rgba(0,62,41,0.08); color: #003E29; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-left: 8px; }
         .detail-label { font-weight: bold; display: inline-block; width: 150px; }
+        .tracking-box { background: linear-gradient(135deg, #003E29, #005a3c); color: #ffffff; border-radius: 14px; padding: 24px; margin: 24px 0; text-align: center; }
+        .tracking-box h3 { color: #D4AF37; font-size: 12px; text-transform: uppercase; letter-spacing: 0.15em; margin: 0 0 10px 0; }
+        .tracking-box .awb-code { font-size: 28px; font-weight: 900; letter-spacing: 0.1em; font-family: 'Courier New', monospace; margin: 10px 0; }
+        .tracking-box .courier-name { font-size: 14px; color: #9ca3af; margin-bottom: 16px; }
+        .tracking-btn { display: inline-block; padding: 12px 30px; background: #D4AF37; color: #000000 !important; text-decoration: none; border-radius: 8px; font-weight: 800; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -254,6 +260,16 @@ export const getOrderConfirmationTemplate = (data, storeConfig = null) => {
                 <div style="margin-bottom:8px;"><span class="detail-label">Payment Method:</span> ${data.paymentMethod}</div>
                 ${hasCoupon ? `<div><span class="detail-label">Coupon Applied:</span> <span class="coupon-badge">🎉 ${data.couponCode}</span></div>` : ""}
             </div>
+
+            ${hasTracking ? `
+            <div class="tracking-box">
+                <h3>📦 Your Shipment is On Its Way!</h3>
+                <div class="awb-code">${data.awbCode}</div>
+                <div class="courier-name">${data.courierName || "Shiprocket"}</div>
+                <a href="https://shiprocket.co/tracking/${data.awbCode}" class="tracking-btn">Track Your Order</a>
+                <p style="font-size: 12px; color: #9ca3af; margin-top: 12px;">Click above to track your shipment in real-time</p>
+            </div>
+            ` : ""}
 
             <table class="order-table">
                 <thead>
@@ -699,6 +715,266 @@ export const getSecretAccessEmailTemplate = (data, storeConfig = null) => {
       This is a confidential invitation. Please do not share.
     </div>
   </div>
+</body>
+</html>`;
+};
+
+/* ─── Admin New Order Notification ───────────────────────────────────── */
+export const getAdminNewOrderTemplate = (data, storeConfig = null) => {
+    const store = storeConfig || getStoreConfig();
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Order Received - ${store.storeName}</title>
+    <style>
+        ${BASE_STYLES}
+        .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .order-table th { background: #1e40af; color: #fff; padding: 12px 10px; text-align: left; font-size: 13px; }
+        .order-table td { padding: 12px 10px; border-bottom: 1px solid #E5E7EB; font-size: 14px; }
+        .alert-badge { display: inline-block; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #1e40af, #1e3a8a);">
+            <div style="margin-bottom: 18px;">
+                <img src="${store.websiteUrl}/logo.png" alt="${store.storeName}" style="max-height: 55px; width: auto; display: inline-block;" />
+            </div>
+            <div class="header-accent" style="background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.2);">🔔 New Order Alert</div>
+            <h1>New Order Received!</h1>
+        </div>
+        <div class="content">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span class="alert-badge">ACTION REQUIRED</span>
+            </div>
+
+            <div class="info-box">
+                <h3 style="color: #1e40af;">Order Details</h3>
+                <div style="margin-bottom:8px;"><strong>Order Number:</strong> #${data.orderNumber}</div>
+                <div style="margin-bottom:8px;"><strong>Customer:</strong> ${data.customerName}</div>
+                <div style="margin-bottom:8px;"><strong>Email:</strong> ${data.customerEmail}</div>
+                ${data.customerPhone ? `<div style="margin-bottom:8px;"><strong>Phone:</strong> ${data.customerPhone}</div>` : ""}
+                <div style="margin-bottom:8px;"><strong>Order Date:</strong> ${new Date(data.orderDate).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                <div style="margin-bottom:8px;"><strong>Payment Method:</strong> ${data.paymentMethod}</div>
+                <div><strong>Total Amount:</strong> <span style="color: #D4AF37; font-size: 18px; font-weight: bold;">₹${parseFloat(data.total).toFixed(2)}</span></div>
+            </div>
+
+            <table class="order-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th style="text-align:center;">Qty</th>
+                        <th style="text-align:right;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.items.map((item) => `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">${item.name}</div>
+                            ${item.variant ? `<div style="font-size: 12px; color: #666;">${item.variant}</div>` : ""}
+                        </td>
+                        <td style="text-align:center;">${item.quantity}</td>
+                        <td style="text-align:right; font-weight: 600;">₹${parseFloat(item.price).toFixed(2)}</td>
+                    </tr>`).join("")}
+                </tbody>
+            </table>
+
+            <div class="info-box">
+                <h3 style="color: #1e40af;">Shipping Address</h3>
+                <p style="margin-bottom:0;">
+                    <strong>${data.shippingAddress.name}</strong><br>
+                    ${data.shippingAddress.street}<br>
+                    ${data.shippingAddress.city}, ${data.shippingAddress.state} ${data.shippingAddress.postalCode}<br>
+                    ${data.shippingAddress.country}
+                    ${data.shippingAddress.phone ? `<br>📞 ${data.shippingAddress.phone}` : ""}
+                </p>
+            </div>
+
+            <div class="button-container">
+                <a href="${process.env.ADMIN_URL || process.env.FRONTEND_URL}/orders" class="button" style="background: linear-gradient(135deg, #1e40af, #1e3a8a);">View Order in Dashboard</a>
+            </div>
+        </div>
+        <div class="footer">
+            © ${new Date().getFullYear()} ${store.storeName} | Admin Notification<br>
+            <a href="mailto:${store.storeEmail}">${store.storeEmail}</a><br><br>
+            This is an automated admin notification.
+        </div>
+    </div>
+</body>
+</html>`;
+};
+
+/* ─── Order Cancelled Email (User) ──────────────────────────────────── */
+export const getOrderCancelledTemplate = (data, storeConfig = null) => {
+    const store = storeConfig || getStoreConfig();
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Cancelled - ${store.storeName}</title>
+    <style>
+        ${BASE_STYLES}
+        .cancel-icon { font-size: 60px; margin-bottom: 20px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #E5E7EB; font-size: 14px; }
+        .detail-label { color: #6b7280; }
+        .detail-value { color: #111827; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        ${HEADER_HTML("Order Cancelled", "Cancellation", store, true)}
+        <div class="content" style="text-align: center;">
+            <div class="cancel-icon">❌</div>
+            <h2 style="color: #dc2626;">Your Order Has Been Cancelled</h2>
+            <p>Dear ${data.userName},</p>
+            <p>Your order <strong>#${data.orderNumber}</strong> has been successfully cancelled as per your request.</p>
+
+            <div class="info-box" style="text-align: left;">
+                <div class="detail-row">
+                    <span class="detail-label">Order Number</span>
+                    <span class="detail-value">#${data.orderNumber}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Cancelled On</span>
+                    <span class="detail-value">${new Date().toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })}</span>
+                </div>
+                ${data.reason ? `<div class="detail-row">
+                    <span class="detail-label">Reason</span>
+                    <span class="detail-value">${data.reason}</span>
+                </div>` : ""}
+                ${data.refundAmount ? `<div class="detail-row">
+                    <span class="detail-label">Refund Amount</span>
+                    <span class="detail-value" style="color: #22c55e;">₹${parseFloat(data.refundAmount).toFixed(2)}</span>
+                </div>` : ""}
+            </div>
+
+            ${data.refundAmount ? `<p style="color: #22c55e; font-weight: 600;">Your refund of ₹${parseFloat(data.refundAmount).toFixed(2)} will be processed within 5-7 business days.</p>` : ""}
+
+            <p>If you have any questions, please contact our support team.</p>
+            <div class="button-container">
+                <a href="${process.env.FRONTEND_URL}/account/orders" class="button">View Your Orders</a>
+            </div>
+        </div>
+        ${FOOTER_HTML(store)}
+    </div>
+</body>
+</html>`;
+};
+
+/* ─── Admin Order Cancelled Notification ────────────────────────────── */
+export const getAdminOrderCancelledTemplate = (data, storeConfig = null) => {
+    const store = storeConfig || getStoreConfig();
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Cancelled - ${store.storeName}</title>
+    <style>${BASE_STYLES}</style>
+</head>
+<body>
+    <div class="container">
+        ${HEADER_HTML("Order Cancelled", "Cancellation Alert", store, true)}
+        <div class="content">
+            <h2 style="color: #dc2626;">Order #${data.orderNumber} Has Been Cancelled</h2>
+            <p>An order has been cancelled${data.cancelledBy === "user" ? " by the customer" : " by admin"}.</p>
+
+            <div class="info-box">
+                <div style="margin-bottom:8px;"><strong>Order Number:</strong> #${data.orderNumber}</div>
+                <div style="margin-bottom:8px;"><strong>Customer:</strong> ${data.customerName}</div>
+                <div style="margin-bottom:8px;"><strong>Email:</strong> ${data.customerEmail}</div>
+                <div style="margin-bottom:8px;"><strong>Cancelled On:</strong> ${new Date().toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                ${data.reason ? `<div style="margin-bottom:8px;"><strong>Reason:</strong> ${data.reason}</div>` : ""}
+                <div><strong>Total Amount:</strong> ₹${parseFloat(data.total).toFixed(2)}</div>
+            </div>
+
+            <div class="button-container">
+                <a href="${process.env.ADMIN_URL || process.env.FRONTEND_URL}/orders" class="button" style="background: linear-gradient(135deg, #dc2626, #b91c1c);">View in Dashboard</a>
+            </div>
+        </div>
+        <div class="footer">
+            © ${new Date().getFullYear()} ${store.storeName} | Admin Notification<br>
+            This is an automated admin notification.
+        </div>
+    </div>
+</body>
+</html>`;
+};
+
+/* ─── Shipped / Tracking Email (User) ───────────────────────────────── */
+export const getOrderShippedTemplate = (data, storeConfig = null) => {
+    const store = storeConfig || getStoreConfig();
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Shipped - ${store.storeName}</title>
+    <style>
+        ${BASE_STYLES}
+        .tracking-box { background: linear-gradient(135deg, #003E29, #005a3c); color: #ffffff; border-radius: 14px; padding: 30px; margin: 24px 0; text-align: center; }
+        .tracking-box h3 { color: #D4AF37; font-size: 12px; text-transform: uppercase; letter-spacing: 0.15em; margin: 0 0 10px 0; }
+        .tracking-box .awb-code { font-size: 32px; font-weight: 900; letter-spacing: 0.1em; font-family: 'Courier New', monospace; margin: 10px 0; }
+        .tracking-box .courier-name { font-size: 16px; color: #d1d5db; margin-bottom: 8px; }
+        .tracking-box .courier-service { font-size: 13px; color: #9ca3af; margin-bottom: 20px; }
+        .tracking-btn { display: inline-block; padding: 14px 36px; background: #D4AF37; color: #000000 !important; text-decoration: none; border-radius: 10px; font-weight: 800; font-size: 15px; }
+        .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #E5E7EB; font-size: 14px; }
+        .detail-label { color: #6b7280; }
+        .detail-value { color: #111827; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        ${HEADER_HTML("Your Order Has Been Shipped!", "Shipment Update", store)}
+        <div class="content">
+            <p>Dear ${data.userName},</p>
+            <p>Great news! Your order <strong>#${data.orderNumber}</strong> has been shipped and is on its way to you.</p>
+
+            <div class="tracking-box">
+                <h3>📦 Track Your Shipment</h3>
+                <div class="awb-code">${data.awbCode}</div>
+                <div class="courier-name">${data.courierName || "Shiprocket"}</div>
+                ${data.courierService ? `<div class="courier-service">${data.courierService}</div>` : ""}
+                <a href="https://shiprocket.co/tracking/${data.awbCode}" class="tracking-btn">Track Live</a>
+                <p style="font-size: 12px; color: #9ca3af; margin-top: 14px;">Click above to track your shipment in real-time</p>
+            </div>
+
+            <div class="info-box">
+                <h3>Shipment Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">AWB / Tracking Number</span>
+                    <span class="detail-value" style="font-family: monospace;">${data.awbCode}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Courier Partner</span>
+                    <span class="detail-value">${data.courierName || "Shiprocket"}</span>
+                </div>
+                ${data.estimatedDelivery ? `<div class="detail-row">
+                    <span class="detail-label">Estimated Delivery</span>
+                    <span class="detail-value">${data.estimatedDelivery}</span>
+                </div>` : ""}
+                <div class="detail-row">
+                    <span class="detail-label">Ship To</span>
+                    <span class="detail-value">${data.shippingAddress?.city || ""}, ${data.shippingAddress?.state || ""}</span>
+                </div>
+            </div>
+
+            <p>You can also track your order from your account dashboard:</p>
+            <div class="button-container">
+                <a href="${process.env.FRONTEND_URL}/account/orders" class="button">View My Orders</a>
+            </div>
+        </div>
+        ${FOOTER_HTML(store)}
+    </div>
 </body>
 </html>`;
 };

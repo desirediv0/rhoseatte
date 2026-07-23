@@ -8,6 +8,8 @@
 
 import { prisma } from "../config/db.js";
 import { decrypt } from "./encryption.js";
+import sendEmail from "./sendEmail.js";
+import { getOrderShippedTemplate } from "../email/temp/EmailTemplate.js";
 
 const SHIPROCKET_BASE_URL = "https://apiv2.shiprocket.in/v1/external";
 
@@ -604,6 +606,9 @@ export async function buildShiprocketOrderPayload(order) {
 
 /**
  * Process order for Shiprocket (create order + assign AWB)
+ * Respects bookingMode setting:
+ * - AUTO: Auto-syncs on order placement
+ * - MANUAL: Skips auto-sync (admin manually syncs from order details)
  */
 export async function processOrderForShipping(orderId) {
     // Check if Shiprocket is enabled FIRST before doing anything
@@ -611,6 +616,12 @@ export async function processOrderForShipping(orderId) {
 
     if (!settings.isEnabled) {
         console.log("Shiprocket is disabled, skipping shipping integration");
+        return null;
+    }
+
+    // Check booking mode - if MANUAL, skip auto-sync (admin will manually sync)
+    if (settings.bookingMode === "MANUAL") {
+        console.log("Shiprocket booking mode is MANUAL, skipping auto-sync. Admin can manually sync from order details.");
         return null;
     }
 
@@ -651,14 +662,48 @@ export async function processOrderForShipping(orderId) {
         try {
             const awbResponse = await assignAWB(shiprocketResponse.shipment_id);
 
+            const awbCode = awbResponse.response?.data?.awb_code || null;
+            const courierName = awbResponse.response?.data?.courier_name || null;
+
             await prisma.order.update({
                 where: { id: orderId },
                 data: {
-                    awbCode: awbResponse.response?.data?.awb_code || null,
-                    courierName: awbResponse.response?.data?.courier_name || null,
+                    awbCode,
+                    courierName,
                     shiprocketStatus: "AWB_ASSIGNED",
                 },
             });
+
+            // Send tracking email to customer if AWB assigned
+            if (awbCode) {
+                try {
+                    const user = await prisma.user.findUnique({
+                        where: { id: order.userId },
+                        select: { email: true, name: true },
+                    });
+
+                    if (user && user.email) {
+                        const trackingEmailData = {
+                            userName: user.name || "Customer",
+                            orderNumber: order.orderNumber,
+                            awbCode,
+                            courierName: courierName || "Shiprocket",
+                            estimatedDelivery: null,
+                            shippingAddress: order.shippingAddress,
+                        };
+
+                        await sendEmail({
+                            email: user.email,
+                            subject: `Your Order #${order.orderNumber} Has Been Shipped! - Track with AWB: ${awbCode}`,
+                            html: getOrderShippedTemplate(trackingEmailData),
+                        });
+
+                        console.log(`Tracking email sent to ${user.email} for order ${order.orderNumber}`);
+                    }
+                } catch (emailError) {
+                    console.error("Failed to send tracking email:", emailError.message);
+                }
+            }
 
             // Try to schedule pickup
             try {

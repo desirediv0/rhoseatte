@@ -6,6 +6,7 @@ import {
   updateVideoReel,
   deleteVideoReel,
   toggleActiveVideoReel,
+  getVideoReelsByProductId,
 } from "../controllers/admin.video-reel.controller.js";
 import {
   verifyAdminJWT,
@@ -20,6 +21,13 @@ router.get(
   verifyAdminJWT,
   hasPermission("banners", "read"),
   getVideoReels
+);
+
+router.get(
+  "/video-reels/product/:productId",
+  verifyAdminJWT,
+  hasPermission("banners", "read"),
+  getVideoReelsByProductId
 );
 
 router.get(

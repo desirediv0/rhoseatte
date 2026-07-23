@@ -41,6 +41,7 @@ interface ShiprocketSettings {
     email: string | null;
     password: string | null;
     token: string | null;
+    bookingMode: string;
     defaultLength: number;
     defaultBreadth: number;
     defaultHeight: number;
@@ -70,6 +71,7 @@ export default function ShiprocketSettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isSavingDimensions, setIsSavingDimensions] = useState(false);
+    const [isSavingBookingMode, setIsSavingBookingMode] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
@@ -78,6 +80,7 @@ export default function ShiprocketSettingsPage() {
     // Form states
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [bookingMode, setBookingMode] = useState<string>("MANUAL");
     const [defaultLength, setDefaultLength] = useState(10);
     const [defaultBreadth, setDefaultBreadth] = useState(10);
     const [defaultHeight, setDefaultHeight] = useState(10);
@@ -112,6 +115,7 @@ export default function ShiprocketSettingsPage() {
                 setSettings(data);
                 setEmail(data.email || "");
                 setPassword(data.password || "");
+                setBookingMode(data.bookingMode || "MANUAL");
                 setDefaultLength(data.defaultLength || 10);
                 setDefaultBreadth(data.defaultBreadth || 10);
                 setDefaultHeight(data.defaultHeight || 10);
@@ -179,6 +183,26 @@ export default function ShiprocketSettingsPage() {
             toast.error(error.response?.data?.message || t("shiprocket_settings.messages.save_error"));
         } finally {
             setIsSavingDimensions(false);
+        }
+    };
+
+    // Save booking mode
+    const handleSaveBookingMode = async () => {
+        try {
+            setIsSavingBookingMode(true);
+            const response = await api.put("/api/admin/shiprocket/settings", {
+                bookingMode,
+            });
+
+            if (response.data.success) {
+                toast.success("Booking mode updated successfully!");
+                setSettings(response.data.data.settings);
+            }
+        } catch (error: any) {
+            console.error("Error saving booking mode:", error);
+            toast.error(error.response?.data?.message || "Failed to save booking mode");
+        } finally {
+            setIsSavingBookingMode(false);
         }
     };
 
@@ -518,6 +542,91 @@ export default function ShiprocketSettingsPage() {
                                 </>
                             ) : (
                                 t("shiprocket_settings.buttons.save")
+                            )}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Shipment Booking Mode */}
+            <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl">
+                <CardHeader className="px-6 pt-6 pb-4">
+                    <CardTitle className="text-lg font-semibold text-[#1F2937] flex items-center">
+                        <Package className="h-5 w-5 mr-2 text-[#4CAF50]" />
+                        Shipment Booking Mode
+                    </CardTitle>
+                    <p className="text-sm text-[#9CA3AF] mt-1">
+                        Choose how shipments are created in Shiprocket
+                    </p>
+                </CardHeader>
+                <CardContent className="px-6 pb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Auto Mode */}
+                        <div
+                            className={`p-5 border-2 rounded-xl cursor-pointer transition-all ${
+                                bookingMode === "AUTO"
+                                    ? "border-[#22C55E] bg-[#ECFDF5]"
+                                    : "border-[#E5E7EB] bg-white hover:border-[#9CA3AF]"
+                            }`}
+                            onClick={() => setBookingMode("AUTO")}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                    bookingMode === "AUTO"
+                                        ? "border-[#22C55E] bg-[#22C55E]"
+                                        : "border-[#D1D5DB]"
+                                }`}>
+                                    {bookingMode === "AUTO" && (
+                                        <div className="w-2 h-2 bg-white rounded-full" />
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-[#1F2937]">Auto (Recommended)</h3>
+                                    <p className="text-sm text-[#6B7280] mt-1">
+                                        Shipments are automatically created in Shiprocket when a customer places an order. AWB number and courier are assigned automatically.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Manual Mode */}
+                        <div
+                            className={`p-5 border-2 rounded-xl cursor-pointer transition-all ${
+                                bookingMode === "MANUAL"
+                                    ? "border-[#22C55E] bg-[#ECFDF5]"
+                                    : "border-[#E5E7EB] bg-white hover:border-[#9CA3AF]"
+                            }`}
+                            onClick={() => setBookingMode("MANUAL")}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                    bookingMode === "MANUAL"
+                                        ? "border-[#22C55E] bg-[#22C55E]"
+                                        : "border-[#D1D5DB]"
+                                }`}>
+                                    {bookingMode === "MANUAL" && (
+                                        <div className="w-2 h-2 bg-white rounded-full" />
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-[#1F2937]">Manual</h3>
+                                    <p className="text-sm text-[#6B7280] mt-1">
+                                        Shipments are NOT created automatically. You book each shipment manually from the order details page when ready to ship.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4 mt-4 border-t border-[#E5E7EB]">
+                        <Button onClick={handleSaveBookingMode} disabled={isSavingBookingMode}>
+                            {isSavingBookingMode ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                "Save Booking Mode"
                             )}
                         </Button>
                     </div>
