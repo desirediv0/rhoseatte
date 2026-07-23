@@ -106,6 +106,160 @@ const DEFAULT_TEMPLATE = `<!DOCTYPE html>
 </body>
 </html>`;
 
+const WELCOME_TEMPLATE = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #111827; background-color: #FAFBF9; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,62,41,0.08); border: 1px solid #E5E7EB; }
+    .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #ffffff; text-align: center; padding: 40px; }
+    .header h1 { margin: 0; font-size: 26px; font-weight: 800; }
+    .accent { display: inline-block; background: rgba(212,175,55,0.2); color: #D4AF37; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; margin-bottom: 16px; border: 1px solid rgba(212,175,55,0.3); }
+    .content { padding: 40px; }
+    .content h2 { color: #1a1a2e; font-size: 22px; margin-top: 0; }
+    .content p { font-size: 15px; color: #4b5563; line-height: 1.7; margin-bottom: 20px; }
+    .button { display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #D4AF37, #C5A028); color: #1a1a2e !important; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 15px; }
+    .benefits { background: #f8f9fa; padding: 24px; border-radius: 12px; margin: 24px 0; }
+    .benefits li { margin-bottom: 8px; font-size: 14px; color: #374151; }
+    .benefits li:before { content: '\\2713'; color: #D4AF37; font-weight: bold; margin-right: 8px; }
+    .footer { text-align: center; padding: 28px 30px; font-size: 12px; color: #9ca3af; background: #FAFBF9; border-top: 1px solid #E5E7EB; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="accent">Welcome</div>
+      <h1>{{STORE_NAME}}</h1>
+    </div>
+    <div class="content">
+      <h2>Welcome to {{STORE_NAME}}, {{USER_NAME}}! 🎉</h2>
+      <p>We're thrilled to have you join our family! You've just unlocked access to exclusive collections, premium handcrafted products, and member-only offers.</p>
+      <ul class="benefits">
+        <li>Exclusive member-only discounts</li>
+        <li>Early access to new arrivals</li>
+        <li>Free shipping on your first order</li>
+        <li>Priority customer support</li>
+      </ul>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="{{SHOP_URL}}" class="button">Start Shopping</a>
+      </div>
+      <p style="font-size: 13px; color: #9ca3af; text-align: center;">Use code <strong>WELCOME10</strong> for 10% off your first order!</p>
+    </div>
+    <div class="footer">
+      &copy; 2025 {{STORE_NAME}}. All rights reserved.<br>
+      <a href="{{UNSUBSCRIBE_URL}}">Unsubscribe</a>
+    </div>
+  </div>
+</body>
+</html>`;
+
+const SALE_TEMPLATE = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #111827; background-color: #FAFBF9; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,62,41,0.08); border: 1px solid #E5E7EB; }
+    .header { background: linear-gradient(135deg, #dc2626, #991b1b); color: #ffffff; text-align: center; padding: 40px; }
+    .header h1 { margin: 0; font-size: 28px; font-weight: 900; }
+    .badge { display: inline-block; background: #FBBF24; color: #1a1a2e; font-size: 13px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 20px; border-radius: 20px; margin-bottom: 16px; }
+    .content { padding: 40px; }
+    .content h2 { color: #dc2626; font-size: 24px; margin-top: 0; text-align: center; }
+    .content p { font-size: 15px; color: #4b5563; line-height: 1.7; margin-bottom: 20px; }
+    .discount-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px dashed #F59E0B; padding: 24px; border-radius: 12px; text-align: center; margin: 24px 0; }
+    .discount-code { font-size: 32px; font-weight: 900; color: #dc2626; letter-spacing: 0.1em; }
+    .button { display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #dc2626, #b91c1c); color: #ffffff !important; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 15px; }
+    .timer { text-align: center; font-size: 13px; color: #9ca3af; margin-top: 16px; }
+    .footer { text-align: center; padding: 28px 30px; font-size: 12px; color: #9ca3af; background: #FAFBF9; border-top: 1px solid #E5E7EB; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="badge">Limited Time Offer</div>
+      <h1>🔥 SALE IS LIVE!</h1>
+    </div>
+    <div class="content">
+      <h2>Up to 50% Off Everything!</h2>
+      <p>Hi {{USER_NAME}},</p>
+      <p>Our biggest sale of the season is here! Don't miss out on incredible deals across our entire collection. Premium products at unbeatable prices.</p>
+      <div class="discount-box">
+        <p style="margin-bottom: 8px; font-size: 14px; color: #92400e;">Use code at checkout</p>
+        <div class="discount-code">SALE50</div>
+        <p style="margin-top: 8px; font-size: 13px; color: #92400e;">50% off on all products</p>
+      </div>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="{{SHOP_URL}}" class="button">Shop the Sale</a>
+      </div>
+      <p class="timer">Hurry! Sale ends in 48 hours.</p>
+    </div>
+    <div class="footer">
+      &copy; 2025 {{STORE_NAME}}. All rights reserved.<br>
+      <a href="{{UNSUBSCRIBE_URL}}">Unsubscribe</a>
+    </div>
+  </div>
+</body>
+</html>`;
+
+const NEWSLETTER_TEMPLATE = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #111827; background-color: #FAFBF9; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,62,41,0.08); border: 1px solid #E5E7EB; }
+    .header { background: linear-gradient(135deg, #0f766e, #115e59); color: #ffffff; text-align: center; padding: 40px; }
+    .header h1 { margin: 0; font-size: 26px; font-weight: 800; }
+    .content { padding: 40px; }
+    .content h2 { color: #0f766e; font-size: 22px; margin-top: 0; }
+    .content p { font-size: 15px; color: #4b5563; line-height: 1.7; margin-bottom: 20px; }
+    .highlight { background: #f0fdfa; border-left: 4px solid #0f766e; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+    .highlight p { margin: 0; color: #065f46; font-size: 14px; }
+    .button { display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #0f766e, #115e59); color: #ffffff !important; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 15px; }
+    .footer { text-align: center; padding: 28px 30px; font-size: 12px; color: #9ca3af; background: #FAFBF9; border-top: 1px solid #E5E7EB; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>{{STORE_NAME}}</h1>
+    </div>
+    <div class="content">
+      <h2>{{SUBJECT}}</h2>
+      <p>Hi {{USER_NAME}},</p>
+      <p>Here's what's new at {{STORE_NAME}} this week:</p>
+      <div class="highlight">
+        <p><strong>✨ New Arrivals:</strong> Check out our latest handcrafted collection featuring premium designs.</p>
+      </div>
+      <div class="highlight">
+        <p><strong>📖 Behind the Scenes:</strong> Learn the story behind our most popular pieces.</p>
+      </div>
+      <div class="highlight">
+        <p><strong>🎁 Special Offer:</strong> Enjoy free shipping on orders over ₹999 this week only.</p>
+      </div>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="{{SHOP_URL}}" class="button">Read More</a>
+      </div>
+    </div>
+    <div class="footer">
+      &copy; 2025 {{STORE_NAME}}. All rights reserved.<br>
+      <a href="{{UNSUBSCRIBE_URL}}">Unsubscribe</a>
+    </div>
+  </div>
+</body>
+</html>`;
+
+const TEMPLATES = [
+  { id: "blank", name: "Blank Template", subject: "", html: DEFAULT_TEMPLATE },
+  { id: "welcome", name: "Welcome New User", subject: "Welcome to {{STORE_NAME}} - 10% Off Inside!", html: WELCOME_TEMPLATE },
+  { id: "sale", name: "Sale / Discount", subject: "🔥 Up to 50% Off - Limited Time Only!", html: SALE_TEMPLATE },
+  { id: "newsletter", name: "Newsletter", subject: "Your Weekly Update from {{STORE_NAME}}", html: NEWSLETTER_TEMPLATE },
+];
+
 export default function EmailMarketingPage() {
   const { admin } = useAuth();
   const [view, setView] = useState<View>("list");

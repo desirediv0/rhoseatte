@@ -235,7 +235,7 @@ export const sendCampaign = asyncHandler(async (req, res, next) => {
   // Get all active users with emails
   const users = await prisma.user.findMany({
     where: {
-      email: { not: null },
+      NOT: { email: null },
       isActive: true,
     },
     select: {
@@ -461,7 +461,7 @@ async function retryBatch(campaignId, subject, htmlContent, logIds) {
 export const getUserCount = asyncHandler(async (req, res, next) => {
   const count = await prisma.user.count({
     where: {
-      email: { not: null },
+      NOT: { email: null },
       isActive: true,
     },
   });
