@@ -466,7 +466,7 @@ export const getProductById = asyncHandler(async (req, res, next) => {
   const formattedProduct = {
     ...product,
     // Extract categories into a more usable format
-    categories: product.categories.map((pc) => ({
+    categories: (product.categories || []).map((pc) => ({
       id: pc.category.id,
       name: pc.category.name,
       description: pc.category.description,
@@ -475,22 +475,22 @@ export const getProductById = asyncHandler(async (req, res, next) => {
       isPrimary: pc.isPrimary,
     })),
     primaryCategory:
-      product.categories.find((pc) => pc.isPrimary)?.category ||
-      (product.categories.length > 0 ? product.categories[0].category : null),
-    subCategories: product.subCategories.map((psc) => ({
+      product.categories?.find((pc) => pc.isPrimary)?.category ||
+      (product.categories?.length > 0 ? product.categories[0].category : null),
+    subCategories: (product.subCategories || []).map((psc) => ({
       id: psc.subCategory.id,
       name: psc.subCategory.name,
       categoryId: psc.subCategory.categoryId,
     })),
-    images: product.images.map((image) => ({
+    images: (product.images || []).map((image) => ({
       ...image,
       url: getFileUrl(image.url),
     })),
-    notes: product.notes.map((note) => ({
+    notes: (product.notes || []).map((note) => ({
       ...note,
       image: getFileUrl(note.image),
     })),
-    variants: product.variants.map((variant) => {
+    variants: (product.variants || []).map((variant) => {
       const formatted = formatVariantWithAttributes(variant);
       return {
         ...formatted,
