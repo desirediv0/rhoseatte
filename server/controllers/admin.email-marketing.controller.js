@@ -459,12 +459,15 @@ async function retryBatch(campaignId, subject, htmlContent, logIds) {
 
 // Get user count for email marketing
 export const getUserCount = asyncHandler(async (req, res, next) => {
-  const count = await prisma.user.count({
+  const allUsers = await prisma.user.findMany({
     where: {
-      NOT: { email: null },
       isActive: true,
     },
+    select: {
+      email: true,
+    },
   });
+  const count = allUsers.filter((u) => u.email && u.email.trim().length > 0).length;
 
   res.status(200).json(
     new ApiResponsive(200, { count }, "User count fetched")
