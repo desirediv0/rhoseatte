@@ -684,11 +684,16 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           metaTitle: seo.metaTitle,
           metaDescription: seo.metaDescription,
           keywords,
-          tags: req.body.tags
-            ? Array.isArray(req.body.tags)
-              ? req.body.tags
-              : [req.body.tags]
-            : [],
+          tags: (() => {
+            if (!req.body.tags) return [];
+            if (Array.isArray(req.body.tags)) return req.body.tags;
+            try {
+              const parsed = JSON.parse(req.body.tags);
+              return Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+              return [req.body.tags];
+            }
+          })(),
           topBrandIds: req.body.topBrandIds
             ? typeof req.body.topBrandIds === "string"
               ? JSON.parse(req.body.topBrandIds)
