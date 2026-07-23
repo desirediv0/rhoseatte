@@ -452,6 +452,9 @@ export const getProductById = asyncHandler(async (req, res, next) => {
         },
         orderBy: { createdAt: "desc" },
       },
+      notes: {
+        orderBy: { order: "asc" },
+      },
     },
   });
 
