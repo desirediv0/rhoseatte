@@ -1473,3 +1473,37 @@ export const fragranceQuiz = {
     return api.get("/api/admin/fragrance-quiz/responses", { params });
   },
 };
+
+// ==================== Email Marketing Services ====================
+export const emailMarketing = {
+  getSmtpSettings: () => {
+    return api.get("/api/admin/email-marketing/smtp-settings");
+  },
+  getUserCount: () => {
+    return api.get("/api/admin/email-marketing/user-count");
+  },
+  getCampaigns: (params = {}) => {
+    return api.get("/api/admin/email-marketing/campaigns", { params });
+  },
+  getCampaignById: (campaignId: string) => {
+    return api.get(`/api/admin/email-marketing/campaigns/${campaignId}`);
+  },
+  createCampaign: (data: { subject: string; htmlContent: string; plainText?: string }) => {
+    return api.post("/api/admin/email-marketing/campaigns", data);
+  },
+  updateCampaign: (campaignId: string, data: { subject?: string; htmlContent?: string; plainText?: string }) => {
+    return api.put(`/api/admin/email-marketing/campaigns/${campaignId}`, data);
+  },
+  deleteCampaign: (campaignId: string) => {
+    return api.delete(`/api/admin/email-marketing/campaigns/${campaignId}`);
+  },
+  sendTestEmail: (data: { email: string; subject: string; htmlContent: string }) => {
+    return api.post("/api/admin/email-marketing/test-email", data);
+  },
+  sendCampaign: (campaignId: string) => {
+    return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/send`);
+  },
+  retryFailedEmails: (campaignId: string) => {
+    return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/retry`);
+  },
+};

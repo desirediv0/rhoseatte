@@ -52,6 +52,7 @@ import PricingSlabsPage from "./pages/PricingSlabsPage";
 import PaymentGatewaySettingsPage from "./pages/PaymentGatewaySettingsPage";
 import ShiprocketSettingsPage from "./pages/ShiprocketSettingsPage";
 import ShippingSettingsPage from "./pages/ShippingSettingsPage";
+import EmailMarketingPage from "./pages/EmailMarketingPage";
 import SettingsPage from "./pages/SettingsPage";
 import FragranceQuizDashboardPage from "./pages/FragranceQuizDashboardPage";
 import FragranceQuizQuestionsPage from "./pages/FragranceQuizQuestionsPage";
@@ -437,6 +438,18 @@ const App = () => {
                   action={Action.UPDATE}
                 >
                   <ShippingSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="email-marketing"
+              element={
+                <ProtectedRoute
+                  resource={Resource.SETTINGS}
+                  action={Action.CREATE}
+                >
+                  <EmailMarketingPage />
                 </ProtectedRoute>
               }
             />

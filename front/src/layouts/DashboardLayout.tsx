@@ -402,6 +402,18 @@ export default function DashboardLayout() {
                 )}
               />
 
+              {/* Email Marketing - Single Item */}
+              <NavItem
+                href="/email-marketing"
+                icon={<Mail className="h-[1.125rem] w-[1.125rem]" />}
+                title="Email Marketing"
+                hasPermission={hasPermissionFor(
+                  admin,
+                  Resource.SETTINGS,
+                  Action.CREATE
+                )}
+              />
+
               {/* Bundle Management - Single Item */}
               <NavItem
                 href="/bundles"
@@ -886,6 +898,19 @@ export default function DashboardLayout() {
                   admin,
                   Resource.BANNERS,
                   Action.READ
+                )}
+              />
+
+              {/* Email Marketing - Single Item */}
+              <NavItem
+                href="/email-marketing"
+                icon={<Mail className="h-[1.125rem] w-[1.125rem]" />}
+                title="Email Marketing"
+                onClick={toggleMobileMenu}
+                hasPermission={hasPermissionFor(
+                  admin,
+                  Resource.SETTINGS,
+                  Action.CREATE
                 )}
               />
 

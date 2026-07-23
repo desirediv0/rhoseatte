@@ -45,6 +45,7 @@ import adminSecretAccessRoutes from "./routes/admin.secretAccess.routes.js";
 import secretAccessRoutes from "./routes/secretAccess.routes.js";
 import adminFragranceQuizRoutes from "./routes/admin.fragrance-quiz.routes.js";
 import fragranceQuizRoutes from "./routes/fragrance-quiz.routes.js";
+import adminEmailMarketingRoutes from "./routes/admin.email-marketing.routes.js";
 
 const app = express();
 
@@ -172,7 +173,9 @@ app.use("/api/admin/bundles", adminBundleRoutes);
 app.use("/api/bundles", bundleRoutes);
 app.use("/api/admin/secret-access", adminSecretAccessRoutes);
 app.use("/api/secret-access", secretAccessRoutes);
-app.use("/api/admin/fragrance-quiz", adminFragranceQuizRoutes);
+  app.use("/api/admin/fragrance-quiz", adminFragranceQuizRoutes);
+
+  app.use("/api/admin", adminEmailMarketingRoutes);
 app.use("/api/fragrance-quiz", fragranceQuizRoutes);
 
 // Shiprocket webhook (public endpoint)
