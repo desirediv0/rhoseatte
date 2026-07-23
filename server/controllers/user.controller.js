@@ -5,7 +5,13 @@ import { prisma } from "../config/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
-import { getOrderCancelledTemplate, getAdminOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
+import {
+  getOrderCancelledTemplate,
+  getAdminOrderCancelledTemplate,
+  getResetTemplate,
+  getDeleteTemplate,
+  getEmailOtpTemplate,
+} from "../email/temp/EmailTemplate.js";
 import {
   generateAccessAndRefreshTokens,
   setCookies,
@@ -13,13 +19,6 @@ import {
 import { validatePassword } from "../helper/validatePassword.js";
 import { deleteFromS3, getFileUrl } from "../utils/deleteFromS3.js";
 import { processAndUploadImage } from "../middlewares/multer.middlerware.js";
-
-import sendEmail from "../utils/sendEmail.js";
-import {
-  getResetTemplate,
-  getDeleteTemplate,
-  getEmailOtpTemplate,
-} from "../email/temp/EmailTemplate.js";
 import {
   generateOTP,
   isValidOTP,
