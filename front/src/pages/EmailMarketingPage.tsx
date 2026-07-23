@@ -626,6 +626,29 @@ export default function EmailMarketingPage() {
                 </h2>
 
                 <div className="space-y-2">
+                    <Label>Choose Template</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {TEMPLATES.map((tpl) => (
+                        <button
+                          key={tpl.id}
+                          type="button"
+                          onClick={() => {
+                            setFormSubject(tpl.subject);
+                            setFormHtml(tpl.html);
+                          }}
+                          className={`p-3 rounded-lg border-2 text-left transition-all text-sm ${
+                            formHtml === tpl.html
+                              ? "border-primary bg-primary/5"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <p className="font-medium text-xs">{tpl.name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                <div className="space-y-2">
                   <Label>Email Subject</Label>
                   <Input
                     placeholder="Enter email subject..."
