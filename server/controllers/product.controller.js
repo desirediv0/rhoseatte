@@ -441,15 +441,6 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
           },
         },
       },
-      videoReelProducts: {
-        where: {
-          videoReel: { isActive: true },
-        },
-        include: {
-          videoReel: true,
-        },
-        orderBy: { position: "asc" },
-      },
     },
   });
 
@@ -460,6 +451,29 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
   // Get the category ID from the product's categories
   const categoryId =
     product.categories.length > 0 ? product.categories[0].category.id : null;
+
+  // Fetch videos separately to avoid breaking the main query
+  let videos = [];
+  try {
+    const videoReelProducts = await prisma.videoReelProduct.findMany({
+      where: {
+        productId: product.id,
+        videoReel: { isActive: true },
+      },
+      include: {
+        videoReel: true,
+      },
+      orderBy: { position: "asc" },
+    });
+    videos = videoReelProducts.map((vrp) => ({
+      id: vrp.videoReel.id,
+      title: vrp.videoReel.title,
+      videoUrl: vrp.videoReel.videoUrl ? getFileUrl(vrp.videoReel.videoUrl) : null,
+      position: vrp.position,
+    }));
+  } catch (e) {
+    console.warn("Could not load product videos:", e.message);
+  }
 
   // Format the response
   const formattedProduct = {
@@ -494,12 +508,7 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
     })),
     lifestyleImage: product.lifestyleImage ? getFileUrl(product.lifestyleImage) : null,
     // Format videos from video reels
-    videos: (product.videoReelProducts || []).map((vrp) => ({
-      id: vrp.videoReel.id,
-      title: vrp.videoReel.title,
-      videoUrl: vrp.videoReel.videoUrl ? getFileUrl(vrp.videoReel.videoUrl) : null,
-      position: vrp.position,
-    })),
+    videos,
     // Format variants with proper image URLs and attributes
     variants: await Promise.all(
       product.variants.map(async (variant) => {
