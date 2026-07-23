@@ -1570,8 +1570,16 @@ export function ProductForm({
       }
     } catch (error: any) {
       console.error("Error saving product:", error);
-      const errorMessage =
-        error.response?.data?.message || "Failed to save product";
+      const serverMessage = error.response?.data?.message;
+      const serverErrors = error.response?.data?.errors;
+      let errorMessage = "Failed to save product";
+      if (serverMessage) {
+        errorMessage = serverMessage;
+      } else if (serverErrors && serverErrors.length > 0) {
+        errorMessage = serverErrors.join(", ");
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

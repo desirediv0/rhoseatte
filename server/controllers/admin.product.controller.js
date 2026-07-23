@@ -1216,7 +1216,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
       const formattedProduct = {
         ...result,
         // Extract categories into a more usable format
-        categories: result.categories.map((pc) => ({
+        categories: (result.categories || []).map((pc) => ({
           id: pc.category.id,
           name: pc.category.name,
           description: pc.category.description,
@@ -1225,17 +1225,17 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           isPrimary: pc.isPrimary,
         })),
         primaryCategory:
-          result.categories.find((pc) => pc.isPrimary)?.category ||
-          (result.categories.length > 0 ? result.categories[0].category : null),
-        images: result.images.map((image) => ({
+          result.categories?.find((pc) => pc.isPrimary)?.category ||
+          (result.categories?.length > 0 ? result.categories[0].category : null),
+        images: (result.images || []).map((image) => ({
           ...image,
           url: getFileUrl(image.url),
         })),
-        notes: result.notes.map((note) => ({
+        notes: (result.notes || []).map((note) => ({
           ...note,
           image: getFileUrl(note.image),
         })),
-        variants: result.variants.map((variant) => ({
+        variants: (result.variants || []).map((variant) => ({
           ...variant,
           color: variant.color
             ? {
@@ -2690,7 +2690,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     const formattedProduct = {
       ...result,
       // Extract categories into a more usable format
-      categories: result.categories.map((pc) => ({
+      categories: (result.categories || []).map((pc) => ({
         id: pc.category.id,
         name: pc.category.name,
         description: pc.category.description,
@@ -2699,17 +2699,17 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
         isPrimary: pc.isPrimary,
       })),
       primaryCategory:
-        result.categories.find((pc) => pc.isPrimary)?.category ||
-        (result.categories.length > 0 ? result.categories[0].category : null),
-      images: result.images.map((image) => ({
+        result.categories?.find((pc) => pc.isPrimary)?.category ||
+        (result.categories?.length > 0 ? result.categories[0].category : null),
+      images: (result.images || []).map((image) => ({
         ...image,
         url: getFileUrl(image.url),
       })),
-      notes: result.notes.map((note) => ({
+      notes: (result.notes || []).map((note) => ({
         ...note,
         image: getFileUrl(note.image),
       })),
-      variants: formatVariantsWithAttributes(result.variants).map(
+      variants: formatVariantsWithAttributes(result.variants || []).map(
         (variant) => ({
           ...variant,
           images: variant.images
