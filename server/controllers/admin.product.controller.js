@@ -206,7 +206,7 @@ export const getProductsByType = asyncHandler(async (req, res, next) => {
     return {
       ...product,
       // Extract categories into a more usable format
-      categories: product.categories.map((pc) => ({
+      categories: (product.categories || []).map((pc) => ({
         id: pc.category.id,
         name: pc.category.name,
         description: pc.category.description,
@@ -215,13 +215,13 @@ export const getProductsByType = asyncHandler(async (req, res, next) => {
         isPrimary: pc.isPrimary,
       })),
       primaryCategory:
-        product.categories.find((pc) => pc.isPrimary)?.category ||
-        (product.categories.length > 0 ? product.categories[0].category : null),
-      images: product.images.map((image) => ({
+        product.categories?.find((pc) => pc.isPrimary)?.category ||
+        (product.categories?.length > 0 ? product.categories[0].category : null),
+      images: (product.images || []).map((image) => ({
         ...image,
         url: getFileUrl(image.url),
       })),
-      variants: product.variants.map((variant) => ({
+      variants: (product.variants || []).map((variant) => ({
         ...variant,
         color: variant.color
           ? {
@@ -349,7 +349,7 @@ export const getProducts = asyncHandler(async (req, res, next) => {
     return {
       ...product,
       // Extract categories into a more usable format
-      categories: product.categories.map((pc) => ({
+      categories: (product.categories || []).map((pc) => ({
         id: pc.category.id,
         name: pc.category.name,
         description: pc.category.description,
@@ -358,13 +358,13 @@ export const getProducts = asyncHandler(async (req, res, next) => {
         isPrimary: pc.isPrimary,
       })),
       primaryCategory:
-        product.categories.find((pc) => pc.isPrimary)?.category ||
-        (product.categories.length > 0 ? product.categories[0].category : null),
-      images: product.images.map((image) => ({
+        product.categories?.find((pc) => pc.isPrimary)?.category ||
+        (product.categories?.length > 0 ? product.categories[0].category : null),
+      images: (product.images || []).map((image) => ({
         ...image,
         url: getFileUrl(image.url),
       })),
-      variants: product.variants.map((variant) => ({
+      variants: (product.variants || []).map((variant) => ({
         ...variant,
         color: variant.color
           ? {
