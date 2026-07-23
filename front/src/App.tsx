@@ -53,6 +53,7 @@ import PaymentGatewaySettingsPage from "./pages/PaymentGatewaySettingsPage";
 import ShiprocketSettingsPage from "./pages/ShiprocketSettingsPage";
 import ShippingSettingsPage from "./pages/ShippingSettingsPage";
 import EmailMarketingPage from "./pages/EmailMarketingPage";
+import AdminHelpPage from "./pages/AdminHelpPage";
 import SettingsPage from "./pages/SettingsPage";
 import FragranceQuizDashboardPage from "./pages/FragranceQuizDashboardPage";
 import FragranceQuizQuestionsPage from "./pages/FragranceQuizQuestionsPage";
@@ -817,6 +818,16 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
+
+            <Route
+              path="help"
+              element={
+                <ProtectedRoute>
+                  <AdminHelpPage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
