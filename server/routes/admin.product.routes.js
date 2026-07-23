@@ -52,7 +52,21 @@ router.post(
   "/products",
   verifyAdminJWT,
   hasPermission("products", "create"),
-  uploadFiles.array("images"),
+  uploadFiles.fields([
+    { name: "images", maxCount: 20 },
+    { name: "lifestyleImage", maxCount: 1 },
+    { name: "variantImages_0", maxCount: 10 },
+    { name: "variantImages_1", maxCount: 10 },
+    { name: "variantImages_2", maxCount: 10 },
+    { name: "variantImages_3", maxCount: 10 },
+    { name: "variantImages_4", maxCount: 10 },
+    { name: "variantImages_5", maxCount: 10 },
+    { name: "noteImages_0", maxCount: 5 },
+    { name: "noteImages_1", maxCount: 5 },
+    { name: "noteImages_2", maxCount: 5 },
+    { name: "noteImages_3", maxCount: 5 },
+    { name: "noteImages_4", maxCount: 5 },
+  ]),
   createProduct
 );
 
@@ -60,7 +74,21 @@ router.patch(
   "/products/:productId",
   verifyAdminJWT,
   hasPermission("products", "update"),
-  uploadFiles.array("images"),
+  uploadFiles.fields([
+    { name: "images", maxCount: 20 },
+    { name: "lifestyleImage", maxCount: 1 },
+    { name: "variantImages_0", maxCount: 10 },
+    { name: "variantImages_1", maxCount: 10 },
+    { name: "variantImages_2", maxCount: 10 },
+    { name: "variantImages_3", maxCount: 10 },
+    { name: "variantImages_4", maxCount: 10 },
+    { name: "variantImages_5", maxCount: 10 },
+    { name: "noteImages_0", maxCount: 5 },
+    { name: "noteImages_1", maxCount: 5 },
+    { name: "noteImages_2", maxCount: 5 },
+    { name: "noteImages_3", maxCount: 5 },
+    { name: "noteImages_4", maxCount: 5 },
+  ]),
   updateProduct
 );
 

@@ -521,6 +521,17 @@ export const getProductById = asyncHandler(async (req, res, next) => {
 
 // Create a new product
 export const createProduct = asyncHandler(async (req, res, next) => {
+  // Flatten files from multer.fields() object to array
+  if (req.files && !Array.isArray(req.files)) {
+    const flatFiles = [];
+    for (const key of Object.keys(req.files)) {
+      if (Array.isArray(req.files[key])) {
+        flatFiles.push(...req.files[key]);
+      }
+    }
+    req.files = flatFiles;
+  }
+
   // Initialize variantIdsWithOrders for new product creation (empty since no existing variants)
   let variantIdsWithOrders = [];
 
@@ -1299,6 +1310,17 @@ export const createProduct = asyncHandler(async (req, res, next) => {
 
 // Update a product
 export const updateProduct = asyncHandler(async (req, res, next) => {
+  // Flatten files from multer.fields() object to array
+  if (req.files && !Array.isArray(req.files)) {
+    const flatFiles = [];
+    for (const key of Object.keys(req.files)) {
+      if (Array.isArray(req.files[key])) {
+        flatFiles.push(...req.files[key]);
+      }
+    }
+    req.files = flatFiles;
+  }
+
   const { productId } = req.params;
   const {
     name,
