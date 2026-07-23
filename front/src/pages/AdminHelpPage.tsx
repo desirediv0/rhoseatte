@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Package,
   ShoppingCart,
@@ -9,22 +7,14 @@ import {
   Settings,
   Mail,
   Truck,
-  CreditCard,
-  Eye,
   Sparkles,
   Shield,
   Layers,
   Video,
-  HelpCircle,
   ChevronDown,
   ChevronRight,
   Search,
   FileText,
-  Tag,
-  Ticket,
-  MessageSquare,
-  RotateCcw,
-  RotateCw,
   Tags,
   BookOpen,
   ExternalLink,

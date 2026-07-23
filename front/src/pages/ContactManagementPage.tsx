@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "@/api/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,7 +49,6 @@ import {
   Search,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { API_URL } from "@/config/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -117,12 +116,12 @@ const ContactManagementPage = () => {
   const fetchSubmissions = async () => {
     setIsLoading(true);
     try {
-      let url = `${API_URL}/admin/contact?page=${page}&limit=10`;
+      let url = `/admin/contact?page=${page}&limit=10`;
       if (selectedStatus) {
         url += `&status=${selectedStatus}`;
       }
 
-      const response = await axios.get<{ data: ContactSubmissionsResponse }>(
+      const response = await api.get<{ data: ContactSubmissionsResponse }>(
         url
       );
 
@@ -173,7 +172,7 @@ const ContactManagementPage = () => {
     if (!selectedSubmission) return;
 
     try {
-      await axios.delete(`${API_URL}/admin/contact/${selectedSubmission.id}`);
+      await api.delete(`/admin/contact/${selectedSubmission.id}`);
 
       toast({
         title: "Success",
@@ -200,8 +199,8 @@ const ContactManagementPage = () => {
     if (!selectedSubmission) return;
 
     try {
-      await axios.put(
-        `${API_URL}/admin/contact/${selectedSubmission.id}/status`,
+      await api.put(
+        `/admin/contact/${selectedSubmission.id}/status`,
         {
           status: values.status,
           notes: values.notes,
