@@ -233,9 +233,8 @@ export const sendCampaign = asyncHandler(async (req, res, next) => {
   }
 
   // Get all active users with emails
-  const users = await prisma.user.findMany({
+  const allUsers = await prisma.user.findMany({
     where: {
-      NOT: { email: null },
       isActive: true,
     },
     select: {
@@ -244,6 +243,7 @@ export const sendCampaign = asyncHandler(async (req, res, next) => {
       name: true,
     },
   });
+  const users = allUsers.filter((u) => u.email && u.email.trim().length > 0);
 
   if (users.length === 0) {
     throw new ApiError(400, "No users with email addresses found");
