@@ -1206,14 +1206,14 @@ export function ProductForm({
       formData.append("visibility", product.visibility);
       formData.append("gender", product.gender || "UNISEX");
       formData.append("hasVariants", String(hasVariants));
-      // Add rich text sections
-      formData.append("fragranceNotes", product.fragranceNotes || "");
-      formData.append("feelings", product.feelings || "");
-      formData.append("occasions", product.occasions || "");
-      formData.append("behindThePerfume", product.behindThePerfume || "");
-      formData.append("shippingReturn", product.shippingReturn || "");
-      formData.append("legalInfo", product.legalInfo || "");
-      formData.append("lifestyleDescription", product.lifestyleDescription || "");
+      // Add rich text sections (from sectionContents which JoditEditor updates)
+      formData.append("fragranceNotes", sectionContents.fragranceNotes || "");
+      formData.append("feelings", sectionContents.feelings || "");
+      formData.append("occasions", sectionContents.occasions || "");
+      formData.append("behindThePerfume", sectionContents.behindThePerfume || "");
+      formData.append("shippingReturn", sectionContents.shippingReturn || "");
+      formData.append("legalInfo", sectionContents.legalInfo || "");
+      formData.append("lifestyleDescription", sectionContents.lifestyleDescription || "");
 
       // Add lifestyle image if selected
       if (lifestyleImageFile) {

@@ -205,6 +205,7 @@ export const getProductsByType = asyncHandler(async (req, res, next) => {
     // Add image URLs and clean up the data
     return {
       ...product,
+      lifestyleImage: product.lifestyleImage ? getFileUrl(product.lifestyleImage) : null,
       // Extract categories into a more usable format
       categories: (product.categories || []).map((pc) => ({
         id: pc.category.id,
@@ -348,6 +349,8 @@ export const getProducts = asyncHandler(async (req, res, next) => {
     // Add image URLs and clean up the data
     return {
       ...product,
+      // Convert lifestyle image to full URL
+      lifestyleImage: product.lifestyleImage ? getFileUrl(product.lifestyleImage) : null,
       // Extract categories into a more usable format
       categories: (product.categories || []).map((pc) => ({
         id: pc.category.id,
@@ -368,20 +371,20 @@ export const getProducts = asyncHandler(async (req, res, next) => {
         ...variant,
         color: variant.color
           ? {
-            ...variant.color,
-            image: variant.color.image
-              ? getFileUrl(variant.color.image)
-              : null,
-          }
+              ...variant.color,
+              image: variant.color.image
+                ? getFileUrl(variant.color.image)
+                : null,
+            }
           : null,
         size: variant.size ? variant.size : null,
         images: variant.images
           ? variant.images
-            .sort((a, b) => a.order - b.order)
-            .map((image) => ({
-              ...image,
-              url: getFileUrl(image.url),
-            }))
+              .sort((a, b) => a.order - b.order)
+              .map((image) => ({
+                ...image,
+                url: getFileUrl(image.url),
+              }))
           : [],
       })),
     };
@@ -465,6 +468,8 @@ export const getProductById = asyncHandler(async (req, res, next) => {
   // Format the response data
   const formattedProduct = {
     ...product,
+    // Convert lifestyle image to full URL
+    lifestyleImage: product.lifestyleImage ? getFileUrl(product.lifestyleImage) : null,
     // Extract categories into a more usable format
     categories: (product.categories || []).map((pc) => ({
       id: pc.category.id,
@@ -496,9 +501,9 @@ export const getProductById = asyncHandler(async (req, res, next) => {
         ...formatted,
         images: variant.images
           ? variant.images.map((image) => ({
-            ...image,
-            url: getFileUrl(image.url),
-          }))
+              ...image,
+              url: getFileUrl(image.url),
+            }))
           : [],
       };
     }),
@@ -1231,6 +1236,8 @@ export const createProduct = asyncHandler(async (req, res, next) => {
     try {
       const formattedProduct = {
         ...result,
+        // Convert lifestyle image to full URL
+        lifestyleImage: result.lifestyleImage ? getFileUrl(result.lifestyleImage) : null,
         // Extract categories into a more usable format
         categories: (result.categories || []).map((pc) => ({
           id: pc.category.id,
@@ -2722,6 +2729,8 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     // Format the response data
     const formattedProduct = {
       ...result,
+      // Convert lifestyle image to full URL
+      lifestyleImage: result.lifestyleImage ? getFileUrl(result.lifestyleImage) : null,
       // Extract categories into a more usable format
       categories: (result.categories || []).map((pc) => ({
         id: pc.category.id,
