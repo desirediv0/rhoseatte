@@ -2777,24 +2777,20 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
 export const deleteProduct = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
 
-  // Check if product exists
+  // Check if product exists with all relations needed for cleanup
   const product = await prisma.product.findUnique({
     where: { id: productId },
     include: {
       orderItems: { take: 1 },
       notes: true,
+      images: true,
+      variants: {
+        include: {
+          images: true,
+        },
+      },
     },
   });
-
-  // Delete lifestyle image from storage if exists
-  if (product?.lifestyleImage) {
-    try {
-      await deleteFromS3(product.lifestyleImage);
-      console.log(`🗑️ Deleted lifestyle image from S3: ${product.lifestyleImage}`);
-    } catch (error) {
-      console.error(`❌ Failed to delete lifestyle image from S3: ${product.lifestyleImage}`, error);
-    }
-  }
 
   if (!product) {
     throw new ApiError(404, "Product not found");
@@ -2805,40 +2801,121 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
     where: { productId },
   });
 
-  // Delete note images from storage before soft-deleting product
+  // If product has orders, we cannot hard delete due to foreign key constraints
+  // Product has a `productSnapshot` in OrderItem so order history is preserved even without the product
+  if (orderCount > 0) {
+    // Soft delete for products with orders (archive)
+    await prisma.product.update({
+      where: { id: productId },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: req.user?.id || null,
+        isActive: false,
+      },
+    });
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponsive(
+          200,
+          { orderCount, archived: true },
+          `Product archived. It exists in ${orderCount} order(s) and cannot be permanently deleted.`
+        )
+      );
+  }
+
+  // === STEP 1: Delete all S3 images ===
+
+  // Delete lifestyle image
+  if (product.lifestyleImage) {
+    try {
+      await deleteFromS3(product.lifestyleImage);
+      console.log(`Deleted lifestyle image from S3: ${product.lifestyleImage}`);
+    } catch (error) {
+      console.error(`Failed to delete lifestyle image from S3: ${product.lifestyleImage}`, error);
+    }
+  }
+
+  // Delete product images from S3
+  if (product.images && product.images.length > 0) {
+    for (const image of product.images) {
+      try {
+        await deleteFromS3(image.url);
+        console.log(`Deleted product image from S3: ${image.url}`);
+      } catch (error) {
+        console.error(`Failed to delete product image from S3: ${image.url}`, error);
+      }
+    }
+  }
+
+  // Delete variant images from S3
+  if (product.variants && product.variants.length > 0) {
+    for (const variant of product.variants) {
+      if (variant.images && variant.images.length > 0) {
+        for (const variantImage of variant.images) {
+          try {
+            await deleteFromS3(variantImage.url);
+            console.log(`Deleted variant image from S3: ${variantImage.url}`);
+          } catch (error) {
+            console.error(`Failed to delete variant image from S3: ${variantImage.url}`, error);
+          }
+        }
+      }
+    }
+  }
+
+  // Delete note images from S3
   if (product.notes && product.notes.length > 0) {
     for (const note of product.notes) {
       try {
         await deleteFromS3(note.image);
-        console.log(`🗑️ Deleted note image from S3: ${note.image}`);
+        console.log(`Deleted note image from S3: ${note.image}`);
       } catch (error) {
-        console.error(`❌ Failed to delete note image from S3: ${note.image}`, error);
+        console.error(`Failed to delete note image from S3: ${note.image}`, error);
       }
     }
-    // Delete note records from database
-    await prisma.productNote.deleteMany({
-      where: { productId },
-    });
   }
 
-  // Soft delete - never hard delete products referenced by orders
-  await prisma.product.update({
-    where: { id: productId },
-    data: {
-      isDeleted: true,
-      deletedAt: new Date(),
-      deletedBy: req.user?.id || null,
-      isActive: false,
-    },
-  });
+  // === STEP 2: Delete all database relations then the product ===
 
-  const message = orderCount > 0
-    ? `Product archived. It exists in ${orderCount} order(s) and cannot be permanently deleted.`
-    : "Product archived successfully.";
+  await prisma.$transaction(async (tx) => {
+    // Delete notes
+    await tx.productNote.deleteMany({ where: { productId } });
+
+    // Delete variant attribute values and images explicitly
+    const variantIds = product.variants.map((v) => v.id);
+    if (variantIds.length > 0) {
+      await tx.variantAttributeValue.deleteMany({ where: { variantId: { in: variantIds } } });
+      await tx.productVariantImage.deleteMany({ where: { variantId: { in: variantIds } } });
+      await tx.mOQSetting.deleteMany({ where: { variantId: { in: variantIds } } });
+      await tx.pricingSlab.deleteMany({ where: { variantId: { in: variantIds } } });
+      await tx.productVariant.deleteMany({ where: { productId } });
+    }
+
+    // Delete product-level relations
+    await tx.productImage.deleteMany({ where: { productId } });
+    await tx.productCategory.deleteMany({ where: { productId } });
+    await tx.productSubCategory.deleteMany({ where: { productId } });
+    await tx.review.deleteMany({ where: { productId } });
+    await tx.wishlistItem.deleteMany({ where: { productId } });
+    await tx.couponProduct.deleteMany({ where: { productId } });
+    await tx.productSectionItem.deleteMany({ where: { productId } });
+    await tx.flashSaleProduct.deleteMany({ where: { productId } });
+    await tx.mOQSetting.deleteMany({ where: { productId } });
+    await tx.pricingSlab.deleteMany({ where: { productId } });
+    await tx.videoReelProduct.deleteMany({ where: { productId } });
+    await tx.fragranceQuizRuleProduct.deleteMany({ where: { productId } });
+    await tx.productView.deleteMany({ where: { productId } });
+
+    // Finally delete the product itself
+    await tx.product.delete({ where: { id: productId } });
+  });
 
   res
     .status(200)
-    .json(new ApiResponsive(200, { orderCount }, message));
+    .json(new ApiResponsive(200, { orderCount: 0 }, "Product deleted permanently."));
 });
 
 // Upload product image
