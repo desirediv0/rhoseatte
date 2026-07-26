@@ -669,6 +669,8 @@ export const createProduct = asyncHandler(async (req, res, next) => {
   }
 
   // Create the product with transaction to ensure variants are created as well
+  // Declare notesResult outside transaction so it's accessible after transaction completes
+  let notesResult;
   try {
     const result = await prisma.$transaction(async (prisma) => {
       // Create the product
@@ -1201,7 +1203,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
       }
 
       // Process product notes
-      const notesResult = await processProductNotes(
+      notesResult = await processProductNotes(
         prisma,
         notesJson,
         newProduct.id,
@@ -1288,6 +1290,8 @@ export const createProduct = asyncHandler(async (req, res, next) => {
           variantIdsWithOrders && variantIdsWithOrders.length > 0
             ? "Some variants could not be deleted because they have associated orders."
             : undefined,
+        // Include notes processing results
+        _notesResult: notesResult || { notes: [], skippedNotes: [], failedNotes: [] },
       };
 
       // Send success response
@@ -1511,6 +1515,8 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   }
 
   // Update the product with transaction to handle variants and images
+  // Declare notesResult outside transaction so it's accessible after transaction completes
+  let notesResult;
   try {
     const result = await prisma.$transaction(async (prisma) => {
       const hasVariantsValue = hasVariants === "true" || hasVariants === true;
@@ -2669,7 +2675,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       }
 
       // Process product notes
-      const notesResult = await processProductNotes(
+      notesResult = await processProductNotes(
         prisma,
         notesJson,
         productId,
