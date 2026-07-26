@@ -1322,7 +1322,7 @@ export function ProductForm({
         );
 
         // When updating, replace all existing images with the new set
-        if (mode === "update") {
+        if (mode === "edit") {
           formData.append("replaceAllImages", "true");
         }
 
