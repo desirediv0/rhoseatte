@@ -71,6 +71,16 @@ router.post(
     { name: "noteImages_7", maxCount: 1 },
     { name: "noteImages_8", maxCount: 1 },
     { name: "noteImages_9", maxCount: 1 },
+    { name: "noteImages_10", maxCount: 1 },
+    { name: "noteImages_11", maxCount: 1 },
+    { name: "noteImages_12", maxCount: 1 },
+    { name: "noteImages_13", maxCount: 1 },
+    { name: "noteImages_14", maxCount: 1 },
+    { name: "noteImages_15", maxCount: 1 },
+    { name: "noteImages_16", maxCount: 1 },
+    { name: "noteImages_17", maxCount: 1 },
+    { name: "noteImages_18", maxCount: 1 },
+    { name: "noteImages_19", maxCount: 1 },
   ]),
   createProduct
 );
@@ -98,6 +108,16 @@ router.patch(
     { name: "noteImages_7", maxCount: 1 },
     { name: "noteImages_8", maxCount: 1 },
     { name: "noteImages_9", maxCount: 1 },
+    { name: "noteImages_10", maxCount: 1 },
+    { name: "noteImages_11", maxCount: 1 },
+    { name: "noteImages_12", maxCount: 1 },
+    { name: "noteImages_13", maxCount: 1 },
+    { name: "noteImages_14", maxCount: 1 },
+    { name: "noteImages_15", maxCount: 1 },
+    { name: "noteImages_16", maxCount: 1 },
+    { name: "noteImages_17", maxCount: 1 },
+    { name: "noteImages_18", maxCount: 1 },
+    { name: "noteImages_19", maxCount: 1 },
   ]),
   updateProduct
 );

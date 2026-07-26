@@ -2463,7 +2463,7 @@ export function ProductForm({
               <h2 className="text-xl font-semibold">
                 Product Notes
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({productNotes.length}/10)
+                  ({productNotes.length}/20)
                 </span>
               </h2>
               <Button
@@ -2471,17 +2471,17 @@ export function ProductForm({
                 variant="outline"
                 size="sm"
                 onClick={handleAddNote}
-                disabled={productNotes.length >= 10}
+                disabled={productNotes.length >= 20}
               >
                 <Plus className="h-4 w-4 mr-1" /> Add Note
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Add note images with labels (e.g., Mandarin, Pear, Orange Blossom). These will be displayed on the product page. Max 10 notes, each image max 100MB.
+              Add note images with labels (e.g., Mandarin, Pear, Orange Blossom). These will be displayed on the product page. Max 20 notes, each image max 100MB.
             </p>
-            {productNotes.length >= 10 && (
+            {productNotes.length >= 20 && (
               <p className="text-xs text-amber-600 font-medium">
-                Maximum limit of 10 notes reached. Remove a note to add a new one.
+                Maximum limit of 20 notes reached. Remove a note to add a new one.
               </p>
             )}
 
