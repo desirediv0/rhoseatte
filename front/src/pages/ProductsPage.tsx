@@ -1321,6 +1321,11 @@ export function ProductForm({
           imageFiles
         );
 
+        // When updating, replace all existing images with the new set
+        if (mode === "update") {
+          formData.append("replaceAllImages", "true");
+        }
+
         // Add primary image index — only count new files (imageFiles), not existing server images
         const newImagePreviews = imagePreviews.filter((img) => !img.id);
         const primaryNewIndex = newImagePreviews.findIndex((img) => img.isPrimary === true);
@@ -1350,15 +1355,23 @@ export function ProductForm({
       }
 
       // Add topBrandIds, newBrandIds, hotBrandIds to formData
-      // Include single brand association if set
-      if ((product as any).brandId) {
-        formData.append("brandId", (product as any).brandId);
-      }
+      // Always send brandId (even empty string) so server can clear it when removed
+      formData.append("brandId", (product as any).brandId || "");
       formData.append("topBrandIds", JSON.stringify(product.topBrandIds || []));
       formData.append("newBrandIds", JSON.stringify(product.newBrandIds || []));
       formData.append("hotBrandIds", JSON.stringify(product.hotBrandIds || []));
 
       // Add product notes data and files
+      // Validate notes - new notes must have images
+      const notesWithoutImage = productNotes.filter(
+        (note) => !note.id && !note.file && !note.image
+      );
+      if (notesWithoutImage.length > 0) {
+        toast.error(
+          `${notesWithoutImage.length} note(s) have no image and will be skipped. Please add images to all notes.`
+        );
+      }
+
       const notesForSubmit = productNotes.map((note, index) => ({
         id: note.id,
         title: note.title,

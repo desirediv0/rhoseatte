@@ -55,6 +55,8 @@ const processProductNotes = async (tx, notesJson, productId, files, existingNote
 
   const existingMap = new Map(existingNotes.map((n) => [n.id, n]));
   const keptIds = new Set();
+  const skippedNotes = [];
+  const failedNotes = [];
 
   // Group note image files by index (noteImages_0, noteImages_1, ...)
   const noteImageFiles = {};
@@ -86,6 +88,8 @@ const processProductNotes = async (tx, notesJson, productId, files, existingNote
           imageUrl = await processAndUploadImage(file, `products/${productId}/notes`);
         } catch (e) {
           console.error("Error updating note image:", e);
+          // Keep existing image if upload fails
+          imageUrl = existing.image;
         }
       }
 
@@ -102,6 +106,8 @@ const processProductNotes = async (tx, notesJson, productId, files, existingNote
       // New note
       if (!file) {
         console.warn(`Note ${i} has no image, skipping`);
+        // Track skipped notes for response
+        skippedNotes.push({ index: i, title: note.title || `Note ${i + 1}` });
         continue;
       }
       try {
@@ -117,6 +123,8 @@ const processProductNotes = async (tx, notesJson, productId, files, existingNote
         resultNotes.push(created);
       } catch (e) {
         console.error("Error creating note:", e);
+        // Track failed notes for response
+        failedNotes.push({ index: i, title: note.title || `Note ${i + 1}`, error: e.message });
       }
     }
   }
@@ -133,7 +141,7 @@ const processProductNotes = async (tx, notesJson, productId, files, existingNote
     }
   }
 
-  return resultNotes;
+  return { notes: resultNotes, skippedNotes, failedNotes };
 };
 
 // Get products by type (featured, bestseller, trending, new, etc.)
@@ -1193,7 +1201,7 @@ export const createProduct = asyncHandler(async (req, res, next) => {
       }
 
       // Process product notes
-      await processProductNotes(
+      const notesResult = await processProductNotes(
         prisma,
         notesJson,
         newProduct.id,
@@ -2661,7 +2669,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
       }
 
       // Process product notes
-      await processProductNotes(
+      const notesResult = await processProductNotes(
         prisma,
         notesJson,
         productId,
@@ -2756,15 +2764,16 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
           ...variant,
           images: variant.images
             ? variant.images.map((img) => ({
-              ...img,
-              url: getFileUrl(img.url),
-            }))
+                ...img,
+                url: getFileUrl(img.url),
+              }))
             : [],
         })
       ),
       // Include message when variants couldn't be deleted due to orders
-      // (variantIdsWithOrders is only defined in update function, not create)
       _message: undefined,
+      // Include notes processing results
+      _notesResult: notesResult || { notes: [], skippedNotes: [], failedNotes: [] },
     };
 
     res
