@@ -987,6 +987,11 @@ export function ProductForm({
 
   const handleNoteImageChange = (index: number, file: File | null) => {
     if (!file) return;
+    const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+    if (file.size > MAX_SIZE) {
+      toast.error(`Image too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is 100MB.`);
+      return;
+    }
     const imageUrl = URL.createObjectURL(file);
     setProductNotes((prev) =>
       prev.map((note, i) =>
@@ -2442,19 +2447,30 @@ export function ProductForm({
           {/* Product Notes Section */}
           <div className="space-y-4 rounded-lg border p-4 bg-gray-50">
             <div className="flex items-center justify-between border-b pb-2">
-              <h2 className="text-xl font-semibold">Product Notes</h2>
+              <h2 className="text-xl font-semibold">
+                Product Notes
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({productNotes.length}/10)
+                </span>
+              </h2>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleAddNote}
+                disabled={productNotes.length >= 10}
               >
                 <Plus className="h-4 w-4 mr-1" /> Add Note
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Add note images with labels (e.g., Mandarin, Pear, Orange Blossom). These will be displayed on the product page.
+              Add note images with labels (e.g., Mandarin, Pear, Orange Blossom). These will be displayed on the product page. Max 10 notes, each image max 100MB.
             </p>
+            {productNotes.length >= 10 && (
+              <p className="text-xs text-amber-600 font-medium">
+                Maximum limit of 10 notes reached. Remove a note to add a new one.
+              </p>
+            )}
 
             {productNotes.length === 0 && (
               <p className="text-sm text-muted-foreground py-4 text-center">
