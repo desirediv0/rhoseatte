@@ -307,15 +307,6 @@ export default function CorporateGiftingPage() {
           </div>
         </div>
       </section>
-
-      {/* Section 3 container end */}
-      <div className="text-center pt-6 mt-6 border-t border-[#DECBF7]/60">
-        <p className="font-serif text-sm italic text-[#4A2478]">
-          &quot;We don&apos;t just deliver gifts, we help you create moments that people remember.&quot;
-        </p>
-      </div>
-
-
       {/* ── 3. OUR USP & OFFERINGS (From PDF Image 2) ── */}
       <section className="py-20 md:py-28 bg-[#FAF5FF] relative border-t border-[#ECE0FA]">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-16 space-y-16">
@@ -418,7 +409,7 @@ export default function CorporateGiftingPage() {
 
               <div className="text-center pt-6 mt-6 border-t border-[#DECBF7]/60">
                 <p className="font-serif text-sm italic text-[#4A2478]">
-                  "We don't just deliver gifts, we help you create moments that people remember."
+                  &quot;We don&apos;t just deliver gifts, we help you create moments that people remember.&quot;
                 </p>
               </div>
             </div>
