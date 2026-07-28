@@ -1015,7 +1015,7 @@ export default function CustomPerfumePage() {
                   </div>
                 </div>
 
-                <Button
+                <button
                   type="submit"
                   disabled={isPlacingOrder}
                   className="w-full py-4 bg-[#4A2478] hover:bg-[#38195E] text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all shadow-xl flex items-center justify-center gap-2"
@@ -1031,7 +1031,7 @@ export default function CustomPerfumePage() {
                       Pay ₹{selectedBottle?.price?.toLocaleString()} via Razorpay
                     </>
                   )}
-                </Button>
+                </button>
               </form>
             )}
           </div>
