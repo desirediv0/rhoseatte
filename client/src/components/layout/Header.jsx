@@ -239,31 +239,19 @@ export function Navbar() {
               </button>
 
               {/* Logo */}
-              <div className="flex items-center">
+              <div className="flex items-center shrink-0">
                 <Link href="/" className="flex items-center">
                   <Image
                     src="/logo.png"
                     alt="RHOSEATTE"
                     width={140}
-                    height={140}
+                    height={45}
                     className={cn(
-                      "h-10 md:h-11 lg:h-12 w-auto object-contain transition-all duration-500",
+                      "h-8 sm:h-9 md:h-10 lg:h-11 w-auto object-contain transition-all duration-300",
                       overHero ? "brightness-0 invert" : ""
                     )}
                     priority
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
                   />
-                  <span
-                    className={cn(
-                      "hidden font-display text-xl md:text-2xl lg:text-[26px] tracking-[0.12em] font-medium transition-all duration-500",
-                      overHero ? "text-white" : "text-noir"
-                    )}
-                  >
-                    RHOSEATTE
-                  </span>
                 </Link>
               </div>
 
