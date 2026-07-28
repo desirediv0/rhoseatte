@@ -8,7 +8,6 @@ import {
   IconMail,
   IconPhone,
   IconMapPin,
-  IconArrowRight,
   IconArrowUpRight,
   IconBrandInstagram,
   IconBrandFacebook,
@@ -19,7 +18,6 @@ const WHATSAPP_NUMBER = "918796449692";
 
 export const Footer = () => {
   const [categories, setCategories] = useState([]);
-  const [email, setEmail] = useState("");
 
   useEffect(() => {
     fetchApi("/public/categories")
@@ -29,9 +27,9 @@ export const Footer = () => {
 
   const shopLinks = categories.length > 0
     ? [
-        ...categories.map((c) => ({ label: c.name, href: `/category/${c.slug}` })),
-        { label: "Secret Collection", href: "/secret-collection" },
-      ]
+      ...categories.map((c) => ({ label: c.name, href: `/category/${c.slug}` })),
+      { label: "Secret Collection", href: "/secret-collection" },
+    ]
     : [
       { label: "Fragrances", href: "/products" },
       { label: "Collections", href: "/categories" },
@@ -40,59 +38,11 @@ export const Footer = () => {
       { label: "Secret Collection", href: "/secret-collection" },
     ];
 
-  const handleConcierge = (e) => {
-    e.preventDefault();
-    const msg = encodeURIComponent(
-      `Hello RHOSEATTE — I'd like to learn more about your luxury fragrances.${email ? ` My email: ${email}` : ""}`
-    );
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, "_blank", "noopener,noreferrer");
-  };
+
 
   return (
     <footer className="relative overflow-hidden" style={{ backgroundColor: "#0B0B0B" }}>
-      {/* Newsletter Section */}
-      <div className="relative z-10 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-        <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-20 md:py-24 lg:py-28 text-center">
-          <span className="text-[10px] uppercase tracking-[0.3em] font-medium block mb-4" style={{ color: "#B8976A" }}>
-            Join The Maison
-          </span>
-          <h3 className="font-display text-2xl sm:text-3xl md:text-4xl text-white font-medium leading-tight mb-4">
-            Receive exclusive launches,<br className="hidden sm:block" />
-            <span className="italic" style={{ color: "#B8976A" }}> private collections</span><br className="hidden sm:block" />
-            and fragrance stories.
-          </h3>
-          <p className="text-[14px] mt-4 max-w-md mx-auto leading-relaxed font-light" style={{ color: "rgba(255,255,255,0.4)" }}>
-            Be the first to experience new creations from the maison.
-          </p>
-          <form onSubmit={handleConcierge} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto mt-10">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Your email address"
-              className="flex-1 px-5 bg-transparent text-[13px] text-white placeholder:text-white/30 focus:outline-none transition-colors"
-              style={{
-                height: "52px",
-                borderRadius: "8px",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            />
-            <button
-              type="submit"
-              className="flex items-center justify-center gap-2 text-[11px] uppercase tracking-[0.15em] font-medium text-noir hover:text-white transition-colors duration-500"
-              style={{
-                height: "52px",
-                padding: "0 28px",
-                borderRadius: "8px",
-                backgroundColor: "#B8976A",
-              }}
-            >
-              Subscribe
-              <IconArrowRight className="h-4 w-4" stroke={1.5} />
-            </button>
-          </form>
-        </div>
-      </div>
+
 
       {/* Main Footer */}
       <div className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 lg:px-10 pt-16 md:pt-20 pb-14">
@@ -195,22 +145,28 @@ export const Footer = () => {
             </h4>
             <ul className="space-y-3">
               {[
-                { label: "About", href: "/about" },
+                { label: "About / Our Story", href: "/about" },
                 { label: "Journal", href: "/blog" },
                 { label: "Fragrance Finder", href: "/fragrance-finder" },
+                { label: "Corporate Gifting", href: "/corporate-gifting", highlighted: true },
+                { label: "Custom Perfume", href: "/custom-perfume", highlighted: true },
                 { label: "Contact", href: "/contact" },
-                { label: "Our Story", href: "/about" },
-              ].map(({ label, href }) => (
+              ].map(({ label, href, highlighted }) => (
                 <li key={label}>
                   <Link
                     href={href}
-                    className="text-[13px] font-light transition-colors duration-300 hover:text-white flex items-center gap-2 group"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
+                    className={`text-[13px] font-light transition-all duration-300 flex items-center gap-2 group ${highlighted
+                      ? "px-2.5 py-1 rounded border border-[#B8976A] text-[#B8976A] hover:bg-[#B8976A] hover:text-noir font-medium"
+                      : "hover:text-white"
+                      }`}
+                    style={highlighted ? {} : { color: "rgba(255,255,255,0.4)" }}
                   >
-                    <span
-                      className="block h-px w-0 group-hover:w-3 transition-all duration-300"
-                      style={{ backgroundColor: "#B8976A" }}
-                    />
+                    {!highlighted && (
+                      <span
+                        className="block h-px w-0 group-hover:w-3 transition-all duration-300"
+                        style={{ backgroundColor: "#B8976A" }}
+                      />
+                    )}
                     {label}
                   </Link>
                 </li>

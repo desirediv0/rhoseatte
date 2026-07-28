@@ -5,8 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import {
     Trash2,
     Plus,
@@ -14,7 +13,7 @@ import {
     ShoppingBag,
     AlertCircle,
     Loader2,
-    Check,
+
     ArrowLeft,
     Tag,
     X,
@@ -25,8 +24,8 @@ import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 
 const getImageUrl = (image) => {
-    if (!image) return "/placeholder.jpg";
-    if (image.startsWith("http")) return image;
+    if (!image) return "/rhoseatte_lavender_perfume.png";
+    if (image.startsWith("http") || image.startsWith("/")) return image;
     return `https://desirediv-storage.blr1.digitaloceanspaces.com/${image}`;
 };
 
@@ -42,7 +41,7 @@ const CartItem = React.memo(
                 if (item.bundleCampaign?.banner) {
                     return getImageUrl(item.bundleCampaign.banner);
                 }
-                return "/placeholder.jpg";
+                return "/rhoseatte_lavender_perfume.png";
             }
             if (item.variant?.images && Array.isArray(item.variant.images) && item.variant.images.length > 0) {
                 const primaryImage = item.variant.images.find((img) => img.isPrimary);
@@ -51,7 +50,7 @@ const CartItem = React.memo(
             }
             if (item.product?.image) return getImageUrl(item.product.image);
             if (item.image) return getImageUrl(item.image);
-            return "/placeholder.jpg";
+            return "/rhoseatte_lavender_perfume.png";
         };
 
         const getVariantName = () => {
@@ -72,7 +71,9 @@ const CartItem = React.memo(
             : item.productName || item.product?.name || "Product";
         const productSlug = isBundle
             ? `/bundles/${item.bundleCampaign?.slug}`
-            : item.productSlug || item.product?.slug || "#";
+            : item.isCustom
+                ? "/custom-perfume"
+                : item.productSlug || item.product?.slug || "#";
         const sku = item.variant?.sku;
 
         return (
@@ -94,6 +95,12 @@ const CartItem = React.memo(
                                     BUNDLE
                                 </div>
                             )}
+                            {item.isCustom && (
+                                <div className="absolute top-1.5 left-1.5 bg-[#4A2478] text-white text-[7px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 rounded-sm flex items-center gap-1">
+                                    <Package className="h-2.5 w-2.5" />
+                                    BESPOKE
+                                </div>
+                            )}
                         </div>
                     </Link>
 
@@ -105,6 +112,21 @@ const CartItem = React.memo(
                                     {productName}
                                 </h3>
                             </Link>
+
+                            {/* Custom Bespoke Perfume Details */}
+                            {item.isCustom && item.customDetails && (
+                                <div className="mt-2 space-y-1 p-2.5 bg-[#FAF6FF] border border-[#E8DAFA] rounded-lg text-[11px] text-[#4A2478]">
+                                    <div className="flex items-center gap-1 font-bold uppercase text-[9px] tracking-wider text-[#7E52BC]">
+                                        ✨ Bespoke Formula Specification
+                                    </div>
+                                    <p><strong>Base:</strong> {item.customDetails.baseNotes || "N/A"}</p>
+                                    <p><strong>Heart:</strong> {item.customDetails.heartNotes || "N/A"}</p>
+                                    <p><strong>Top:</strong> {item.customDetails.topNotes || "N/A"}</p>
+                                    {item.customDetails.engraving && item.customDetails.engraving !== "N/A" && (
+                                        <p className="text-[#B8976A] font-semibold"><strong>Engraving:</strong> &quot;{item.customDetails.engraving}&quot;</p>
+                                    )}
+                                </div>
+                            )}
 
                             {isBundle && item.bundleData?.selectedProducts?.length > 0 && (
                                 <div className="mt-1.5">
@@ -313,6 +335,12 @@ export default function CartPage() {
     const [couponError, setCouponError] = useState("");
     const router = useRouter();
 
+    React.useEffect(() => {
+        if (!isAuthenticated && !loading) {
+            router.push("/auth?redirect=cart");
+        }
+    }, [isAuthenticated, loading, router]);
+
     const handleQuantityChange = useCallback(
         async (cartItemId, currentQuantity, change) => {
             const newQuantity = currentQuantity + change;
@@ -385,7 +413,7 @@ export default function CartPage() {
         toast.success("Coupon removed");
     }, [removeCoupon]);
 
-    const totals = useMemo(() => getCartTotals(), [cart, coupon, getCartTotals]);
+    const totals = useMemo(() => getCartTotals(), [getCartTotals]);
 
     const handleCheckout = useCallback(() => {
         if (!isAuthenticated && hidePricesForGuests) {

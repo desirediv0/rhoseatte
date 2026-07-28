@@ -28,7 +28,7 @@ import {
   Video,
   Shield,
   Sparkles,
-  // Upload,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SafeRender } from "@/components/SafeRender";
@@ -508,6 +508,14 @@ export default function DashboardLayout() {
                     ),
                   },
                 ]}
+              />
+
+              {/* Custom Fragrance Management */}
+              <NavItem
+                href="/custom-perfume"
+                icon={<FlaskConical className="h-[1.125rem] w-[1.125rem]" />}
+                title="Custom Fragrance"
+                hasPermission={true}
               />
 
               {/* Products - Collapsible */}

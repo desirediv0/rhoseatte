@@ -28,8 +28,8 @@ import AddressForm from "@/components/AddressForm";
 import Image from "next/image";
 
 const getImageUrl = (image) => {
-    if (!image) return "/placeholder.jpg";
-    if (image.startsWith("http")) return image;
+    if (!image) return "/rhoseatte_lavender_perfume.png";
+    if (image.startsWith("http") || image.startsWith("/")) return image;
     return `https://desirediv-storage.blr1.digitaloceanspaces.com/${image}`;
 };
 

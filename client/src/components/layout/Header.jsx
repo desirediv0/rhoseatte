@@ -23,7 +23,17 @@ import {
   IconMapPin,
   IconPhone,
   IconBrandInstagram,
+  IconBrandFacebook,
   IconArrowUpRight,
+  IconHome,
+  IconBuildingStore,
+  IconCategory,
+  IconCompass,
+  IconGift,
+  IconFlask,
+  IconInfoCircle,
+  IconMoodSmile,
+  IconTruck,
 } from "@tabler/icons-react";
 
 const CONTACT = {
@@ -33,13 +43,15 @@ const CONTACT = {
 };
 
 const NAV_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/products", label: "Shop" },
-  { href: "/bundles", label: "Bundles" },
-  { href: "/categories", label: "Collections" },
-  { href: "/fragrance-finder", label: "Fragrance Finder" },
-  { href: "/about", label: "The Maison" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", label: "Home", icon: IconHome },
+  { href: "/products", label: "Shop", icon: IconBuildingStore },
+  { href: "/bundles", label: "Bundle", icon: IconPackage },
+  { href: "/categories", label: "Collection", icon: IconCategory },
+  { href: "/fragrance-finder", label: "Fragrance Finder", icon: IconCompass },
+  { href: "/corporate-gifting", label: "Corporate Gifting", icon: IconGift },
+  { href: "/custom-perfume", label: "Custom Perfume", icon: IconFlask },
+  { href: "/about", label: "About", icon: IconInfoCircle },
+  { href: "/contact", label: "Contact", icon: IconPhone },
 ];
 
 const ANNOUNCEMENTS = [
@@ -256,8 +268,8 @@ export function Navbar() {
               </div>
 
               {/* Desktop: Center Navigation */}
-              <nav className="hidden lg:flex items-center justify-center flex-1">
-                <div className="flex items-center gap-1">
+              <nav className="hidden lg:flex items-center justify-center flex-1 mx-2">
+                <div className="flex items-center gap-0.5 xl:gap-1.5 2xl:gap-2">
                   {NAV_LINKS.map(({ href, label }) => {
                     const active = pathname === href;
                     return (
@@ -265,20 +277,20 @@ export function Navbar() {
                         key={href}
                         href={href}
                         className={cn(
-                          "relative px-5 py-2.5 text-[16px] tracking-[0.04em] font-medium transition-all duration-300 rounded-[6px]",
+                          "relative px-2.5 xl:px-3.5 2xl:px-4 py-2 text-[13px] xl:text-[14px] 2xl:text-[15px] tracking-[0.02em] font-medium transition-all duration-300 rounded-[6px] whitespace-nowrap",
                           overHero
                             ? active
                               ? "text-gold-light"
                               : "text-white/90 hover:text-white"
                             : active
-                              ? "text-noir"
+                              ? "text-noir font-semibold"
                               : "text-noir/70 hover:text-noir"
                         )}
                       >
                         {label}
                         <span
                           className={cn(
-                            "absolute bottom-1 left-5 right-5 h-px transition-all duration-300",
+                            "absolute bottom-0.5 left-2.5 right-2.5 xl:left-3.5 xl:right-3.5 h-[2px] transition-all duration-300",
                             overHero ? "bg-gold-light" : "bg-gold",
                             active ? "scale-x-100 opacity-100" : "scale-x-0 opacity-0"
                           )}
@@ -318,7 +330,7 @@ export function Navbar() {
                 </Link>
 
                 <ClientOnly>
-                  <Link href="/cart" className={iconBtn} aria-label="Cart">
+                  <Link href={isAuthenticated ? "/cart" : "/auth?redirect=cart"} className={iconBtn} aria-label="Cart">
                     <IconShoppingBag className="h-6 w-6" stroke={1.5} />
                     {cartCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center bg-gold px-1">
@@ -327,6 +339,10 @@ export function Navbar() {
                     )}
                   </Link>
                 </ClientOnly>
+
+                <Link href="/about" className={cn(iconBtn, "hidden sm:flex")} aria-label="Experience">
+                  <IconMoodSmile className="h-6 w-6" stroke={1.5} />
+                </Link>
 
                 <button
                   onClick={() => setIsMenuOpen(true)}
@@ -504,7 +520,7 @@ function MobileMenu({ isOpen, onClose, user, isAuthenticated, categories, cartCo
                 <p className="text-[10px] uppercase tracking-[0.3em] text-stone font-medium mb-4">
                   Navigation
                 </p>
-                {NAV_LINKS.map(({ href, label }, i) => (
+                {NAV_LINKS.map(({ href, label, icon: Icon }, i) => (
                   <motion.div
                     key={href}
                     initial={{ opacity: 0, x: -16 }}
@@ -515,14 +531,17 @@ function MobileMenu({ isOpen, onClose, user, isAuthenticated, categories, cartCo
                       href={href}
                       onClick={onClose}
                       className={cn(
-                        "flex items-center justify-between py-4 group",
-                        pathname === href ? "text-gold" : "text-noir/70"
+                        "flex items-center justify-between py-3.5 group border-b border-line/30",
+                        pathname === href ? "text-gold font-medium" : "text-noir/80 hover:text-noir"
                       )}
                     >
-                      <span className="text-[18px] tracking-wide font-medium">
-                        {label}
-                      </span>
-                      <IconArrowUpRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" stroke={1.5} />
+                      <div className="flex items-center gap-3">
+                        {Icon && <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-gold shrink-0" stroke={1.5} />}
+                        <span className="text-[15px] sm:text-[16px] tracking-wide font-medium">
+                          {label}
+                        </span>
+                      </div>
+                      <IconArrowUpRight className="h-4 w-4 opacity-40 group-hover:opacity-100 transition-opacity" stroke={1.5} />
                     </Link>
                   </motion.div>
                 ))}

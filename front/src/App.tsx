@@ -60,6 +60,7 @@ import FragranceQuizQuestionsPage from "./pages/FragranceQuizQuestionsPage";
 import FragranceQuizRulesPage from "./pages/FragranceQuizRulesPage";
 import FragranceQuizAnalyticsPage from "./pages/FragranceQuizAnalyticsPage";
 import FragranceQuizResponsesPage from "./pages/FragranceQuizResponsesPage";
+import CustomPerfumeManagementPage from "./pages/CustomPerfumeManagementPage";
 import { LanguageProvider } from "./context/LanguageContext";
 
 // Protected Route Component
@@ -451,6 +452,15 @@ const App = () => {
                   action={Action.CREATE}
                 >
                   <EmailMarketingPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="custom-perfume"
+              element={
+                <ProtectedRoute>
+                  <CustomPerfumeManagementPage />
                 </ProtectedRoute>
               }
             />

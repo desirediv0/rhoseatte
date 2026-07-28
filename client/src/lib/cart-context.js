@@ -210,21 +210,53 @@ export function CartProvider({ children }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cart.subtotal, cart.items?.length, isAuthenticated]);
 
-    // Get cart from server (for authenticated users)
+    // Get cart from server (for authenticated users) or local guest cart
     const fetchCart = async () => {
-        if (!isAuthenticated) return;
-
         setLoading(true);
         try {
-            const res = await fetchApi("/cart", {
-                credentials: "include",
-            });
-            setCart(res.data);
-            return res.data;
+            let serverItems = [];
+            if (isAuthenticated) {
+                try {
+                    const res = await fetchApi("/cart", { credentials: "include" });
+                    serverItems = res.data?.items || [];
+                } catch (e) {
+                    console.warn("Server cart fetch warning, utilizing local guest cart:", e);
+                }
+            }
+
+            const guestCart = getGuestCart();
+            let mergedItems = [...serverItems];
+
+            if (guestCart.items && guestCart.items.length > 0) {
+                const existingIds = new Set(mergedItems.map((i) => i.id || i.productVariantId));
+                for (const gItem of guestCart.items) {
+                    const gId = gItem.id || gItem.productVariantId;
+                    if (gId && !existingIds.has(gId)) {
+                        mergedItems.push(gItem);
+                    }
+                }
+            }
+
+            const subtotal = mergedItems
+                .reduce((sum, item) => sum + parseFloat(item.subtotal || (parseFloat(item.price) * item.quantity) || 0), 0)
+                .toFixed(2);
+            const itemCount = mergedItems.length;
+            const totalQuantity = mergedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+            const finalCart = {
+                items: mergedItems,
+                subtotal,
+                itemCount,
+                totalQuantity,
+            };
+
+            setCart(finalCart);
+            return finalCart;
         } catch (err) {
             setError(err.message);
-            // Set empty cart on error
-            setCart({ items: [], subtotal: 0, itemCount: 0, totalQuantity: 0 });
+            const guestCart = getGuestCart();
+            setCart(guestCart);
+            return guestCart;
         } finally {
             setLoading(false);
         }
@@ -234,25 +266,34 @@ export function CartProvider({ children }) {
     const addToCart = async (productVariantId, quantity = 1) => {
         if (!mounted) return;
 
+        // Require authentication for adding to cart
+        if (!isAuthenticated) {
+            toast.info("Please log in to add items to your cart");
+            if (typeof window !== "undefined") {
+                window.location.href = "/auth?redirect=cart";
+            }
+            return;
+        }
+
         setLoading(true);
         try {
-            if (isAuthenticated) {
-                // User is logged in, add to server cart
-                const res = await fetchApi("/cart/add", {
-                    method: "POST",
-                    credentials: "include",
-                    body: JSON.stringify({ productVariantId, quantity }),
-                });
+            // ALWAYS save to local guest cart first so non-logged-in users persist items reliably
+            const updatedGuestCart = await addToGuestCart(productVariantId, quantity);
 
-                // Update cart immediately to show updated counter in the UI
-                await fetchCart();
-                return res.data;
-            } else {
-                // User is not logged in, add to guest cart
-                const updatedCart = await addToGuestCart(productVariantId, quantity);
-                setCart(updatedCart);
-                return updatedCart;
+            if (isAuthenticated && typeof productVariantId !== "object") {
+                try {
+                    await fetchApi("/cart/add", {
+                        method: "POST",
+                        credentials: "include",
+                        body: JSON.stringify({ productVariantId, quantity }),
+                    });
+                } catch (e) {
+                    console.warn("Server cart add warning, using local item:", e);
+                }
             }
+
+            await fetchCart();
+            return updatedGuestCart;
         } catch (err) {
             setError(err.message);
             toast.error(err.message || "Failed to add item to cart");
@@ -353,44 +394,30 @@ export function CartProvider({ children }) {
     const removeFromCart = async (cartItemId) => {
         setCartItemsLoading((prev) => ({ ...prev, [cartItemId]: true }));
         try {
-            if (isAuthenticated) {
+            const isLocalItem = typeof cartItemId === "string" && (cartItemId.startsWith("custom") || cartItemId.startsWith("guest"));
+            
+            if (isAuthenticated && !isLocalItem) {
                 // User is logged in, remove from server cart
                 const res = await fetchApi(`/cart/remove/${cartItemId}`, {
                     method: "DELETE",
                     credentials: "include",
                 });
-
-                // Update cart locally to avoid full reload
-                setCart((prevCart) => {
-                    const itemToRemove = prevCart.items.find(
-                        (item) => item.id === cartItemId
-                    );
-                    if (!itemToRemove) return prevCart;
-
-                    const itemQuantity = itemToRemove.quantity;
-                    const itemSubtotal = parseFloat(itemToRemove.subtotal);
-
-                    return {
-                        ...prevCart,
-                        items: prevCart.items.filter((item) => item.id !== cartItemId),
-                        itemCount: prevCart.itemCount - 1,
-                        totalQuantity: prevCart.totalQuantity - itemQuantity,
-                        subtotal: (parseFloat(prevCart.subtotal) - itemSubtotal).toFixed(2),
-                    };
-                });
-
-                // Fetch the updated cart in the background to ensure consistency
-                fetchCart();
+                await fetchCart();
                 return res.data;
             } else {
-                // User is not logged in, remove from guest cart
+                // Remove from local/guest cart
                 const updatedCart = removeFromGuestCart(cartItemId);
-                setCart(updatedCart);
+                if (isAuthenticated) {
+                    await fetchCart();
+                } else {
+                    setCart(updatedCart);
+                }
                 return updatedCart;
             }
         } catch (err) {
-            setError(err.message);
-            throw err;
+            const updatedCart = removeFromGuestCart(cartItemId);
+            setCart(updatedCart);
+            return updatedCart;
         } finally {
             setCartItemsLoading((prev) => ({ ...prev, [cartItemId]: false }));
         }
@@ -544,12 +571,7 @@ export function CartProvider({ children }) {
     // Get cart item count for navbar display
     const getCartItemCount = () => {
         if (!mounted) return 0; // Return 0 during SSR to prevent hydration mismatch
-
-        if (isAuthenticated) {
-            return cart.totalQuantity || 0;
-        } else {
-            return getGuestCartItemCount();
-        }
+        return cart.totalQuantity || cart.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
     };
 
     const value = {

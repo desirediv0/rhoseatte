@@ -82,7 +82,7 @@ export const FeaturedProducts = () => {
               Featured
             </div>
             <h2 className="text-2xl md:text-4xl   text-gray-900 mb-2">Featured Products</h2>
-            <p className="text-gray-600 max-w-xl mx-auto text-sm">Handpicked selection of premium audio equipment</p>
+            <p className="text-gray-600 max-w-xl mx-auto text-sm">Handpicked selection of luxury fragrances</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {[...Array(6)].map((_, index) => (
@@ -108,7 +108,7 @@ export const FeaturedProducts = () => {
             Featured
           </div>
           <h2 className="text-2xl md:text-4xl   text-gray-900 mb-2">Featured Products</h2>
-          <p className="text-gray-600 max-w-xl mx-auto text-sm">Handpicked selection of premium audio equipment</p>
+          <p className="text-gray-600 max-w-xl mx-auto text-sm">Handpicked selection of luxury fragrances</p>
         </div>
 
         {/* Products Carousel */}

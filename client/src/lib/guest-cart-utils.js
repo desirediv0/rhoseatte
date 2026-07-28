@@ -35,55 +35,82 @@ export const saveGuestCart = (cart) => {
 // Add item to guest cart
 export const addToGuestCart = async (productVariantId, quantity = 1) => {
     try {
-        // Fetch product variant details from backend
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:4004/api" : "https://api.rhoseatte.com/api")}/public/products/variants/${productVariantId}`,
-            {
-                credentials: "include",
+        let newItem;
+
+        // Handle product objects (from Fragrance Finder, custom builder, or quick view)
+        if (typeof productVariantId === "object" && productVariantId !== null) {
+            const customObj = productVariantId;
+            const vId = customObj.variantId || customObj.productVariantId || customObj.id || `item_${Date.now()}`;
+            newItem = {
+                id: customObj.id || `item_${Date.now()}`,
+                productVariantId: vId,
+                productId: customObj.productId || customObj.id || vId,
+                productName: customObj.name || customObj.productName || "Fragrance",
+                productSlug: customObj.slug || customObj.productSlug || "product",
+                variantName: customObj.variantName || customObj.customDetails
+                    ? `Base: ${customObj.customDetails?.baseNotes || ""} | Heart: ${customObj.customDetails?.heartNotes || ""}`
+                    : "Standard Bottling",
+                price: customObj.salePrice || customObj.price || 0,
+                quantity: quantity,
+                subtotal: ((customObj.salePrice || customObj.price || 0) * quantity).toFixed(2),
+                image: customObj.image || customObj.images?.[0]?.url || "/rhoseatte_lavender_perfume.png",
+                isCustom: customObj.isCustom || false,
+                customDetails: customObj.customDetails || null
+            };
+        } else {
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:4004/api" : "https://api.rhoseatte.com/api");
+            
+            let response = await fetch(
+                `${apiBase}/public/products/variants/${productVariantId}`,
+                { credentials: "include" }
+            );
+
+            if (!response.ok) {
+                response = await fetch(
+                    `${apiBase}/products/variants/${productVariantId}`,
+                    { credentials: "include" }
+                );
             }
-        );
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error("Failed to fetch product variant");
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error("Failed to fetch product variant");
+            }
+
+            const variantData = await response.json();
+            const variant = variantData.data?.variant || variantData.variant || variantData.data;
+
+            newItem = {
+                id: `guest_${Date.now()}_${Math.random()}`,
+                productVariantId: variant.id || productVariantId,
+                productId: variant.productId || variant.product?.id,
+                productName: variant.product?.name || variant.name || "Fragrance",
+                productSlug: variant.product?.slug || "product",
+                variantName: `${variant.flavor?.name || ""} ${variant.weight?.display || ""}`.trim(),
+                price: variant.salePrice || variant.price,
+                quantity: quantity,
+                subtotal: ((variant.salePrice || variant.price || 0) * quantity).toFixed(2),
+                image: variant.images?.[0]?.url || variant.product?.image || "/rhoseatte_lavender_perfume.png",
+                sku: variant.sku,
+                flavor: variant.flavor,
+                weight: variant.weight,
+            };
         }
-
-        const variantData = await response.json();
-        const variant = variantData.data.variant;
 
         const currentCart = getGuestCart();
 
         // Check if item already exists in cart
         const existingItemIndex = currentCart.items.findIndex(
-            (item) => item.productVariantId === productVariantId
+            (item) => item.productVariantId === newItem.productVariantId
         );
 
         if (existingItemIndex !== -1) {
-            // Update existing item quantity
             currentCart.items[existingItemIndex].quantity += quantity;
             currentCart.items[existingItemIndex].subtotal = (
                 parseFloat(currentCart.items[existingItemIndex].price) *
                 currentCart.items[existingItemIndex].quantity
             ).toFixed(2);
         } else {
-            // Add new item
-            const newItem = {
-                id: `guest_${Date.now()}_${Math.random()}`,
-                productVariantId: productVariantId,
-                productId: variant.productId,
-                productName: variant.product.name,
-                productSlug: variant.product.slug,
-                variantName: `${variant.flavor?.name || ""} ${variant.weight?.display || ""
-                    }`.trim(),
-                price: variant.salePrice || variant.price,
-                quantity: quantity,
-                subtotal: ((variant.salePrice || variant.price) * quantity).toFixed(2),
-                image: variant.images?.[0]?.url || variant.product.image,
-                sku: variant.sku,
-                flavor: variant.flavor,
-                weight: variant.weight,
-            };
-
             currentCart.items.push(newItem);
         }
 

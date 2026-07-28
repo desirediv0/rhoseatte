@@ -103,7 +103,7 @@ function ProgressBar({ current, total }) {
 function HeroSection({ quiz, onStart }) {
   return (
     <motion.section
-      className="relative min-h-[90vh] flex items-center justify-center overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden"
       initial="hidden"
       animate="visible"
       variants={stagger}
@@ -111,7 +111,7 @@ function HeroSection({ quiz, onStart }) {
       {/* Background */}
       <div className="absolute inset-0 bg-noir">
         <div className="absolute inset-0 bg-gradient-to-b from-noir/90 via-noir/80 to-noir" />
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 opacity-10 ">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-gold/20 blur-[120px]" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-gold/10 blur-[120px]" />
         </div>
@@ -321,13 +321,19 @@ function QuestionCard({ question, selectedOptions, onSelect, onNext, onPrev, isF
 
 function ProductCard({ product, index }) {
   const { addToCart } = useCart();
+  const [adding, setAdding] = useState(false);
 
   const handleAddToCart = async () => {
     try {
-      await addToCart(product.id, 1);
-      toast.success("Added to cart");
+      setAdding(true);
+      // Pass full product object to ensure all details (price, image, name, variantId) are preserved
+      await addToCart(product, 1);
+      toast.success(`${product.name || "Fragrance"} added to cart!`);
     } catch (error) {
-      toast.error("Failed to add to cart");
+      console.error("Cart error:", error);
+      toast.error(error.message || "Failed to add to cart");
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -336,11 +342,11 @@ function ProductCard({ product, index }) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="group"
+      className="group w-full max-w-sm sm:max-w-none mx-auto"
     >
-      <div className="card-premium overflow-hidden">
-        {/* Image */}
-        <div className="relative aspect-square bg-ivory overflow-hidden">
+      <div className="bg-white border border-[#E8DAFA] hover:border-[#B8976A] rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-500 flex flex-col justify-between h-full">
+        {/* Image & Badges */}
+        <div className="relative aspect-square bg-[#FAF5FF] overflow-hidden">
           {product.image ? (
             <img
               src={product.image}
@@ -349,14 +355,14 @@ function ProductCard({ product, index }) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <IconSparkles className="h-12 w-12 text-stone/20" />
+              <IconSparkles className="h-12 w-12 text-[#7E52BC]/30" />
             </div>
           )}
 
           {/* Match Badge */}
           {product.isSecretLocked && (
-            <div className="absolute top-4 right-4 px-3 py-1.5 bg-gold/90 backdrop-blur-sm rounded-[4px]">
-              <span className="text-[10px] uppercase tracking-[0.15em] font-semibold text-noir flex items-center gap-1">
+            <div className="absolute top-4 right-4 px-3 py-1.5 bg-[#B8976A] text-white shadow-md rounded-full">
+              <span className="text-[10px] uppercase tracking-widest font-bold flex items-center gap-1">
                 <IconLock className="h-3 w-3" stroke={2} />
                 Secret
               </span>
@@ -364,72 +370,78 @@ function ProductCard({ product, index }) {
           )}
 
           {product.matchPercentage > 0 && (
-            <div className="absolute top-4 left-4 px-3 py-1.5 bg-noir/90 backdrop-blur-sm rounded-[4px]">
-              <span className="text-[10px] uppercase tracking-[0.15em] font-semibold text-gold">
+            <div className="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-[#4A2478] to-[#6E36B0] text-white shadow-md rounded-full">
+              <span className="text-[10px] uppercase tracking-widest font-bold">
                 {product.matchPercentage}% Match
               </span>
             </div>
           )}
+        </div>
 
-          {/* Quick Actions */}
-          <div className="absolute bottom-4 left-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+        {/* Info & Action Buttons */}
+        <div className="p-5 sm:p-6 flex flex-col justify-between flex-1 space-y-4">
+          <div>
+            <h3 className="font-serif text-xl text-[#240E42] font-semibold mb-1 line-clamp-1">
+              {product.name}
+            </h3>
+            <div className="flex items-center gap-2">
+              {product.salePrice && product.salePrice < product.price ? (
+                <>
+                  <span className="text-base font-bold text-[#4A2478]">
+                    {formatCurrency(product.salePrice)}
+                  </span>
+                  <span className="text-xs text-[#5C4D73]/60 line-through">
+                    {formatCurrency(product.price)}
+                  </span>
+                </>
+              ) : product.price ? (
+                <span className="text-base font-bold text-[#4A2478]">
+                  {formatCurrency(product.price)}
+                </span>
+              ) : null}
+            </div>
+
+            {product.isFallback && (
+              <p className="text-[11px] text-[#7E52BC] italic mt-1 font-light">
+                Popular pick for your profile
+              </p>
+            )}
+          </div>
+
+          {/* Responsive Action Buttons (Stacked on Mobile, Side-by-side on Desktop) */}
+          <div className="flex flex-col sm:flex-row items-stretch gap-2.5 pt-3 border-t border-[#E8DAFA]">
             {product.isSecretLocked ? (
               <Link
                 href="/secret-collection"
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gold/95 backdrop-blur-sm text-noir text-[10px] uppercase tracking-[0.1em] font-semibold rounded-[4px] hover:bg-gold transition-all duration-300"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-[#B8976A] text-white text-xs uppercase tracking-wider font-semibold rounded-xl hover:bg-[#A38155] transition-all duration-300 shadow"
               >
-                <IconLock className="h-3.5 w-3.5" stroke={1.5} />
-                Unlock Secret Collection
+                <IconLock className="h-4 w-4" stroke={1.5} />
+                Unlock Collection
               </Link>
             ) : (
               <>
                 <Link
                   href={`/products/${product.slug}`}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white/95 backdrop-blur-sm text-noir text-[10px] uppercase tracking-[0.1em] font-semibold rounded-[4px] hover:bg-gold hover:text-white transition-all duration-300"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-3 px-3 border border-[#D9C8F5] text-[#4A2478] hover:bg-[#FAF5FF] text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 whitespace-nowrap shadow-sm"
                 >
-                  <IconEye className="h-3.5 w-3.5" stroke={1.5} />
+                  <IconEye className="h-4 w-4 text-[#7E52BC] shrink-0" />
                   View
                 </Link>
                 <button
                   onClick={handleAddToCart}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-noir/95 backdrop-blur-sm text-white text-[10px] uppercase tracking-[0.1em] font-semibold rounded-[4px] hover:bg-gold transition-all duration-300"
+                  disabled={adding}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-3 px-3 bg-[#4A2478] hover:bg-[#38195E] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md whitespace-nowrap"
                 >
-                  <IconShoppingBag className="h-3.5 w-3.5" stroke={1.5} />
-                  Add to Cart
+                  {adding ? (
+                    <IconLoader2 className="h-4 w-4 animate-spin text-[#EAD5AB] shrink-0" />
+                  ) : (
+                    <IconShoppingBag className="h-4 w-4 text-[#EAD5AB] shrink-0" />
+                  )}
+                  {adding ? "Adding..." : "Add to Cart"}
                 </button>
               </>
             )}
           </div>
-        </div>
-
-        {/* Info */}
-        <div className="p-5">
-          <h3 className="font-display text-[16px] text-noir font-medium mb-1 line-clamp-1">
-            {product.name}
-          </h3>
-          <div className="flex items-center gap-2">
-            {product.salePrice && product.salePrice < product.price ? (
-              <>
-                <span className="text-[15px] font-semibold text-noir">
-                  {formatCurrency(product.salePrice)}
-                </span>
-                <span className="text-[13px] text-stone line-through">
-                  {formatCurrency(product.price)}
-                </span>
-              </>
-            ) : product.price ? (
-              <span className="text-[15px] font-semibold text-noir">
-                {formatCurrency(product.price)}
-              </span>
-            ) : null}
-          </div>
-
-          {/* Why Recommended */}
-          {product.isFallback && (
-            <p className="text-[11px] text-stone/60 mt-2 italic">
-              Popular pick for you
-            </p>
-          )}
         </div>
       </div>
     </motion.div>
@@ -444,36 +456,38 @@ function ResultsSection({ results, onRestart }) {
 
   return (
     <motion.section
-      className="min-h-screen bg-ivory py-20"
+      className="min-h-screen bg-gradient-to-b from-[#FAF7FD] via-[#F4EBFD] to-[#FAF7FD] py-20"
       initial="hidden"
       animate="visible"
       variants={stagger}
     >
-      <div className="section-container">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12">
         {/* Header */}
-        <motion.div className="text-center mb-16" variants={fadeIn}>
-          <span className="luxe-eyebrow mb-4 block">Your Results</span>
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl text-noir font-medium mb-4">
-            Your Perfect <span className="italic text-gold">Fragrances</span>
+        <motion.div className="text-center mb-12 space-y-3" variants={fadeIn}>
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 border border-[#B8976A]/40 bg-white/90 rounded-full text-[#7048A0] text-xs uppercase tracking-[0.25em] font-semibold shadow-sm">
+            <IconSparkles className="w-4 h-4 text-[#B8976A]" />
+            Personalized Fragrance Match
+          </span>
+          <h1 className="font-serif text-4xl sm:text-5xl text-[#240E42] font-medium">
+            Your Perfect <span className="italic text-[#6533A3]">Fragrances</span>
           </h1>
-          <p className="text-[15px] text-stone font-light max-w-md mx-auto">
-            Based on your preferences, we recommend these exquisite fragrances
-            curated just for you.
+          <p className="text-xs sm:text-sm text-[#5C4D73] font-light max-w-md mx-auto leading-relaxed">
+            Based on your quiz preferences, our atelier recommends these luxury scents crafted just for your olfactory profile.
           </p>
         </motion.div>
 
         {/* Matched Rules Info */}
         {matchedRules.length > 0 && (
           <motion.div
-            className="flex flex-wrap justify-center gap-2 mb-12"
+            className="flex flex-wrap justify-center gap-2 mb-10"
             variants={fadeIn}
           >
             {matchedRules.map((rule) => (
               <span
                 key={rule.id}
-                className="px-4 py-2 bg-white border border-gold/20 rounded-[6px] text-[11px] uppercase tracking-[0.1em] text-stone"
+                className="px-4 py-2 bg-white/90 border border-[#E8DAFA] rounded-full text-xs uppercase tracking-wider text-[#4A2478] font-semibold shadow-sm"
               >
-                {rule.name}
+                ✨ {rule.name}
               </span>
             ))}
           </motion.div>
@@ -481,19 +495,19 @@ function ResultsSection({ results, onRestart }) {
 
         {/* Products Grid */}
         {recommendations.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {recommendations.map((product, index) => (
               <ProductCard key={product.id} product={product} index={index} />
             ))}
           </div>
         ) : (
-          <motion.div className="text-center py-20" variants={fadeIn}>
-            <IconSparkles className="h-16 w-16 text-stone/20 mx-auto mb-6" />
-            <h3 className="text-xl font-display text-noir mb-2">
+          <motion.div className="text-center py-20 bg-white rounded-3xl border border-[#E8DAFA] shadow-lg" variants={fadeIn}>
+            <IconSparkles className="h-16 w-16 text-[#7E52BC]/40 mx-auto mb-6" />
+            <h3 className="text-2xl font-serif text-[#240E42] mb-2">
               No matches found
             </h3>
-            <p className="text-sm text-stone font-light mb-6">
-              Try adjusting your preferences for better recommendations.
+            <p className="text-sm text-[#5C4D73] font-light mb-6">
+              Try adjusting your answers for better recommendations.
             </p>
           </motion.div>
         )}
@@ -505,17 +519,17 @@ function ResultsSection({ results, onRestart }) {
         >
           <button
             onClick={onRestart}
-            className="flex items-center gap-2 px-8 py-3.5 text-[11px] uppercase tracking-[0.15em] font-semibold text-noir border border-noir hover:bg-noir hover:text-white transition-all duration-300 rounded-[6px]"
+            className="flex items-center gap-2 px-8 py-4 text-xs uppercase tracking-[0.15em] font-semibold text-[#4A2478] border border-[#4A2478] hover:bg-[#4A2478] hover:text-white transition-all duration-300 rounded-full bg-white shadow-sm"
           >
             <IconRefresh className="h-4 w-4" stroke={1.5} />
             Retake Quiz
           </button>
           <Link
             href="/products"
-            className="flex items-center gap-2 px-8 py-3.5 text-[11px] uppercase tracking-[0.15em] font-semibold text-white bg-gold hover:bg-gold-dark transition-all duration-300 rounded-[6px]"
+            className="flex items-center gap-2 px-8 py-4 text-xs uppercase tracking-[0.15em] font-semibold text-white bg-[#4A2478] hover:bg-[#38195E] transition-all duration-300 rounded-full shadow-xl"
           >
             Browse All Fragrances
-            <IconArrowRight className="h-4 w-4" stroke={1.5} />
+            <IconArrowRight className="h-4 w-4 text-[#EAD5AB]" stroke={1.5} />
           </Link>
         </motion.div>
       </div>

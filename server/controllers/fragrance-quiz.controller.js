@@ -217,6 +217,8 @@ export const submitQuizAnswers = asyncHandler(async (req, res) => {
       if (!productMap.has(product.id)) {
         productMap.set(product.id, {
           id: product.id,
+          variantId: product.variants[0]?.id || null,
+          productVariantId: product.variants[0]?.id || null,
           name: product.name,
           slug: product.slug,
           description: product.description,
@@ -290,6 +292,8 @@ export const submitQuizAnswers = asyncHandler(async (req, res) => {
 
     recommendedProducts = fallbackProducts.map((p) => ({
       id: p.id,
+      variantId: p.variants[0]?.id || null,
+      productVariantId: p.variants[0]?.id || null,
       name: p.name,
       slug: p.slug,
       description: p.description,
