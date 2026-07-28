@@ -1592,3 +1592,43 @@ enum EmailLogStatus {
   FAILED
   RETRYING
 }
+
+// -----------------------
+// Custom Perfume Builder Models
+// -----------------------
+enum CustomNoteType {
+  BASE
+  HEART
+  TOP
+}
+
+model CustomPerfumeNote {
+  id          String         @id @default(uuid())
+  name        String
+  noteType    CustomNoteType
+  category    String
+  description String
+  color       String?        @default("#8B5A2B")
+  image       String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([noteType])
+  @@index([isActive])
+}
+
+model CustomPerfumeBottle {
+  id          String   @id @default(uuid())
+  name        String
+  capacity    String   @default("100 ml")
+  price       Decimal  @db.Decimal(10, 2)
+  description String
+  image       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+}
+

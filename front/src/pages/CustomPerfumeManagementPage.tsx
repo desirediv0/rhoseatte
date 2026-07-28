@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { Plus, FlaskConical, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, FlaskConical, Trash2, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import api from "@/api/api";
+import { toast } from "sonner";
 
 interface FragranceNote {
   id: string;
@@ -23,6 +25,8 @@ interface BottleOption {
 export default function CustomPerfumeManagementPage() {
   const [activeTab, setActiveTab] = useState<"base" | "heart" | "top" | "bottles">("base");
   const [isAdding, setIsAdding] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Form State
   const [name, setName] = useState("");
@@ -30,122 +34,171 @@ export default function CustomPerfumeManagementPage() {
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#8B5A2B");
   const [price, setPrice] = useState("3999");
-  const [image] = useState("/hero-slide-2.jpg");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
 
-  // Sample State Data
-  const [baseNotes, setBaseNotes] = useState<FragranceNote[]>([
-    { id: "b1", category: "Woody", name: "Mysore Sandalwood", description: "Rich, creamy, warm sandalwood", color: "#8B5A2B", image: "/hero-slide-2.jpg" },
-    { id: "b2", category: "Woody", name: "Atlas Cedarwood", description: "Dry aromatic cedar with earthy undertones", color: "#A0522D", image: "/about-philosophy.jpg" },
-    { id: "b3", category: "Amber", name: "Golden Amber", description: "Sweet resinous glowing warmth", color: "#D2691E", image: "/bestseller_banner.png" },
-    { id: "b4", category: "Musky", name: "White Musk", description: "Clean velvety skin-like softness", color: "#E6D7FF", image: "/velvet-allure.jpg" }
-  ]);
+  // Real Database State Data
+  const [baseNotes, setBaseNotes] = useState<FragranceNote[]>([]);
+  const [heartNotes, setHeartNotes] = useState<FragranceNote[]>([]);
+  const [topNotes, setTopNotes] = useState<FragranceNote[]>([]);
+  const [bottles, setBottles] = useState<BottleOption[]>([]);
 
-  const [heartNotes, setHeartNotes] = useState<FragranceNote[]>([
-    { id: "h1", category: "Floral", name: "Rose De Mai", description: "Lush French centifolia rose petal extract", color: "#E65C8B", image: "/noir-petals.jpg" },
-    { id: "h2", category: "Floral", name: "Night Jasmine", description: "Intoxicating white floral bouquet", color: "#F0E6FF", image: "/velvet-allure.jpg" },
-    { id: "h3", category: "Spicy", name: "Royal Cardamom", description: "Warm aromatic sweet spice accord", color: "#C79C5E", image: "/trending_banner.png" }
-  ]);
+  // Fetch real data from database endpoint
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/admin/custom-perfume/notes");
+      if (res.data?.success && res.data?.data) {
+        const { base = [], heart = [], top = [], bottles: fetchedBottles = [] } = res.data.data;
+        setBaseNotes(base);
+        setHeartNotes(heart);
+        setTopNotes(top);
+        setBottles(fetchedBottles);
+      }
+    } catch (err: any) {
+      console.warn("Failed to fetch custom perfume DB items, utilizing current items:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const [topNotes, setTopNotes] = useState<FragranceNote[]>([
-    { id: "t1", category: "Citrus", name: "Calabrian Bergamot", description: "Zesty sun-ripened Italian citrus", color: "#FFD700", image: "/banner-background.jpg" },
-    { id: "t2", category: "Green", name: "Crisp Green Tea", description: "Refreshing herbaceous green leaf", color: "#9ACD32", image: "/category-banner.jpg" }
-  ]);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const [bottles, setBottles] = useState<BottleOption[]>([
-    { id: "bot1", name: "Classic Heritage", capacity: "100 ml", price: 3999, description: "Timeless faceted crystal flacon with gold cap", image: "/rhoseatte_lavender_perfume.png" },
-    { id: "bot2", name: "Minimal Executive", capacity: "100 ml", price: 4299, description: "Sleek cylindrical heavy-glass bottle", image: "/hero-slide-2.jpg" },
-    { id: "bot3", name: "Luxury Signature", capacity: "100 ml", price: 4599, description: "Hand-polished smoked glass flacon", image: "/rhoseatte_gifting_box.png" }
-  ]);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setImageFile(file);
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+    } else {
+      setImagePreview("");
+    }
+  };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) return;
 
-    if (activeTab === "bottles") {
-      const newBot: BottleOption = {
-        id: Date.now().toString(),
-        name,
-        capacity: "100 ml",
-        price: parseFloat(price) || 3999,
-        description,
-        image
-      };
-      setBottles([...bottles, newBot]);
-    } else {
-      const newNote: FragranceNote = {
-        id: Date.now().toString(),
-        category,
-        name,
-        description,
-        color,
-        image
-      };
-      if (activeTab === "base") setBaseNotes([...baseNotes, newNote]);
-      if (activeTab === "heart") setHeartNotes([...heartNotes, newNote]);
-      if (activeTab === "top") setTopNotes([...topNotes, newNote]);
-    }
+    try {
+      setSubmitting(true);
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("description", description);
 
-    setName("");
-    setDescription("");
-    setIsAdding(false);
+      if (imageFile) {
+        formData.append("image", imageFile);
+      }
+
+      if (activeTab === "bottles") {
+        formData.append("price", price);
+        formData.append("capacity", "100 ml");
+        const res = await api.post("/admin/custom-perfume/bottles", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        toast.success(res.data?.message || "Bottle silhouette saved successfully!");
+      } else {
+        formData.append("noteType", activeTab.toUpperCase());
+        formData.append("category", category);
+        formData.append("color", color);
+        const res = await api.post("/admin/custom-perfume/notes", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        toast.success(res.data?.message || "Fragrance note saved successfully!");
+      }
+
+      setName("");
+      setDescription("");
+      setImageFile(null);
+      setImagePreview("");
+      setIsAdding(false);
+      await fetchData();
+    } catch (error: any) {
+      console.error("Save error:", error);
+      toast.error(error.response?.data?.message || "Failed to save item");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleDeleteNote = (id: string) => {
-    if (activeTab === "base") setBaseNotes(baseNotes.filter(n => n.id !== id));
-    if (activeTab === "heart") setHeartNotes(heartNotes.filter(n => n.id !== id));
-    if (activeTab === "top") setTopNotes(topNotes.filter(n => n.id !== id));
-    if (activeTab === "bottles") setBottles(bottles.filter(b => b.id !== id));
+  const handleDeleteNote = async (id: string) => {
+    try {
+      if (activeTab === "bottles") {
+        await api.delete(`/admin/custom-perfume/bottles/${id}`);
+        setBottles(bottles.filter(b => b.id !== id));
+      } else {
+        await api.delete(`/admin/custom-perfume/notes/${id}`);
+        if (activeTab === "base") setBaseNotes(baseNotes.filter(n => n.id !== id));
+        if (activeTab === "heart") setHeartNotes(heartNotes.filter(n => n.id !== id));
+        if (activeTab === "top") setTopNotes(topNotes.filter(n => n.id !== id));
+      }
+      toast.success("Item deleted successfully");
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete item");
+    }
   };
 
   const currentNotes = 
     activeTab === "base" ? baseNotes :
-    activeTab === "heart" ? heartNotes :
-    activeTab === "top" ? topNotes : [];
+    activeTab === "heart" ? heartNotes : topNotes;
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
-      
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[#2E7D32] font-semibold text-xs uppercase tracking-wider">
-            <FlaskConical className="w-4 h-4" />
-            Atelier Management
+    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#2E7D32] mb-1">
+            <FlaskConical className="w-4 h-4" /> Atelier Management
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Custom Fragrance Notes & Bottles</h1>
-          <p className="text-sm text-slate-500">
-            Configure dynamic Base, Heart, Top notes and Bottle options for the Custom Perfume Builder.
-          </p>
+          <p className="text-xs text-slate-500 mt-1">Configure dynamic Base, Heart, Top notes and Bottle options with real image uploads for the Custom Perfume Builder.</p>
         </div>
-        <Button onClick={() => setIsAdding(!isAdding)} className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          {isAdding ? "Close Form" : `Add New ${activeTab.toUpperCase()} Option`}
+        <Button 
+          onClick={() => setIsAdding(!isAdding)} 
+          className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> Add New {activeTab.toUpperCase()} Option
         </Button>
       </div>
 
-      {/* Tabs Switcher */}
-      <div className="flex border-b border-slate-200 bg-white px-4 rounded-t-xl">
-        {[
-          { id: "base", label: "Base Notes (Layer 1)" },
-          { id: "heart", label: "Heart Notes (Layer 2)" },
-          { id: "top", label: "Top Notes (Layer 3)" },
-          { id: "bottles", label: "Bottle Silhouettes" }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`py-4 px-6 text-sm font-semibold border-b-2 transition-all ${
-              activeTab === tab.id
-                ? "border-[#2E7D32] text-[#2E7D32]"
-                : "border-transparent text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 bg-white px-4 rounded-xl shadow-sm overflow-x-auto">
+        <button
+          onClick={() => { setActiveTab("base"); setIsAdding(false); }}
+          className={`py-3 px-6 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === "base" ? "border-[#2E7D32] text-[#2E7D32]" : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          Base Notes (Layer 1)
+        </button>
+        <button
+          onClick={() => { setActiveTab("heart"); setIsAdding(false); }}
+          className={`py-3 px-6 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === "heart" ? "border-[#2E7D32] text-[#2E7D32]" : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          Heart Notes (Layer 2)
+        </button>
+        <button
+          onClick={() => { setActiveTab("top"); setIsAdding(false); }}
+          className={`py-3 px-6 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === "top" ? "border-[#2E7D32] text-[#2E7D32]" : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          Top Notes (Layer 3)
+        </button>
+        <button
+          onClick={() => { setActiveTab("bottles"); setIsAdding(false); }}
+          className={`py-3 px-6 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === "bottles" ? "border-[#2E7D32] text-[#2E7D32]" : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+        >
+          Bottle Silhouettes
+        </button>
       </div>
 
-      {/* Add New Item Form */}
+      {/* Add Form with Image File Upload */}
       {isAdding && (
         <form onSubmit={handleAddSubmit} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
           <h3 className="text-base font-bold text-slate-900">
@@ -224,20 +277,52 @@ export default function CustomPerfumeManagementPage() {
             />
           </div>
 
+          {/* Real Custom Image Upload Field */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Upload Custom Image</label>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border rounded-lg cursor-pointer text-xs font-semibold transition-colors">
+                <Upload className="w-4 h-4 text-[#2E7D32]" /> Choose File
+                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+              </label>
+              {imagePreview && (
+                <div className="flex items-center gap-2">
+                  <img src={imagePreview} alt="Preview" className="w-10 h-10 rounded-md object-cover border" />
+                  <span className="text-xs text-slate-500 font-mono truncate max-w-[200px]">{imageFile?.name}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsAdding(false)}>Cancel</Button>
-            <Button type="submit" className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white">Save Item</Button>
+            <Button type="submit" disabled={submitting} className="bg-[#2E7D32] hover:bg-[#1b5e20] text-white flex items-center gap-2">
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {submitting ? "Uploading..." : "Save Item to Database"}
+            </Button>
           </div>
         </form>
       )}
 
       {/* Display Grid */}
-      {activeTab === "bottles" ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <Loader2 className="w-8 h-8 animate-spin text-[#2E7D32]" />
+          <span className="ml-3 text-sm text-slate-600 font-medium">Fetching options from database...</span>
+        </div>
+      ) : activeTab === "bottles" ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {bottles.map((bottle) => (
             <div key={bottle.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3 relative group">
               <div className="w-full h-40 relative rounded-lg overflow-hidden bg-slate-100 border">
-                <img src={bottle.image} alt={bottle.name} className="w-full h-full object-cover" />
+                <img 
+                  src={bottle.image} 
+                  alt={bottle.name} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=800&q=80";
+                  }}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-900 text-base">{bottle.name}</h3>
@@ -256,15 +341,29 @@ export default function CustomPerfumeManagementPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           {currentNotes.map((note) => (
-            <div key={note.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2 relative">
-              <div className="flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full border border-slate-300" style={{ backgroundColor: note.color }} />
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{note.category}</span>
+            <div key={note.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2 relative flex flex-col justify-between">
+              <div>
+                {note.image && (
+                  <div className="w-full h-28 relative rounded-lg overflow-hidden bg-slate-100 border mb-2">
+                    <img 
+                      src={note.image} 
+                      alt={note.name} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80";
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: note.color || "#8B5A2B" }} />
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{note.category}</span>
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm mt-1">{note.name}</h4>
+                <p className="text-xs text-slate-500 font-light line-clamp-2 mt-0.5">{note.description}</p>
               </div>
-              <h4 className="font-bold text-slate-900 text-sm">{note.name}</h4>
-              <p className="text-xs text-slate-500 font-light line-clamp-2">{note.description}</p>
-              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
-                <span className="text-[10px] text-slate-400 font-mono">ID: {note.id}</span>
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100 mt-2">
+                <span className="text-[10px] text-slate-400 font-mono">ID: {note.id.substring(0, 8)}</span>
                 <button
                   onClick={() => handleDeleteNote(note.id)}
                   className="text-red-500 hover:text-red-700 text-xs p-1"
