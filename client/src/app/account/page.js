@@ -21,6 +21,7 @@ import {
   IconLoader2,
   IconArrowRight,
   IconCoin,
+  IconFlask
 } from "@tabler/icons-react";
 
 export default function AccountPage() {
@@ -176,6 +177,9 @@ export default function AccountPage() {
             </div>
           </div>
 
+          {/* Custom Perfume Bespoke Orders Section */}
+          <CustomPerfumeOrdersSection />
+
           {/* Addresses */}
           <div className="bg-white border border-line">
             <div className="px-6 py-5 border-b border-line flex items-center justify-between">
@@ -278,5 +282,206 @@ export default function AccountPage() {
         </div>
       </ClientOnly>
     </ProtectedRoute>
+  );
+}
+
+function CustomPerfumeOrdersSection() {
+  const [customOrders, setCustomOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [cancellingOrder, setCancellingOrder] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+
+  const fetchCustomOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await fetchApi("/custom-perfume-order/user-orders", { credentials: "include" });
+      if (res.success && res.data) {
+        setCustomOrders(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch custom perfume orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomOrders();
+  }, []);
+
+  const handleConfirmCancel = async (e) => {
+    e.preventDefault();
+    if (!cancellingOrder || !cancelReason.trim()) {
+      return;
+    }
+
+    try {
+      setIsSubmittingCancel(true);
+      const res = await fetchApi(`/custom-perfume-order/user-orders/${cancellingOrder.id}/cancel`, {
+        method: "PATCH",
+        credentials: "include",
+        body: JSON.stringify({ reason: cancelReason })
+      });
+
+      if (res.success) {
+        setCancellingOrder(null);
+        setCancelReason("");
+        await fetchCustomOrders();
+      }
+    } catch (err) {
+      console.error("Failed to cancel custom order:", err);
+    } finally {
+      setIsSubmittingCancel(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-line p-6 text-center">
+        <IconLoader2 className="h-6 w-6 text-stone animate-spin mx-auto mb-2" stroke={1.5} />
+        <p className="text-xs text-stone font-light">Loading Bespoke Perfume Orders...</p>
+      </div>
+    );
+  }
+
+  if (customOrders.length === 0) {
+    return (
+      <div className="bg-white border border-line">
+        <div className="px-6 py-5 border-b border-line flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <IconFlask className="h-4 w-4 text-gold" stroke={1.5} />
+            <h2 className="font-display text-lg text-noir tracking-tight">Bespoke Custom Orders</h2>
+          </div>
+          <Link href="/custom-perfume" className="text-[11px] uppercase tracking-[0.15em] text-gold font-semibold hover:underline">
+            Create Formula +
+          </Link>
+        </div>
+        <div className="p-8 text-center bg-ivory">
+          <IconFlask className="h-8 w-8 text-stone/50 mx-auto mb-3" stroke={1.5} />
+          <p className="text-[13px] text-stone font-light mb-4">No custom bespoke perfume orders placed yet.</p>
+          <Link href="/custom-perfume" className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#4A2478] text-white text-[11px] uppercase tracking-[0.15em] font-semibold rounded-full hover:bg-[#38195E] transition-colors shadow-md">
+            Design Custom Perfume (100ml) <IconArrowRight className="h-3 w-3" stroke={1.5} />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-line">
+      <div className="px-6 py-5 border-b border-line flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <IconFlask className="h-4 w-4 text-gold" stroke={1.5} />
+          <h2 className="font-display text-lg text-noir tracking-tight">Bespoke Custom Orders ({customOrders.length})</h2>
+        </div>
+        <Link href="/custom-perfume" className="text-[11px] uppercase tracking-[0.15em] text-gold font-semibold hover:underline">
+          Create New Formula +
+        </Link>
+      </div>
+      <div className="p-6 space-y-4">
+        {customOrders.map((order) => (
+          <div key={order.id} className="p-5 bg-ivory border border-line rounded-xl space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line/60 pb-3">
+              <div>
+                <span className="text-[10px] uppercase font-mono tracking-wider text-stone block">ORDER NUMBER</span>
+                <span className="font-mono font-bold text-noir text-sm">{order.orderNumber}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${
+                  order.paymentStatus === "PAID" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                }`}>
+                  {order.paymentStatus} (₹{parseFloat(order.amount).toLocaleString()})
+                </span>
+                <span className={`text-[10px] uppercase font-bold px-3 py-1 rounded-full tracking-wider ${
+                  order.orderStatus === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-[#4A2478] text-white"
+                }`}>
+                  {order.orderStatus?.replace(/_/g, " ")}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-1">
+                <span className="font-bold text-noir uppercase text-[10px] tracking-wider block">Fragrance Formula Specs:</span>
+                <p className="text-stone"><strong className="text-noir font-medium">Base:</strong> {order.baseNotes?.join(", ") || "None"}</p>
+                <p className="text-stone"><strong className="text-noir font-medium">Heart:</strong> {order.heartNotes?.join(", ") || "None"}</p>
+                <p className="text-stone"><strong className="text-noir font-medium">Top:</strong> {order.topNotes?.join(", ") || "None"}</p>
+                <p className="text-stone"><strong className="text-noir font-medium">Bottle:</strong> {order.bottleSilhouette}</p>
+                {order.monogramEngraving && (
+                  <p className="text-[#4A2478] italic font-serif"><strong className="text-noir font-medium font-sans">Engraving:</strong> &quot;{order.monogramEngraving}&quot;</p>
+                )}
+              </div>
+
+              <div className="space-y-1 border-t md:border-t-0 md:border-l border-line/60 pt-3 md:pt-0 md:pl-4 flex flex-col justify-between">
+                <div>
+                  <span className="font-bold text-noir uppercase text-[10px] tracking-wider block">Bespoke Progress:</span>
+                  <p className="text-stone leading-relaxed font-light">
+                    Our master perfumers create 3 sample variations of your formula. Once delivered, reply with your choice code for final 100ml flacon creation!
+                  </p>
+                  {order.trackingNumber && (
+                    <p className="text-xs font-mono text-[#4A2478] font-bold pt-1">
+                      Tracking #: {order.trackingNumber}
+                    </p>
+                  )}
+                  {order.cancelReason && (
+                    <p className="text-xs text-red-600 italic pt-1">
+                      Cancellation Reason: &quot;{order.cancelReason}&quot;
+                    </p>
+                  )}
+                </div>
+
+                {order.orderStatus !== "DELIVERED" && order.orderStatus !== "CANCELLED" && (
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setCancellingOrder(order)}
+                      className="px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+                    >
+                      Cancel Bespoke Order
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Cancel Order Modal with Reason */}
+      {cancellingOrder && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={handleConfirmCancel} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border">
+            <h3 className="font-display text-lg text-noir">Cancel Order #{cancellingOrder.orderNumber}?</h3>
+            <p className="text-xs text-stone">Please specify your reason for cancelling this bespoke perfume order:</p>
+            
+            <textarea
+              required
+              rows={3}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Enter reason for cancellation..."
+              className="w-full p-3 border border-line rounded-xl text-xs text-noir focus:outline-none focus:border-gold"
+            />
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => { setCancellingOrder(null); setCancelReason(""); }}
+                className="px-4 py-2 text-xs border rounded-lg text-stone hover:bg-slate-50"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingCancel}
+                className="px-4 py-2 text-xs bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg uppercase tracking-wider"
+              >
+                {isSubmittingCancel ? "Cancelling..." : "Confirm Cancellation"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
   );
 }

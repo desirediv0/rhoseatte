@@ -61,6 +61,7 @@ import FragranceQuizRulesPage from "./pages/FragranceQuizRulesPage";
 import FragranceQuizAnalyticsPage from "./pages/FragranceQuizAnalyticsPage";
 import FragranceQuizResponsesPage from "./pages/FragranceQuizResponsesPage";
 import CustomPerfumeManagementPage from "./pages/CustomPerfumeManagementPage";
+import CustomPerfumeOrdersPage from "./pages/CustomPerfumeOrdersPage";
 import { LanguageProvider } from "./context/LanguageContext";
 
 // Protected Route Component
@@ -825,6 +826,15 @@ const App = () => {
               element={
                 <ProtectedRoute superAdminOnly={true}>
                   <PartnerDetailsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="custom-perfume-orders"
+              element={
+                <ProtectedRoute>
+                  <CustomPerfumeOrdersPage />
                 </ProtectedRoute>
               }
             />

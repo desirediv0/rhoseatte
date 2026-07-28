@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   IconFlask, 
   IconSparkles, 
@@ -15,10 +16,16 @@ import {
   IconX,
   IconEye,
   IconChevronUp,
-  IconChevronDown
+  IconChevronDown,
+  IconCircleCheck,
+  IconLoader,
+  IconMapPin,
+  IconCreditCard
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart-context";
+import { fetchApi, loadScript } from "@/lib/utils";
 import Reveal from "@/components/ui/Reveal";
 
 // Default notes configuration matching notebook drawing categories
@@ -62,6 +69,8 @@ const DEFAULT_NOTES = {
 };
 
 export default function CustomPerfumePage() {
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
   const { addToCart } = useCart();
   const [currentSlide, setCurrentSlide] = useState(1); // 1: Intro, 2: Base, 3: Heart, 4: Top, 5: Bottle
   const [mobileBottleOpen, setMobileBottleOpen] = useState(false);
@@ -72,6 +81,34 @@ export default function CustomPerfumePage() {
   const [selectedTop, setSelectedTop] = useState([]);
   const [selectedBottle, setSelectedBottle] = useState(DEFAULT_NOTES.bottles[0]);
   const [engraving, setEngraving] = useState("");
+
+  // Direct Checkout & Razorpay Payment Modal State
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [orderSuccessData, setOrderSuccessData] = useState(null);
+
+  // Shipping Details Form State
+  const [shippingName, setShippingName] = useState("");
+  const [shippingPhone, setShippingPhone] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [shippingCity, setShippingCity] = useState("");
+  const [shippingState, setShippingState] = useState("");
+  const [shippingPincode, setShippingPincode] = useState("");
+
+  // Pre-fill user shipping details on mount / login
+  useEffect(() => {
+    if (user) {
+      setShippingName(user.name || "");
+      setShippingPhone(user.phone || "");
+      if (user.addresses && user.addresses.length > 0) {
+        const addr = user.addresses[0];
+        setShippingAddress(addr.street || addr.address || "");
+        setShippingCity(addr.city || "");
+        setShippingState(addr.state || "");
+        setShippingPincode(addr.pincode || addr.zipCode || "");
+      }
+    }
+  }, [user]);
 
   // Toggle Selection Helper (Min 1, Max 3 notes)
   const toggleNote = (note, selectedList, setSelectedList) => {
@@ -114,34 +151,121 @@ export default function CustomPerfumePage() {
     }
   };
 
-  // Add to Cart Action
-  const handleAddToCart = async () => {
+  // Trigger Checkout Modal (Login required)
+  const handleOpenCheckoutModal = () => {
+    if (!isAuthenticated) {
+      toast.warning("Please log in to place your bespoke custom perfume order.");
+      router.push("/auth?redirect=custom-perfume");
+      return;
+    }
     if (!selectedBottle) {
       toast.error("Please select a bottle silhouette.");
       return;
     }
+    setCheckoutModalOpen(true);
+  };
 
-    const customProduct = {
-      id: `custom-perfume-${Date.now()}`,
-      name: `Custom Bespoke Perfume (100 ml) - ${selectedBottle.name}`,
-      price: selectedBottle.price,
-      image: selectedBottle.image,
-      isCustom: true,
-      customDetails: {
-        baseNotes: selectedBase.map((n) => n.name).join(", "),
-        heartNotes: selectedHeart.map((n) => n.name).join(", "),
-        topNotes: selectedTop.map((n) => n.name).join(", "),
-        bottleName: selectedBottle.name,
-        engraving: engraving.trim() || "N/A"
-      }
-    };
+  // Razorpay Payment Handler
+  const handlePayRazorpay = async (e) => {
+    e.preventDefault();
+    if (!shippingName || !shippingPhone || !shippingAddress || !shippingPincode) {
+      toast.error("Please fill in complete shipping name, phone, address and pincode.");
+      return;
+    }
 
     try {
-      await addToCart(customProduct, 1);
-      toast.success("Bespoke Perfume Package added to cart!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to add to cart");
+      setIsPlacingOrder(true);
+
+      const orderPayload = {
+        baseNotes: selectedBase.map((n) => n.name),
+        heartNotes: selectedHeart.map((n) => n.name),
+        topNotes: selectedTop.map((n) => n.name),
+        bottleSilhouette: selectedBottle.name,
+        monogramEngraving: engraving.trim() || "None",
+        amount: selectedBottle.price || 3999,
+        shippingName,
+        shippingPhone,
+        shippingAddress,
+        shippingCity,
+        shippingState,
+        shippingPincode
+      };
+
+      // 1. Create Razorpay order on backend
+      const res = await fetchApi("/custom-perfume-order/create-razorpay", {
+        method: "POST",
+        body: JSON.stringify(orderPayload)
+      });
+
+      if (!res.success || !res.data) {
+        throw new Error(res.message || "Failed to initialize payment.");
+      }
+
+      const { orderId, customOrderId, orderNumber, amount, currency, keyId } = res.data;
+
+      // 2. Load Razorpay SDK
+      const isLoaded = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+      if (!isLoaded) {
+        toast.error("Razorpay SDK failed to load. Please check your network connection.");
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      // 3. Open Razorpay Modal
+      const options = {
+        key: keyId,
+        amount: amount,
+        currency: currency || "INR",
+        name: "RHOSEATTE Atelier",
+        description: `Bespoke Custom Perfume Package (${orderNumber})`,
+        image: "/logo.png",
+        order_id: orderId,
+        prefill: {
+          name: shippingName,
+          email: user?.email || "",
+          contact: shippingPhone
+        },
+        theme: {
+          color: "#4A2478"
+        },
+        handler: async function (response) {
+          try {
+            // Verify HMAC payment signature on backend
+            const verifyRes = await fetchApi("/custom-perfume-order/verify-payment", {
+              method: "POST",
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                customOrderId
+              })
+            });
+
+            if (verifyRes.success) {
+              setOrderSuccessData(verifyRes.data || { orderNumber, amount: selectedBottle.price });
+              toast.success("Bespoke custom perfume order placed successfully!");
+            } else {
+              toast.error(verifyRes.message || "Payment verification failed.");
+            }
+          } catch (err) {
+            console.error("Verification error:", err);
+            toast.error("Payment verification failed. Please contact support.");
+          } finally {
+            setIsPlacingOrder(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsPlacingOrder(false);
+            toast.info("Payment cancelled.");
+          }
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+    } catch (error) {
+      setIsPlacingOrder(false);
     }
   };
 
@@ -590,11 +714,11 @@ export default function CustomPerfumePage() {
                   </button>
                 ) : (
                   <button
-                    onClick={handleAddToCart}
-                    className="px-8 py-4 bg-[#4A2478] hover:bg-[#38195E] text-white text-xs uppercase tracking-[0.15em] font-semibold rounded-full transition-colors flex items-center gap-2 shadow-xl"
+                    onClick={handleOpenCheckoutModal}
+                    className="px-8 py-4 bg-[#4A2478] hover:bg-[#38195E] text-white text-xs uppercase tracking-[0.15em] font-semibold rounded-full transition-colors flex items-center gap-2 shadow-xl cursor-pointer"
                   >
-                    <IconShoppingBag className="w-4 h-4 text-[#EAD5AB]" />
-                    Add Custom Perfume to Cart (₹{selectedBottle?.price?.toLocaleString()})
+                    <IconCreditCard className="w-4 h-4 text-[#EAD5AB]" />
+                    Order Bespoke Package & Pay (₹{selectedBottle?.price?.toLocaleString()})
                   </button>
                 )}
               </div>
@@ -627,51 +751,81 @@ export default function CustomPerfumePage() {
                   Live Perfume Bottle Fill
                 </span>
 
-                {/* 3D-like Liquid Filling Bottle Graphic */}
-                <div className="relative w-40 h-72 mx-auto rounded-[36px] border-4 border-[#240E42] bg-gradient-to-b from-white/90 via-white/50 to-[#FAF5FF] overflow-hidden shadow-2xl flex flex-col justify-end p-1.5 backdrop-blur-md">
+                {/* 3D Luxury Perfume Bottle Flacon Graphic */}
+                <div className="relative w-48 h-80 mx-auto flex flex-col items-center justify-start pt-2">
                   
-                  {/* Bottle Metallic Cap Top */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-7 bg-gradient-to-r from-[#B8976A] via-[#EAD5AB] to-[#B8976A] border-b-2 border-[#240E42] rounded-t-lg shadow flex items-center justify-center">
-                    <span className="text-[7px] text-[#240E42] font-extrabold uppercase tracking-widest">100ml</span>
+                  {/* Metallic Gold Stopper Cap Assembly */}
+                  <div className="relative z-30 flex flex-col items-center">
+                    <div className="w-14 h-9 bg-gradient-to-r from-[#7D5A25] via-[#E8D19B] via-[#F4E4BA] to-[#6A4B1A] rounded-t-lg rounded-b-sm shadow-md border-b border-[#4A320F] flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/20" />
+                      <span className="text-[8px] text-[#38240B] font-extrabold uppercase tracking-widest relative z-10 font-mono">100 ML</span>
+                    </div>
+                    <div className="w-10 h-3 bg-gradient-to-r from-[#B8976A] via-[#FFF3D6] to-[#8C6D3F] border-x border-[#4A320F]/40 shadow-inner" />
                   </div>
 
-                  {/* Engraving Preview on Glass */}
-                  {engraving.trim() && (
-                    <div className="absolute top-10 left-2 right-2 text-center z-20 pointer-events-none">
-                      <span className="text-[9px] font-serif uppercase tracking-widest text-[#240E42] bg-white/80 px-2 py-0.5 rounded border border-[#B8976A]/40 shadow-sm block truncate">
-                        &quot;{engraving.trim()}&quot;
-                      </span>
+                  {/* Glass Bottle Body */}
+                  <div className="relative w-44 h-64 rounded-b-[38px] rounded-t-[20px] border-2 border-[#4A2478]/40 bg-gradient-to-b from-white/70 via-white/40 to-[#FAF5FF]/80 overflow-hidden shadow-2xl backdrop-blur-md flex flex-col justify-end p-2 -mt-0.5">
+                    
+                    {/* Glass Curvature Highlights */}
+                    <div className="absolute top-0 left-0 bottom-0 w-3 bg-gradient-to-r from-white/60 via-white/20 to-transparent pointer-events-none z-20" />
+                    <div className="absolute top-0 right-0 bottom-0 w-2.5 bg-gradient-to-l from-white/50 via-white/10 to-transparent pointer-events-none z-20" />
+                    
+                    {/* Monogram Engraving Plaque */}
+                    {engraving.trim() && (
+                      <div className="absolute top-10 left-3 right-3 text-center z-30 pointer-events-none">
+                        <div className="bg-gradient-to-r from-[#F4E6C3] via-[#FFFDF5] to-[#E0C992] px-2.5 py-1 rounded-md border border-[#B8976A]/60 shadow-md">
+                          <span className="text-[10px] font-serif uppercase tracking-[0.15em] font-bold text-[#3C1D68] block truncate">
+                            &quot;{engraving.trim()}&quot;
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Measurement Ticks */}
+                    <div className="absolute right-3 top-8 bottom-8 flex flex-col justify-between text-[8px] text-[#4A2478]/40 pointer-events-none font-mono font-bold z-20">
+                      <span>100ml</span>
+                      <span>66ml</span>
+                      <span>33ml</span>
                     </div>
-                  )}
 
-                  {/* Liquid Fill Level */}
-                  <div 
-                    className="w-full rounded-b-[28px] transition-all duration-1000 ease-out relative overflow-hidden shadow-lg"
-                    style={{
-                      height: `${fillPercentage}%`,
-                      background: fillPercentage > 70 
-                        ? "linear-gradient(to top, #8B5A2B 0%, #D2691E 30%, #E65C8B 65%, #FFD700 100%)"
-                        : fillPercentage > 40
-                        ? "linear-gradient(to top, #8B5A2B 0%, #E65C8B 100%)"
-                        : "linear-gradient(to top, #8B5A2B 0%, #D2691E 100%)"
-                    }}
-                  >
-                    {/* Liquid Shimmer Waves */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse pointer-events-none" />
-                  </div>
-
-                  {/* Empty state label inside bottle */}
-                  {fillPercentage === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-[#5C4D73] uppercase tracking-wider font-bold text-center p-4">
-                      Select Base Notes To Fill
+                    {/* Liquid Filling Cavity */}
+                    <div 
+                      className="w-full rounded-b-[30px] rounded-t-sm transition-all duration-1000 ease-out relative overflow-hidden shadow-inner"
+                      style={{
+                        height: `${Math.min(fillPercentage, 100) * 0.82}%`,
+                        background: fillPercentage > 70 
+                          ? "linear-gradient(to top, #783F04 0%, #B45F06 32%, #A64D79 65%, #F1C232 100%)"
+                          : fillPercentage > 40
+                          ? "linear-gradient(to top, #783F04 0%, #B45F06 45%, #A64D79 100%)"
+                          : fillPercentage > 0
+                          ? "linear-gradient(to top, #783F04 0%, #B45F06 100%)"
+                          : "transparent"
+                      }}
+                    >
+                      {/* Wave Meniscus */}
+                      {fillPercentage > 0 && (
+                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-white/60 via-white/90 to-white/60 shadow-sm animate-pulse" />
+                      )}
+                      
+                      {/* Liquid Shimmer */}
+                      {fillPercentage > 0 && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse pointer-events-none" />
+                      )}
                     </div>
-                  )}
 
-                  {/* Measurement Ticks */}
-                  <div className="absolute left-2.5 top-12 bottom-5 flex flex-col justify-between text-[8px] text-[#240E42]/50 pointer-events-none font-mono font-bold">
-                    <span>100ml</span>
-                    <span>66ml</span>
-                    <span>33ml</span>
+                    {/* Empty State Prompt */}
+                    {fillPercentage === 0 && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-[10px] text-[#5C4D73]/70 uppercase tracking-widest font-semibold text-center p-6 z-20">
+                        <IconFlask className="w-6 h-6 text-[#7E52BC]/40 mb-2 animate-bounce" />
+                        <span>Select Base Notes To Fill Liquid</span>
+                      </div>
+                    )}
+
+                    {/* Crystal Glass Base */}
+                    <div className="w-full h-4 bg-gradient-to-t from-white/80 via-white/40 to-transparent border-t border-black/10 rounded-b-[28px] mt-0.5 relative z-20 flex items-center justify-center">
+                      <span className="text-[7px] uppercase tracking-widest text-[#4A2478]/40 font-bold">Rhoseatte Atelier</span>
+                    </div>
+
                   </div>
                 </div>
 
@@ -712,6 +866,175 @@ export default function CustomPerfumePage() {
 
           </div>
 
+        </div>
+      )}
+
+      {/* ── BESPOKE ORDER CHECKOUT & RAZORPAY MODAL ── */}
+      {checkoutModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-[#E4D5F8] relative my-8">
+            <button
+              onClick={() => { setCheckoutModalOpen(false); setOrderSuccessData(null); }}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+            >
+              <IconX className="w-5 h-5" />
+            </button>
+
+            {orderSuccessData ? (
+              /* Order Confirmation Screen */
+              <div className="text-center space-y-5 py-4">
+                <div className="w-16 h-16 bg-[#F4EBFD] rounded-full flex items-center justify-center mx-auto text-[#4A2478]">
+                  <IconCircleCheck className="w-10 h-10 text-[#4A2478]" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-display text-2xl text-[#240E42]">Order Confirmed!</h3>
+                  <p className="text-xs text-[#5C4D73]">Your bespoke custom perfume order has been placed successfully.</p>
+                  <p className="text-sm font-mono font-bold text-[#4A2478] bg-[#F4EBFD] py-1.5 px-3 rounded-lg inline-block">
+                    Order #{orderSuccessData.orderNumber || "RHO-BESPOKE"}
+                  </p>
+                </div>
+                <div className="p-4 bg-[#FAF7FD] rounded-2xl border text-left text-xs space-y-2 text-[#4A2478]">
+                  <div className="flex justify-between font-bold">
+                    <span>Status:</span>
+                    <span className="text-green-700">ORDER RECEIVED (Crafting Samples)</span>
+                  </div>
+                  <p className="text-[11px] text-[#5C4D73] font-light">
+                    Our master perfumers will now craft 3 personalized sample variations of your formula. You will receive tracking updates in your account!
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Link
+                    href="/account"
+                    className="flex-1 py-3 bg-[#4A2478] hover:bg-[#38195E] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors text-center"
+                  >
+                    View Custom Orders in Account
+                  </Link>
+                  <button
+                    onClick={() => { setCheckoutModalOpen(false); setOrderSuccessData(null); setCurrentSlide(1); }}
+                    className="py-3 px-5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold uppercase tracking-wider rounded-xl transition-colors"
+                  >
+                    Back to Atelier
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Address & Order Form */
+              <form onSubmit={handlePayRazorpay} className="space-y-5">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#7048A0] uppercase tracking-wider">
+                    <IconMapPin className="w-4 h-4 text-[#B8976A]" />
+                    Bespoke Delivery Details
+                  </div>
+                  <h3 className="font-display text-xl text-[#240E42]">Checkout & Payment</h3>
+                </div>
+
+                {/* Formula Brief Pill */}
+                <div className="p-4 bg-[#FAF6FF] rounded-2xl border border-[#E8DAFA] text-xs space-y-1">
+                  <div className="flex justify-between font-bold text-[#240E42]">
+                    <span>Bespoke 100ml Package ({selectedBottle?.name}):</span>
+                    <span className="text-[#4A2478]">₹{selectedBottle?.price?.toLocaleString()}</span>
+                  </div>
+                  <p className="text-[11px] text-[#5C4D73] truncate">
+                    Formula: {selectedBase.map(n => n.name).join(", ")} | {selectedHeart.map(n => n.name).join(", ")} | {selectedTop.map(n => n.name).join(", ")}
+                  </p>
+                  {engraving && (
+                    <p className="text-[11px] text-[#7048A0] italic">Engraving: &quot;{engraving}&quot;</p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={shippingName}
+                        onChange={(e) => setShippingName(e.target.value)}
+                        placeholder="Your full name"
+                        className="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:outline-none focus:border-[#4A2478]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number *</label>
+                      <input
+                        type="tel"
+                        required
+                        value={shippingPhone}
+                        onChange={(e) => setShippingPhone(e.target.value)}
+                        placeholder="10-digit mobile number"
+                        className="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:outline-none focus:border-[#4A2478]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Complete Delivery Address *</label>
+                    <input
+                      type="text"
+                      required
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      placeholder="House/Flat No., Building Name, Street, Landmark"
+                      className="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:outline-none focus:border-[#4A2478]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">City</label>
+                      <input
+                        type="text"
+                        value={shippingCity}
+                        onChange={(e) => setShippingCity(e.target.value)}
+                        placeholder="e.g. Mumbai"
+                        className="w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:border-[#4A2478]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">State</label>
+                      <input
+                        type="text"
+                        value={shippingState}
+                        onChange={(e) => setShippingState(e.target.value)}
+                        placeholder="e.g. Maharashtra"
+                        className="w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:border-[#4A2478]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Pincode *</label>
+                      <input
+                        type="text"
+                        required
+                        value={shippingPincode}
+                        onChange={(e) => setShippingPincode(e.target.value)}
+                        placeholder="6-digit pincode"
+                        className="w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:border-[#4A2478]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isPlacingOrder}
+                  className="w-full py-4 bg-[#4A2478] hover:bg-[#38195E] text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all shadow-xl flex items-center justify-center gap-2"
+                >
+                  {isPlacingOrder ? (
+                    <>
+                      <IconLoader className="w-4 h-4 animate-spin text-[#EAD5AB]" />
+                      Processing Payment...
+                    </>
+                  ) : (
+                    <>
+                      <IconCreditCard className="w-4 h-4 text-[#EAD5AB]" />
+                      Pay ₹{selectedBottle?.price?.toLocaleString()} via Razorpay
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
+          </div>
         </div>
       )}
 

@@ -510,11 +510,17 @@ export default function DashboardLayout() {
                 ]}
               />
 
-              {/* Custom Fragrance Management */}
+              {/* Custom Fragrance Management & Bespoke Orders */}
               <NavItem
                 href="/custom-perfume"
                 icon={<FlaskConical className="h-[1.125rem] w-[1.125rem]" />}
-                title="Custom Fragrance"
+                title="Custom Notes & Bottles"
+                hasPermission={true}
+              />
+              <NavItem
+                href="/custom-perfume-orders"
+                icon={<ShoppingCart className="h-[1.125rem] w-[1.125rem]" />}
+                title="Custom Perfume Orders"
                 hasPermission={true}
               />
 

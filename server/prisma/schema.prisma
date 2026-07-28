@@ -43,6 +43,7 @@ model User {
   phonePeTransactions    PhonePeTransaction[]
   secretAccess           SecretAccess[]
   fragranceQuizResponses FragranceQuizResponse[]
+  customPerfumeOrders    CustomPerfumeOrder[]
 }
 
 model PartnerRequest {
@@ -1630,5 +1631,54 @@ model CustomPerfumeBottle {
   updatedAt   DateTime @updatedAt
 
   @@index([isActive])
+}
+
+enum CustomOrderStatus {
+  ORDER_RECEIVED
+  CRAFTING_SAMPLES
+  SAMPLES_SHIPPED
+  FORMULA_CONFIRMED
+  FINAL_BOTTLE_SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum CustomPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model CustomPerfumeOrder {
+  id                 String              @id @default(uuid())
+  orderNumber        String              @unique
+  userId             String
+  baseNotes          String[]
+  heartNotes         String[]
+  topNotes           String[]
+  bottleSilhouette   String
+  monogramEngraving  String?
+  amount             Decimal             @db.Decimal(10, 2)
+  paymentStatus      CustomPaymentStatus @default(PENDING)
+  orderStatus        CustomOrderStatus   @default(ORDER_RECEIVED)
+  razorpayOrderId    String?
+  razorpayPaymentId  String?
+  shippingName       String
+  shippingPhone      String
+  shippingAddress    String
+  shippingCity       String
+  shippingState      String
+  shippingPincode    String
+  trackingNumber     String?
+  notes              String?
+  cancelReason       String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  user               User                @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([orderStatus])
+  @@index([paymentStatus])
 }
 
