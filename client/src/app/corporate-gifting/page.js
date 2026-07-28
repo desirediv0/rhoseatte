@@ -93,16 +93,6 @@ export default function CorporateGiftingPage() {
           style={{ background: "radial-gradient(circle, rgba(184, 151, 106, 0.25) 0%, transparent 70%)" }}
         />
 
-        {/* Side Stamp Ribbons (From PDF Image 1) */}
-        <div className="hidden lg:flex flex-col gap-6 absolute left-6 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-          {["MADE IN INDIA", "WOMEN OWNED STARTUP", "HANDCRAFTED"].map((stamp, idx) => (
-            <div key={idx} className="flex items-center gap-2 rotate-[-90deg] origin-left text-[9px] uppercase tracking-[0.35em] text-[#7854A6] font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#B8976A]" />
-              {stamp}
-            </div>
-          ))}
-        </div>
-
         <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-16 w-full relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
 
@@ -137,6 +127,18 @@ export default function CorporateGiftingPage() {
                 <p className="text-base sm:text-lg text-[#4E3966] font-light leading-relaxed max-w-xl mx-auto lg:mx-0">
                   Personalized fragrances, signature brand scents, and memorable gifting experiences for employees, clients, and corporate milestones.
                 </p>
+              </Reveal>
+
+              {/* Horizontal Trust Badges */}
+              <Reveal delay={0.25}>
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
+                  {["Made in India", "Women-Owned Startup", "100% Handcrafted"].map((badge, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/90 border border-[#E0D0F5] text-[#7048A0] text-[11px] font-semibold uppercase tracking-wider rounded-full shadow-2xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#B8976A]" />
+                      {badge}
+                    </span>
+                  ))}
+                </div>
               </Reveal>
 
               {/* Feature Chips */}
@@ -178,25 +180,25 @@ export default function CorporateGiftingPage() {
               </Reveal>
             </div>
 
-            {/* Right Column: Floating Perfume Bottle Visual */}
+            {/* Right Column: Floating Corporate Gifting Visual */}
             <div className="lg:col-span-5 relative flex justify-center w-full">
               <Reveal delay={0.2} className="w-full flex justify-center">
-                <div className="relative w-full max-w-[400px] aspect-[4/5] min-h-[420px] rounded-3xl overflow-hidden p-4 sm:p-5 bg-white/90 border border-white shadow-2xl backdrop-blur-md">
-                  <div className="relative w-full h-full min-h-[380px] rounded-2xl overflow-hidden shadow-inner group">
+                <div className="relative w-full max-w-[540px] aspect-[16/11] rounded-3xl overflow-hidden p-3 sm:p-4 bg-white/90 border border-white shadow-2xl backdrop-blur-md">
+                  <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-inner group">
                     <Image
-                      src="/rhoseatte_lavender_perfume.png"
-                      alt="Rhoseatte Luxury Corporate Perfume Bottle with Lavender"
+                      src="/corporate.jpeg"
+                      alt="Rhoseatte Luxury Corporate Perfume Gifting"
                       fill
-                      sizes="(max-width: 768px) 100vw, 400px"
-                      className="object-cover transform group-hover:scale-105 transition-transform duration-700"
+                      sizes="(max-width: 768px) 100vw, 540px"
+                      className="object-cover object-center transform group-hover:scale-105 transition-transform duration-700"
                       priority
                       unoptimized
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#3C1A60]/60 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#3C1A60]/50 via-transparent to-transparent pointer-events-none" />
                     
                     {/* Bottom floating badge */}
-                    <div className="absolute bottom-4 left-4 right-4 p-3.5 rounded-xl bg-white/95 backdrop-blur-md border border-white/80 shadow-lg text-center z-10">
-                      <span className="text-[10px] uppercase tracking-[0.25em] text-[#B8976A] font-bold block mb-1">
+                    <div className="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-white/90 backdrop-blur-md border border-white/80 shadow-lg text-center z-10">
+                      <span className="text-[10px] uppercase tracking-[0.25em] text-[#B8976A] font-bold block mb-0.5">
                         Atelier Bespoke Perfumery
                       </span>
                       <p className="font-serif text-xs sm:text-sm text-[#240E42] font-semibold">
@@ -498,7 +500,7 @@ export default function CorporateGiftingPage() {
                   <span className="text-xs text-[#634E7D] font-light">(Fully Redeemable on orders above 500 bottles)</span>
                 </div>
                 <p className="text-xs text-[#5C4D73] leading-relaxed">
-                  Includes: 5 Fragrance Concepts + 5 Packaging Box Designs + 5 Label Concepts physically delivered to your office for sensory evaluation.
+                  Includes: 3 Fragrance samples physically delivered for testing + 3 Packaging box concepts digitally delivered + 3 Label concepts digitally delivered + 3 thank you card designs digitally delivered.
                 </p>
               </div>
             </Reveal>
@@ -565,10 +567,6 @@ export default function CorporateGiftingPage() {
                       <li>• Large Volume Brand Campaigns</li>
                     </ul>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#FAF6FF] border border-[#E9DCFA] space-y-1">
-                    <span className="text-[11px] font-semibold text-[#5B308C] block">Bottle Silhouettes:</span>
-                    <p className="text-xs text-[#240E42]">Bottle A (Classic Heritage) | Bottle B (Modern Executive)</p>
-                  </div>
                 </div>
                 <button
                   onClick={scrollToForm}
@@ -598,10 +596,6 @@ export default function CorporateGiftingPage() {
                       <li>• Corporate Celebrations & Milestones</li>
                     </ul>
                   </div>
-                  <div className="p-4 rounded-xl bg-white border border-[#DDCBF7] space-y-1">
-                    <span className="text-[11px] font-semibold text-[#5B308C] block">Bottle Silhouettes:</span>
-                    <p className="text-xs text-[#240E42]">Bottle C (Minimal Contemporary) | Bottle D (Luxury Signature)</p>
-                  </div>
                 </div>
                 <button
                   onClick={scrollToForm}
@@ -627,10 +621,6 @@ export default function CorporateGiftingPage() {
                       <li>• Leadership Team Recognition</li>
                       <li>• Premium Brand Collaborations</li>
                     </ul>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[#FAF6FF] border border-[#E9DCFA] space-y-1">
-                    <span className="text-[11px] font-semibold text-[#5B308C] block">Bottle Silhouettes:</span>
-                    <p className="text-xs text-[#240E42]">Bottle E (Artisan Prestige) | Bottle F (Corporate Essential)</p>
                   </div>
                 </div>
                 <button
