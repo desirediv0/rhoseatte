@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { IconArrowRight, IconPlayerPlay, IconChevronRight, IconChevronLeft } from "@tabler/icons-react";
+import { IconPlayerPlay, IconChevronRight, IconChevronLeft } from "@tabler/icons-react";
 import { useRef, useEffect } from "react";
 
 export default function AboutPage() {
@@ -93,7 +92,7 @@ export default function AboutPage() {
   ];
 
   return (
-    <main 
+    <main
       className="bg-white text-[#111111] min-h-screen pt-28 pb-20 px-5 sm:px-8 lg:px-16"
       style={{ fontFamily: "'Times New Roman', Times, Georgia, serif" }}
     >
@@ -136,7 +135,7 @@ export default function AboutPage() {
             {processSteps.map((step, idx) => {
               const isEven = idx % 2 === 0;
               return (
-                <div 
+                <div
                   key={idx}
                   className={`flex flex-col ${isEven ? "md:flex-row" : "md:flex-row-reverse"} items-center gap-8 md:gap-14 bg-white p-6 md:p-8 rounded-xl border border-[#F0F0F0] shadow-sm`}
                 >
@@ -227,14 +226,14 @@ export default function AboutPage() {
 
             {/* Nav Arrows */}
             <div className="flex items-center gap-2.5 shrink-0">
-              <button 
+              <button
                 onClick={scrollLeft}
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#D0D0D0] flex items-center justify-center text-[#111111] hover:border-[#B8976A] hover:text-[#B8976A] active:scale-95 transition-all duration-300 bg-white shadow-sm"
                 aria-label="Scroll left"
               >
                 <IconChevronLeft className="w-5 h-5" />
               </button>
-              <button 
+              <button
                 onClick={scrollRight}
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#D0D0D0] flex items-center justify-center text-[#111111] hover:border-[#B8976A] hover:text-[#B8976A] active:scale-95 transition-all duration-300 bg-white shadow-sm"
                 aria-label="Scroll right"
@@ -245,13 +244,13 @@ export default function AboutPage() {
           </div>
 
           {/* Side-by-Side Auto & Touch Scrollable Cards */}
-          <div 
+          <div
             ref={scrollRef}
             className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 scrollbar-none snap-x snap-mandatory"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {teamMembers.map((member, idx) => (
-              <div 
+              <div
                 key={idx}
                 className="w-[260px] xs:w-[280px] sm:w-[320px] md:w-[340px] bg-white border border-[#E0E0E0] rounded-xl p-5 sm:p-6 snap-start shrink-0 shadow-sm hover:border-[#B8976A] hover:shadow-md transition-all duration-300 flex flex-col"
               >

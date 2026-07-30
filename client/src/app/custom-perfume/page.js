@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -28,8 +27,8 @@ import { useCart } from "@/lib/cart-context";
 import { fetchApi, loadScript } from "@/lib/utils";
 import Reveal from "@/components/ui/Reveal";
 
-// Default notes configuration matching notebook drawing categories
-const DEFAULT_NOTES = {
+// Fallback notes configuration used only if the real API is unreachable/empty
+const FALLBACK_NOTES = {
   base: [
     { id: "b1", category: "Woody", name: "Mysore Sandalwood", description: "Rich, creamy, warm sandalwood", color: "#8B5A2B", image: "/hero-slide-2.jpg" },
     { id: "b2", category: "Woody", name: "Atlas Cedarwood", description: "Dry, aromatic cedarwood", color: "#A0522D", image: "/about-philosophy.jpg" },
@@ -75,11 +74,15 @@ export default function CustomPerfumePage() {
   const [currentSlide, setCurrentSlide] = useState(1); // 1: Intro, 2: Base, 3: Heart, 4: Top, 5: Bottle
   const [mobileBottleOpen, setMobileBottleOpen] = useState(false);
 
+  // Real data from backend + loading state
+  const [options, setOptions] = useState(FALLBACK_NOTES);
+  const [optionsLoading, setOptionsLoading] = useState(true);
+
   // Selections
   const [selectedBase, setSelectedBase] = useState([]);
   const [selectedHeart, setSelectedHeart] = useState([]);
   const [selectedTop, setSelectedTop] = useState([]);
-  const [selectedBottle, setSelectedBottle] = useState(DEFAULT_NOTES.bottles[0]);
+  const [selectedBottle, setSelectedBottle] = useState(null);
   const [engraving, setEngraving] = useState("");
 
   // Direct Checkout & Razorpay Payment Modal State
@@ -94,6 +97,40 @@ export default function CustomPerfumePage() {
   const [shippingCity, setShippingCity] = useState("");
   const [shippingState, setShippingState] = useState("");
   const [shippingPincode, setShippingPincode] = useState("");
+
+  // Fetch real custom perfume options from backend
+  useEffect(() => {
+    let mounted = true;
+    const fetchOptions = async () => {
+      try {
+        setOptionsLoading(true);
+        const res = await fetchApi("/custom-perfume/options");
+        if (res?.success && res?.data) {
+          const realOptions = {
+            base: res.data.base || FALLBACK_NOTES.base,
+            heart: res.data.heart || FALLBACK_NOTES.heart,
+            top: res.data.top || FALLBACK_NOTES.top,
+            bottles: res.data.bottles || FALLBACK_NOTES.bottles
+          };
+          if (mounted) {
+            setOptions(realOptions);
+            setSelectedBottle((prev) => prev || realOptions.bottles[0] || null);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load custom perfume options:", err);
+        toast.error("Could not load live atelier options. Showing fallback selection.");
+        if (mounted) {
+          setOptions(FALLBACK_NOTES);
+          setSelectedBottle((prev) => prev || FALLBACK_NOTES.bottles[0] || null);
+        }
+      } finally {
+        if (mounted) setOptionsLoading(false);
+      }
+    };
+    fetchOptions();
+    return () => { mounted = false; };
+  }, []);
 
   // Pre-fill user shipping details on mount / login
   useEffect(() => {
@@ -265,6 +302,8 @@ export default function CustomPerfumePage() {
       const paymentObject = new window.Razorpay(options);
       paymentObject.open();
     } catch (error) {
+      console.error("Razorpay checkout error:", error);
+      toast.error(error?.message || "Payment could not be started. Please try again.");
       setIsPlacingOrder(false);
     }
   };
@@ -278,7 +317,14 @@ export default function CustomPerfumePage() {
 
   return (
     <main className="bg-[#FAF7FD] min-h-screen text-noir pt-24 pb-24 font-sans selection:bg-gold/20">
-      
+
+      {/* Global loading bar while real atelier options load */}
+      {optionsLoading && (
+        <div className="fixed top-0 left-0 right-0 z-[60] h-1 bg-[#E8DAFA]">
+          <div className="h-full bg-[#4A2478] animate-pulse w-2/3" />
+        </div>
+      )}
+
       {/* ── SLIDE 1: INTRO LANDING PAGE ── */}
       {currentSlide === 1 && (
         <div className="max-w-6xl mx-auto px-5 sm:px-8 lg:px-12 py-10 space-y-12">
@@ -366,10 +412,20 @@ export default function CustomPerfumePage() {
           <div className="text-center pt-4">
             <button
               onClick={() => setCurrentSlide(2)}
-              className="inline-flex items-center gap-3 px-10 py-5 bg-[#4A2478] hover:bg-[#38195E] text-white text-xs uppercase tracking-[0.2em] font-semibold rounded-full shadow-2xl transition-all duration-300 group"
+              disabled={optionsLoading || !selectedBottle}
+              className="inline-flex items-center gap-3 px-10 py-5 bg-[#4A2478] hover:bg-[#38195E] disabled:bg-[#A89BB8] disabled:cursor-not-allowed text-white text-xs uppercase tracking-[0.2em] font-semibold rounded-full shadow-2xl transition-all duration-300 group"
             >
-              Start Customizing Your Fragrance
-              <IconArrowRight className="w-4 h-4 text-[#EAD5AB] group-hover:translate-x-1 transition-transform" />
+              {optionsLoading ? (
+                <>
+                  <IconLoader className="w-4 h-4 animate-spin text-[#EAD5AB]" />
+                  Loading Atelier Options...
+                </>
+              ) : (
+                <>
+                  Start Customizing Your Fragrance
+                  <IconArrowRight className="w-4 h-4 text-[#EAD5AB] group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </div>
 
@@ -436,7 +492,7 @@ export default function CustomPerfumePage() {
 
                   {/* Render Note Categories (Woody, Amber, Musky, Leathery) */}
                   {["Woody", "Amber", "Musky", "Leathery"].map((catName) => {
-                    const categoryNotes = DEFAULT_NOTES.base.filter((n) => n.category === catName);
+                    const categoryNotes = options.base.filter((n) => n.category === catName);
                     return (
                       <div key={catName} className="space-y-3 pt-2">
                         <div className="flex items-center justify-between border-b border-[#E8DAFA] pb-2">
@@ -467,7 +523,7 @@ export default function CustomPerfumePage() {
 
                                 <div>
                                   <div className="w-12 h-12 rounded-2xl mx-auto mb-2.5 flex items-center justify-center border border-[#E8DAFA] overflow-hidden relative shadow-inner bg-[#FAF5FF] group-hover:scale-105 transition-transform">
-                                    <Image src={note.image} alt={note.name} fill className="object-cover opacity-85" />
+                                    <img src={note.image} alt={note.name} className="w-full h-full object-cover opacity-85" loading="lazy" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#240E42]/40 via-transparent to-transparent" />
                                     <span className="w-3.5 h-3.5 rounded-full border border-white/80 shadow relative z-10" style={{ backgroundColor: note.color }} />
                                   </div>
@@ -507,7 +563,7 @@ export default function CustomPerfumePage() {
                   </div>
 
                   {["Floral", "Spicy", "Fruity", "Fresh"].map((catName) => {
-                    const categoryNotes = DEFAULT_NOTES.heart.filter((n) => n.category === catName);
+                    const categoryNotes = options.heart.filter((n) => n.category === catName);
                     return (
                       <div key={catName} className="space-y-3 pt-2">
                         <div className="flex items-center justify-between border-b border-[#E8DAFA] pb-2">
@@ -538,7 +594,7 @@ export default function CustomPerfumePage() {
 
                                 <div>
                                   <div className="w-12 h-12 rounded-2xl mx-auto mb-2.5 flex items-center justify-center border border-[#E8DAFA] overflow-hidden relative shadow-inner bg-[#FAF5FF] group-hover:scale-105 transition-transform">
-                                    <Image src={note.image} alt={note.name} fill className="object-cover opacity-85" />
+                                    <img src={note.image} alt={note.name} className="w-full h-full object-cover opacity-85" loading="lazy" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#240E42]/40 via-transparent to-transparent" />
                                     <span className="w-3.5 h-3.5 rounded-full border border-white/80 shadow relative z-10" style={{ backgroundColor: note.color }} />
                                   </div>
@@ -578,7 +634,7 @@ export default function CustomPerfumePage() {
                   </div>
 
                   {["Citrus", "Green", "Aquatic", "Aromatic"].map((catName) => {
-                    const categoryNotes = DEFAULT_NOTES.top.filter((n) => n.category === catName);
+                    const categoryNotes = options.top.filter((n) => n.category === catName);
                     return (
                       <div key={catName} className="space-y-3 pt-2">
                         <div className="flex items-center justify-between border-b border-[#E8DAFA] pb-2">
@@ -609,7 +665,7 @@ export default function CustomPerfumePage() {
 
                                 <div>
                                   <div className="w-12 h-12 rounded-2xl mx-auto mb-2.5 flex items-center justify-center border border-[#E8DAFA] overflow-hidden relative shadow-inner bg-[#FAF5FF] group-hover:scale-105 transition-transform">
-                                    <Image src={note.image} alt={note.name} fill className="object-cover opacity-85" />
+                                    <img src={note.image} alt={note.name} className="w-full h-full object-cover opacity-85" loading="lazy" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#240E42]/40 via-transparent to-transparent" />
                                     <span className="w-3.5 h-3.5 rounded-full border border-white/80 shadow relative z-10" style={{ backgroundColor: note.color }} />
                                   </div>
@@ -649,7 +705,7 @@ export default function CustomPerfumePage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {DEFAULT_NOTES.bottles.map((bottle) => {
+                    {options.bottles.map((bottle) => {
                       const isSelected = selectedBottle?.id === bottle.id;
                       return (
                         <div
@@ -662,7 +718,7 @@ export default function CustomPerfumePage() {
                           }`}
                         >
                           <div className="w-20 h-24 relative rounded-2xl overflow-hidden bg-[#FAF5FF] border border-[#E8DAFA] shrink-0">
-                            <Image src={bottle.image} alt={bottle.name} fill className="object-cover" />
+                            <img src={bottle.image} alt={bottle.name} className="w-full h-full object-cover" loading="lazy" />
                           </div>
                           <div className="space-y-1">
                             <h4 className="font-serif text-lg text-[#240E42] font-semibold">{bottle.name}</h4>
