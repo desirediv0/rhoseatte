@@ -102,7 +102,7 @@ export default function ReturnPolicyPage() {
                                 In the rare case that your order arrived damaged or with a defect, we will initiate a **free replacement or 100% refund**:
                             </p>
                             <ul className="space-y-3 pl-5 list-disc text-xs md:text-sm text-slate-600">
-                                <li>Please take high-resolution photos of the package and immediately contact us at **rhoseatte@gmail.com** or WhatsApp (+91 87964 49692) within **24 hours** of delivery.</li>
+                                <li>Please take high-resolution photos of the package and immediately contact us at **admin@rhoseatte.com** or WhatsApp (+91 76783 36268) within **24 hours** of delivery.</li>
                                 <li>Upon verification, our courier will collect the parcel free of charge and deliver a priority replacement.</li>
                             </ul>
                         </div>
@@ -138,10 +138,10 @@ export default function ReturnPolicyPage() {
                                 <p className="text-xs text-slate-500 mt-0.5">Our support staff is ready to assist you. Responses are active daily.</p>
                             </div>
                             <a
-                                href="mailto:rhoseatte@gmail.com"
+                                href="mailto:admin@rhoseatte.com"
                                 className="text-xs text-[#003E29] bg-green-50 px-4 py-2.5 rounded-xl border border-green-100 hover:bg-green-100 transition-colors"
                             >
-                                rhoseatte@gmail.com
+                                admin@rhoseatte.com
                             </a>
                         </div>
 

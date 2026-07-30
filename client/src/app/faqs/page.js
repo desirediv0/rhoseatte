@@ -215,7 +215,7 @@ export default function FAQsPage() {
                                 Contact Us
                             </a>
                             <a
-                                href="mailto:rhoseatte@gmail.com"
+                                href="mailto:admin@rhoseatte.com"
                                 className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
                             >
                                 Email Support

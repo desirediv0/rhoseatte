@@ -14,7 +14,7 @@ import {
   IconBrandWhatsapp,
 } from "@tabler/icons-react";
 
-const WHATSAPP_NUMBER = "918796449692";
+const WHATSAPP_NUMBER = "917678336268";
 
 export const Footer = () => {
   const [categories, setCategories] = useState([]);
@@ -210,36 +210,29 @@ export const Footer = () => {
               Contact
             </h4>
             <div className="space-y-4">
-              {/* Phone — hidden from UI */}
-              {/* <a href="tel:+918796449692" className="flex items-center gap-3 text-[13px] font-light transition-colors duration-300 hover:text-white" style={{ color: "rgba(255,255,255,0.4)" }}>
-                <IconPhone className="h-4 w-4 flex-shrink-0" style={{ color: "#B8976A" }} stroke={1.5} />
-                <span>+91 87964 49692</span>
-              </a> */}
-              <div className="flex items-center gap-3 text-[13px] font-light" style={{ color: "rgba(255,255,255,0.4)" }}>
-                <IconPhone className="h-4 w-4 flex-shrink-0" style={{ color: "#B8976A", opacity: 0.5 }} stroke={1.5} />
-                <span className="italic" style={{ color: "rgba(255,255,255,0.25)" }}>Private Concierge — Opening Soon</span>
-              </div>
               <a
-                href="mailto:concierge@rhoseatte.com"
+                href="tel:+917678336268"
+                className="flex items-center gap-3 text-[13px] font-light transition-colors duration-300 hover:text-white group"
+                style={{ color: "rgba(255,255,255,0.4)" }}
+              >
+                <IconPhone className="h-4 w-4 flex-shrink-0" style={{ color: "#B8976A" }} stroke={1.5} />
+                <span>+91 76783 36268</span>
+              </a>
+              <a
+                href="mailto:admin@rhoseatte.com"
                 className="flex items-center gap-3 text-[13px] font-light transition-colors duration-300 hover:text-white group"
                 style={{ color: "rgba(255,255,255,0.4)" }}
               >
                 <IconMail className="h-4 w-4 flex-shrink-0" style={{ color: "#B8976A" }} stroke={1.5} />
-                <span className="break-all text-[12px]">concierge@rhoseatte.com</span>
+                <span className="break-all text-[12px]">admin@rhoseatte.com</span>
               </a>
-              <a
-                href="https://maps.app.goo.gl/MTy3mYLeAXTr7jxP"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 text-[13px] font-light transition-colors duration-300 hover:text-white group"
+              <div
+                className="flex items-start gap-3 text-[12px] font-light"
                 style={{ color: "rgba(255,255,255,0.4)" }}
               >
-                <IconMapPin className="h-4 w-4 flex-shrink-0" style={{ color: "#B8976A" }} stroke={1.5} />
-                <span className="flex items-center gap-1.5">
-                  View on Maps
-                  <IconArrowUpRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" stroke={1.5} />
-                </span>
-              </a>
+                <IconMapPin className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: "#B8976A" }} stroke={1.5} />
+                <span>132, Ramdaspeth, Nagpur, Maharashtra</span>
+              </div>
             </div>
           </div>
         </div>

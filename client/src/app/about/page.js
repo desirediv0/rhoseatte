@@ -56,21 +56,21 @@ export default function AboutPage() {
   const teamMembers = [
     {
       name: "Vaishnavi Pote",
-      role: "CEO & Founder",
-      image: "/master-perfumer.jpg",
+      role: "Founder & CEO",
+      image: "/Vaishnavi.jpeg",
       bio: "Biologist by education, salesperson by experience, bringing India's rich perfumery heritage back into global spotlight."
     },
     {
-      name: "Prajakta",
-      role: "Marketing Head",
-      image: "/about-philosophy.jpg",
-      bio: "Crafting brand stories, digital outreach, and luxury customer connection for Rhoseatte."
+      name: "Dabori Khakhlary",
+      role: "Marketing & Social Media Head",
+      image: "/Dabori Khakhlary.jpeg",
+      bio: "Leading brand strategy, digital storytelling, creative campaigns, and luxury audience engagement for Rhoseatte."
     },
     {
       name: "Suvarna",
-      role: "Logistics & Operations",
-      image: "/about-hero.jpg",
-      bio: "Managing seamless supply chain, artisanal quality checks, and nationwide fulfillment."
+      role: "Operations & Supply Chain Head",
+      image: "/Suvarna.jpeg",
+      bio: "Managing seamless supply chain, artisanal quality checks, and nationwide fulfillment for bespoke creations."
     }
   ];
 
@@ -183,12 +183,12 @@ export default function AboutPage() {
             </div>
 
             {/* Photograph on Right */}
-            <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden border border-[#E0E0E0] shadow-md bg-[#FAF9F6]">
+            <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden border border-[#E0E0E0] shadow-md bg-white">
               <Image
-                src="/master-perfumer.jpg"
+                src="/Vaishnavi.jpeg"
                 alt="Vaishnavi Pote - Founder of Rhoseatte"
                 fill
-                className="object-cover"
+                className="object-cover object-top"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
             </div>
@@ -242,7 +242,7 @@ export default function AboutPage() {
                     src={member.image}
                     alt={member.name}
                     fill
-                    className="object-cover"
+                    className="object-cover object-top"
                   />
                 </div>
                 <h3 className="text-xl font-bold text-[#111111] mb-1">{member.name}</h3>

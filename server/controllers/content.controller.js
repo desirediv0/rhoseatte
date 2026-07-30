@@ -379,9 +379,9 @@ const getContactInfo = asyncHandler(async (req, res) => {
 
     // Default fallback contact info
     const contactInfo = {
-      address: "Gurugram, Haryana",
-      phone: "+91 95602 47619",
-      email: "rhoseatte@gmail.com",
+      address: "132, Ramdaspeth, Nagpur, Maharashtra",
+      phone: "+91 76783 36268",
+      email: "admin@rhoseatte.com",
       hours: "Monday - Saturday: 9:00 AM - 9:00 PM",
       mapCoordinates: {
         lat: 28.4595,

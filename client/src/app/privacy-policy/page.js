@@ -125,10 +125,10 @@ export default function PrivacyPolicyPage() {
                                 <p className="text-xs text-slate-500 mt-0.5">Contact our support desk for direct assistance.</p>
                             </div>
                             <a
-                                href="mailto:rhoseatte@gmail.com"
+                                href="mailto:admin@rhoseatte.com"
                                 className="text-xs text-[#003E29] bg-green-50 px-4 py-2.5 rounded-xl border border-green-100 hover:bg-green-100 transition-colors"
                             >
-                                rhoseatte@gmail.com
+                                admin@rhoseatte.com
                             </a>
                         </div>
 

@@ -23,7 +23,6 @@ import {
   IconMapPin,
   IconPhone,
   IconBrandInstagram,
-  IconBrandFacebook,
   IconArrowUpRight,
   IconHome,
   IconBuildingStore,
@@ -33,13 +32,12 @@ import {
   IconFlask,
   IconInfoCircle,
   IconMoodSmile,
-  IconTruck,
 } from "@tabler/icons-react";
 
 const CONTACT = {
-  email: "concierge@rhoseatte.com",
-  phone: "+91 87964 49692",
-  whatsapp: "918796449692",
+  email: "admin@rhoseatte.com",
+  phone: "+91 76783 36268",
+  whatsapp: "917678336268",
 };
 
 const NAV_LINKS = [

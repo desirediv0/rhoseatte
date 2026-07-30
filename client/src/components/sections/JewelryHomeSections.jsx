@@ -8,7 +8,7 @@ import { IconArrowRight, IconCheck } from "@tabler/icons-react";
 import { motion, useInView, useSpring, useTransform } from "framer-motion";
 import Reveal from "@/components/ui/Reveal";
 
-const WHATSAPP_NUMBER = "918796449692";
+const WHATSAPP_NUMBER = "917678336268";
 
 const FALLBACK_CATEGORIES = [
   { name: "Fragrances", slug: "fragrances" },

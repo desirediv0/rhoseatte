@@ -146,14 +146,14 @@ export default function ShippingPolicyPage() {
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <a
-                  href="mailto:rhoseatte@gmail.com"
+                  href="mailto:admin@rhoseatte.com"
                   className="text-xs px-4 py-2.5 rounded-xl border transition-colors hover:opacity-90 text-center"
                   style={{ color: "#003E29", background: "rgba(0,62,41,0.06)", borderColor: "#E5E7EB" }}
                 >
-                  rhoseatte@gmail.com
+                  admin@rhoseatte.com
                 </a>
                 <a
-                  href="https://wa.me/918796449692"
+                  href="https://wa.me/917678336268"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs px-4 py-2.5 rounded-xl transition-colors hover:opacity-90 text-center text-white"

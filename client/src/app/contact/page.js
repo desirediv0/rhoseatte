@@ -156,7 +156,7 @@ export default function ContactPage() {
           {/* Email */}
           <Reveal delay={0}>
             <a
-              href="mailto:hoseatte@gmail.com"
+              href="mailto:admin@rhoseatte.com"
               className="group flex flex-col items-center text-center p-7 bg-white border border-line hover:border-gold/40 transition-all duration-500 h-full"
             >
               <div className="w-12 h-12 flex items-center justify-center mb-4 border border-line bg-ivory group-hover:border-gold/30 transition-colors duration-300">
@@ -166,7 +166,7 @@ export default function ContactPage() {
                 Email
               </h4>
               <p className="text-[13px] text-noir font-medium break-all">
-                rhoseatte@gmail.com
+                admin@rhoseatte.com
               </p>
             </a>
           </Reveal>
@@ -174,7 +174,7 @@ export default function ContactPage() {
           {/* WhatsApp */}
           <Reveal delay={0.06}>
             <a
-              href="https://wa.me/918796449692"
+              href="https://wa.me/917678336268"
               target="_blank"
               rel="noopener noreferrer"
               className="group flex flex-col items-center text-center p-7 bg-white border border-line hover:border-gold/40 transition-all duration-500 h-full"
@@ -186,7 +186,7 @@ export default function ContactPage() {
                 WhatsApp
               </h4>
               <p className="text-[13px] text-noir font-medium">
-                +91 87964 49692
+                +91 76783 36268
               </p>
               <span className="mt-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-gold font-medium group-hover:gap-2.5 transition-all duration-300">
                 Chat Now
@@ -195,51 +195,42 @@ export default function ContactPage() {
             </a>
           </Reveal>
 
-          {/* Phone — Coming Soon */}
+          {/* Phone */}
           <Reveal delay={0.12}>
-            <div className="group flex flex-col items-center text-center p-7 bg-white border border-line h-full">
-              <div className="w-12 h-12 flex items-center justify-center mb-4 border border-line bg-ivory">
+            <a
+              href="tel:+917678336268"
+              className="group flex flex-col items-center text-center p-7 bg-white border border-line hover:border-gold/40 transition-all duration-500 h-full"
+            >
+              <div className="w-12 h-12 flex items-center justify-center mb-4 border border-line bg-ivory group-hover:border-gold/30 transition-colors duration-300">
                 <IconPhone className="h-5 w-5 text-gold" stroke={1.5} />
               </div>
               <h4 className="text-[10px] uppercase tracking-[0.2em] text-stone font-medium mb-2">
                 Private Concierge
               </h4>
-              <p className="text-[11px] uppercase tracking-[0.15em] text-gold font-medium">
-                Coming Soon
+              <p className="text-[13px] text-noir font-medium">
+                +91 76783 36268
               </p>
               <p className="text-[11px] text-stone mt-1 font-light">
-                By appointment only
+                Direct Line
               </p>
-            </div>
+            </a>
           </Reveal>
 
-          {/* Business Hours & Location */}
+          {/* Location & Address */}
           <Reveal delay={0.18}>
             <div className="group flex flex-col p-7 bg-white border border-line h-full">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 flex items-center justify-center border border-line bg-ivory">
-                  <IconClock className="h-5 w-5 text-gold" stroke={1.5} />
+                <div className="w-12 h-12 flex items-center justify-center border border-line bg-ivory shrink-0">
+                  <IconMapPin className="h-5 w-5 text-gold" stroke={1.5} />
                 </div>
                 <div className="text-left">
                   <h4 className="text-[10px] uppercase tracking-[0.2em] text-stone font-medium">
-                    Hours
+                    Address
                   </h4>
-                  <p className="text-[13px] text-noir font-medium">
-                    10:30 AM – 7:00 PM
+                  <p className="text-[12px] text-noir font-medium leading-snug">
+                    132, Ramdaspeth, Nagpur, Maharashtra
                   </p>
                 </div>
-              </div>
-              <div className="mt-auto pt-4 border-t border-line">
-                <a
-                  href="https://maps.app.goo.gl/MTy3mYLeAXTr7jxP"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-gold font-medium hover:text-gold-dark transition-colors duration-300"
-                >
-                  <IconMapPin className="h-3.5 w-3.5" stroke={1.5} />
-                  View on Google Maps
-                  <IconArrowUpRight className="h-3 w-3" stroke={1.5} />
-                </a>
               </div>
             </div>
           </Reveal>
@@ -489,7 +480,7 @@ export default function ContactPage() {
                   <IconArrowRight className="h-4 w-4" stroke={1.5} />
                 </Link>
                 <a
-                  href="https://wa.me/918796449692"
+                  href="https://wa.me/917678336268"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-3 px-8 py-4 border border-white/25 text-white text-[11px] uppercase font-medium tracking-[0.15em] hover:bg-white/10 transition-all duration-500"

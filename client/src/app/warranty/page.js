@@ -87,7 +87,7 @@ export default function WarrantyPage() {
                             To claim warranty service:
                         </p>
                         <ol className="space-y-3 mb-8 list-decimal list-inside">
-                            <li><strong>Contact Support:</strong> Email us at rhoseatte@gmail.com </li>
+                            <li><strong>Contact Support:</strong> Email us at admin@rhoseatte.com </li>
                             <li><strong>Provide Details:</strong> Share your order number, purchase invoice, and description of the issue</li>
                             <li><strong>Send Photos/Videos:</strong> Share clear photos or videos showing the defect</li>
                             <li><strong>Get Authorization:</strong> Our team will provide a warranty claim authorization code</li>
@@ -109,7 +109,7 @@ export default function WarrantyPage() {
                             We have authorized service centers in major cities:
                         </p>
                         <ul className="space-y-2 mb-8">
-                            <li><strong>Delhi NCR:</strong> Our main service center (address provided on claim approval)</li>
+                            <li><strong>Nagpur / Delhi NCR:</strong> Our main service center (address provided on claim approval)</li>
                             <li><strong>Other Cities:</strong> Authorized service partners in Mumbai, Bangalore, Hyderabad, Chennai</li>
                         </ul>
 
@@ -124,7 +124,7 @@ export default function WarrantyPage() {
                             For warranty claims and support:
                         </p>
                         <ul className="space-y-2">
-                            <li>Email: <strong>rhoseatte@gmail.com</strong></li>
+                            <li>Email: <strong>admin@rhoseatte.com</strong></li>
                             <li>Available: Monday - Saturday, 9 AM - 7 PM</li>
                         </ul>
                     </div>
