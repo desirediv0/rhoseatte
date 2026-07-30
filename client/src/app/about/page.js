@@ -3,22 +3,34 @@
 import Image from "next/image";
 import Link from "next/link";
 import { IconArrowRight, IconPlayerPlay, IconChevronRight, IconChevronLeft } from "@tabler/icons-react";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 
 export default function AboutPage() {
   const scrollRef = useRef(null);
 
   const scrollLeft = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -320, behavior: "smooth" });
+      scrollRef.current.scrollBy({ left: -300, behavior: "smooth" });
     }
   };
 
   const scrollRight = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 320, behavior: "smooth" });
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      if (scrollLeft + clientWidth >= scrollWidth - 10) {
+        scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        scrollRef.current.scrollBy({ left: 300, behavior: "smooth" });
+      }
     }
   };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      scrollRight();
+    }, 3500);
+    return () => clearInterval(timer);
+  }, []);
 
   const processSteps = [
     {
@@ -203,23 +215,47 @@ export default function AboutPage() {
 
         {/* ── SECTION 4: Meet the team ── */}
         <section className="border-t border-[#EAEAEA] pt-20 pb-12">
-          <div className="mb-12">
-            <span className="text-xs uppercase tracking-[0.3em] text-[#B8976A] font-semibold block mb-2">
-              4. Meet the Team
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-normal text-[#111111]">
-              The Minds Behind Rhoseatte
-            </h2>
+          <div className="flex items-end justify-between mb-10 gap-4">
+            <div>
+              <span className="text-xs uppercase tracking-[0.3em] text-[#B8976A] font-semibold block mb-2">
+                4. Meet the Team
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal text-[#111111]">
+                The Minds Behind Rhoseatte
+              </h2>
+            </div>
+
+            {/* Nav Arrows */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button 
+                onClick={scrollLeft}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#D0D0D0] flex items-center justify-center text-[#111111] hover:border-[#B8976A] hover:text-[#B8976A] active:scale-95 transition-all duration-300 bg-white shadow-sm"
+                aria-label="Scroll left"
+              >
+                <IconChevronLeft className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={scrollRight}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#D0D0D0] flex items-center justify-center text-[#111111] hover:border-[#B8976A] hover:text-[#B8976A] active:scale-95 transition-all duration-300 bg-white shadow-sm"
+                aria-label="Scroll right"
+              >
+                <IconChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
-          {/* 2-by-2 Grid Layout */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+          {/* Side-by-Side Auto & Touch Scrollable Cards */}
+          <div 
+            ref={scrollRef}
+            className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 scrollbar-none snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
             {teamMembers.map((member, idx) => (
               <div 
                 key={idx}
-                className="bg-white border border-[#E0E0E0] rounded-xl p-6 sm:p-7 shadow-sm hover:border-[#B8976A] hover:shadow-md transition-all duration-300 flex flex-col h-full"
+                className="w-[260px] xs:w-[280px] sm:w-[320px] md:w-[340px] bg-white border border-[#E0E0E0] rounded-xl p-5 sm:p-6 snap-start shrink-0 shadow-sm hover:border-[#B8976A] hover:shadow-md transition-all duration-300 flex flex-col"
               >
-                <div className="relative aspect-[4/5] w-full rounded-lg overflow-hidden mb-6 bg-[#FAF9F6] border border-[#EAEAEA]">
+                <div className="relative aspect-[4/5] w-full rounded-lg overflow-hidden mb-5 bg-[#FAF9F6] border border-[#EAEAEA]">
                   <Image
                     src={member.image}
                     alt={member.name}
@@ -227,9 +263,9 @@ export default function AboutPage() {
                     className="object-cover object-top"
                   />
                 </div>
-                <h3 className="text-xl font-bold text-[#111111] mb-1">{member.name}</h3>
-                <p className="text-xs uppercase tracking-widest text-[#B8976A] font-semibold mb-3">{member.role}</p>
-                <p className="text-sm text-[#555555] leading-relaxed font-normal mt-auto">{member.bio}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#111111] mb-1">{member.name}</h3>
+                <p className="text-[11px] sm:text-xs uppercase tracking-widest text-[#B8976A] font-semibold mb-2.5">{member.role}</p>
+                <p className="text-xs sm:text-sm text-[#555555] leading-relaxed font-normal mt-auto">{member.bio}</p>
               </div>
             ))}
           </div>
