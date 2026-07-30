@@ -24,7 +24,6 @@ const HeroCategoryCard = ({ category }) => {
             sizes="(max-width: 1024px) 100vw, 65vw"
             className="object-cover transition-transform ease-out group-hover:scale-105"
             style={{ transitionDuration: "1400ms" }}
-            loading="lazy"
             priority
           />
         ) : (

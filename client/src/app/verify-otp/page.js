@@ -90,7 +90,7 @@ function VerifyOtpContent() {
         <div className="absolute inset-0 bg-gradient-to-b from-noir/70 via-noir/50 to-noir/90" />
         <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
           <Link href="/" className="inline-block">
-            <span className="font-display text-2xl text-ivory tracking-tight">Rrhoseatte</span>
+            <span className="font-display text-2xl text-ivory tracking-tight">Rhoseatte</span>
           </Link>
           <div className="max-w-md">
             <div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 border border-white/10 bg-white/5 backdrop-blur-sm">
@@ -106,7 +106,7 @@ function VerifyOtpContent() {
               Enter it below to complete your registration.
             </p>
           </div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-white/20">&copy; {new Date().getFullYear()} Rrhoseatte</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/20">&copy; {new Date().getFullYear()} Rhoseatte</p>
         </div>
       </div>
 
@@ -115,7 +115,7 @@ function VerifyOtpContent() {
         <div className="w-full max-w-[420px]">
           <div className="lg:hidden text-center mb-10">
             <Link href="/" className="inline-block">
-              <span className="font-display text-2xl text-noir tracking-tight">Rrhoseatte</span>
+              <span className="font-display text-2xl text-noir tracking-tight">Rhoseatte</span>
             </Link>
           </div>
 

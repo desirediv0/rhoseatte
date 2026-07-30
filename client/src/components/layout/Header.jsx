@@ -149,11 +149,11 @@ export function Navbar() {
           "top-0 left-0 right-0 z-50 w-full transition-all duration-500",
           isHomePage
             ? cn(
-                "fixed",
-                isScrolled
-                  ? "bg-white border-b border-line/60 shadow-sm"
-                  : "bg-transparent"
-              )
+              "fixed",
+              isScrolled
+                ? "bg-white border-b border-line/60 shadow-sm"
+                : "bg-transparent"
+            )
             : "sticky bg-white border-b border-line/60"
         )}
       >
@@ -247,7 +247,7 @@ export function Navbar() {
                     width={140}
                     height={45}
                     className={cn(
-                      "h-8 sm:h-9 md:h-10 lg:h-11 w-auto object-contain transition-all duration-300",
+                      "h-8 sm:h-11 md:h-12 lg:h-14 w-auto object-contain transition-all duration-300",
                       overHero ? "brightness-0 invert" : ""
                     )}
                     priority
@@ -265,7 +265,7 @@ export function Navbar() {
                         key={href}
                         href={href}
                         className={cn(
-                          "relative px-2.5 xl:px-3.5 2xl:px-4 py-2 text-[13px] xl:text-[14px] 2xl:text-[15px] tracking-[0.02em] font-medium transition-all duration-300 rounded-[6px] whitespace-nowrap",
+                          "relative px-2.5 xl:px-3.5 2xl:px-4 py-2 text-[13px] xl:text-[14px]  tracking-[0.02em] font-medium transition-all duration-300 rounded-[6px] whitespace-nowrap",
                           overHero
                             ? active
                               ? "text-gold-light"
@@ -290,7 +290,7 @@ export function Navbar() {
               </nav>
 
               {/* Right: Icons */}
-              <div className="flex items-center gap-1 sm:gap-1.5">
+              <div className="flex items-center gap-1 ">
                 <button
                   onClick={() => setIsSearchOpen(true)}
                   className={cn("hidden lg:flex", iconBtn)}

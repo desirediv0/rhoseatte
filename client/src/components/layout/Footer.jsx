@@ -254,22 +254,26 @@ export const Footer = () => {
             <div className="text-[10px] tracking-[0.2em] uppercase font-medium" style={{ color: "rgba(255,255,255,0.25)" }}>
               &copy; {new Date().getFullYear()} RHOSEATTE — All rights reserved
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] uppercase tracking-[0.15em] font-medium mr-2" style={{ color: "rgba(255,255,255,0.25)" }}>
+            <div className="flex items-center gap-2.5">
+              <span className="text-[9px] uppercase tracking-[0.15em] font-medium mr-1" style={{ color: "rgba(255,255,255,0.25)" }}>
                 We Accept
               </span>
-              {["VISA", "MC", "UPI", "RUPAY"].map((item) => (
-                <span
-                  key={item}
-                  className="px-2.5 py-1 text-[8px] tracking-[0.1em] font-medium"
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "rgba(255,255,255,0.4)",
-                    borderRadius: "4px",
-                  }}
+              {[
+                { name: "Visa", src: "/visa.png" },
+                { name: "Mastercard", src: "/mc.png" },
+                { name: "UPI", src: "/upi.png" },
+              ].map((item) => (
+                <div
+                  key={item.name}
+                  className="px-2 py-1 bg-white/95 rounded-[4px] border border-white/10 flex items-center justify-center h-6 min-w-[36px] shadow-sm hover:bg-white hover:scale-105 transition-all duration-300"
+                  title={item.name}
                 >
-                  {item}
-                </span>
+                  <img
+                    src={item.src}
+                    alt={item.name}
+                    className="h-3.5 w-auto object-contain max-w-[30px]"
+                  />
+                </div>
               ))}
             </div>
           </div>

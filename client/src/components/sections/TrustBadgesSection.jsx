@@ -45,7 +45,7 @@ export default function TrustBadgesSection() {
           <div className="text-center mb-14 md:mb-18">
             <span className="text-[10px] uppercase tracking-[0.3em] text-gold font-medium block mb-4">Trust & Experience</span>
             <h2 className="font-display text-3xl sm:text-4xl md:text-[42px] text-noir tracking-tight leading-tight">
-              The Rrhoseatte <em className="italic text-gold-dark">Promise</em>
+              The Rhoseatte <em className="italic text-gold-dark">Promise</em>
             </h2>
           </div>
         </Reveal>

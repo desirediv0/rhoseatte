@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { CartProvider } from "@/lib/cart-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { FloatingWhatsApp } from "@/components/ui/FloatingWhatsApp";
-import SiteFX from "@/components/ui/SiteFX";
+// import SiteFX from "@/components/ui/SiteFX";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -40,7 +40,7 @@ export default function RootLayout({ children }) {
       <body className="antialiased">
         <AuthProvider>
           <CartProvider>
-            <SiteFX />
+            {/* <SiteFX /> */}
             <Navbar />
             <main className="min-h-screen">
               {children}

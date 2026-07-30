@@ -11,18 +11,18 @@ export default function CustomPerfumeSection() {
       <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <Reveal>
-            <div className="relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/3] rounded-xl overflow-hidden shadow-2xl">
+            <div className="relative aspect-[4/5] sm:aspect-[3/4] lg:aspect-[4/5] max-w-md mx-auto lg:max-w-none rounded-xl overflow-hidden shadow-xl bg-white border border-line/60">
               <Image
-                src="/hero-slide-2.jpg"
+                src="/card1.jpeg"
                 alt="Custom Perfume Atelier"
                 fill
-                className="object-cover"
+                className="object-contain p-2"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-noir/70 via-transparent to-transparent" />
-              <div className="absolute bottom-6 left-6 right-6 text-white">
+              <div className="absolute inset-0 bg-gradient-to-t from-noir/90 via-noir/20 to-transparent pointer-events-none" />
+              <div className="absolute bottom-6 left-6 right-6 text-white z-10">
                 <span className="text-xs uppercase tracking-[0.2em] text-gold block mb-1">Atelier Bespoke</span>
-                <p className="font-display text-xl">Handcrafted specifically for your unique essence</p>
+                <p className="font-display text-xl drop-shadow-sm">Handcrafted specifically for your unique essence</p>
               </div>
             </div>
           </Reveal>
@@ -39,17 +39,17 @@ export default function CustomPerfumeSection() {
               </h2>
 
               <p className="text-stone text-base leading-relaxed mb-6 font-light">
-                Experience the pinnacle of luxury with our bespoke fragrance creation service. Work directly with master perfumers to blend rare ingredients, personalized notes, and custom engraved bottles tailored exclusively to your scent signature.
+                Experience the pinnacle of luxury with our bespoke fragrance creation service. Work directly with master perfumers to blend rare ingredients, personalized notes, and custom bottles tailored exclusively to your scent signature.
               </p>
 
               <div className="space-y-4 mb-8">
                 <div className="flex items-start gap-3">
                   <span className="w-2 h-2 rounded-full bg-gold mt-2 shrink-0" />
-                  <p className="text-sm text-noir/80"><strong className="text-noir">Personalized Olfactory Consultation:</strong> Select top, heart, and base notes guided by experts.</p>
+                  <p className="text-sm text-noir/80"><strong className="text-noir">Personalized Olfactory Consultation:</strong> Select top, heart, and base notes.</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="w-2 h-2 rounded-full bg-gold mt-2 shrink-0" />
-                  <p className="text-sm text-noir/80"><strong className="text-noir">Engraved Monogram Bottle:</strong> Custom luxury flacon inscribed with your name or initials.</p>
+                  <p className="text-sm text-noir/80"><strong className="text-noir">Monogram Bottle:</strong> Custom luxury flacon with your name or initials.</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="w-2 h-2 rounded-full bg-gold mt-2 shrink-0" />

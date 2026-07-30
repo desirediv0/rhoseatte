@@ -15,8 +15,17 @@ import {
   IconRefresh,
   IconShieldCheck,
   IconChevronRight,
+  IconChevronLeft,
   IconShare,
   IconStar,
+  IconZoomIn,
+  IconZoomOut,
+  IconX,
+  IconBrandWhatsapp,
+  IconBrandFacebook,
+  IconBrandX,
+  IconLink,
+  IconCheck,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
@@ -27,8 +36,11 @@ import { ProductCard } from "@/components/products/ProductCard";
 
 const getImageUrl = (img) => {
   if (!img) return "/placeholder.jpg";
-  if (img.startsWith("http")) return img;
-  return `https://desirediv-storage.blr1.digitaloceanspaces.com/${img}`;
+  let urlStr = typeof img === "object" ? (img.url || img.image || "") : img;
+  if (!urlStr || typeof urlStr !== "string") return "/placeholder.jpg";
+  if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) return urlStr;
+  const cleanPath = urlStr.startsWith("/") ? urlStr.slice(1) : urlStr;
+  return `https://desirediv-storage.blr1.digitaloceanspaces.com/${cleanPath}`;
 };
 
 export default function ProductContent({ slug }) {
@@ -55,6 +67,50 @@ export default function ProductContent({ slug }) {
   const [bundleSelected, setBundleSelected] = useState({});
   const [isAddingBundle, setIsAddingBundle] = useState(false);
   const [activeThumb, setActiveThumb] = useState(0);
+
+  // Zoom & Lightbox states
+  const [isHovered, setIsHovered] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+  const [lightboxScale, setLightboxScale] = useState(1);
+  const [copied, setCopied] = useState(false);
+
+  const handleSocialShare = (platform) => {
+    if (typeof window === "undefined") return;
+    const currentUrl = window.location.href;
+    const prodName = product?.name || "Product";
+    const message = `Check out ${prodName} on Rhoseatte`;
+
+    if (platform === "whatsapp") {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message + " - " + currentUrl)}`, "_blank");
+    } else if (platform === "facebook") {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, "_blank");
+    } else if (platform === "twitter") {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(currentUrl)}`, "_blank");
+    } else if (platform === "copy") {
+      navigator.clipboard.writeText(currentUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setZoomPos({ x, y });
+  };
+
+  useEffect(() => {
+    if (!isZoomModalOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setIsZoomModalOpen(false);
+      if (e.key === "ArrowLeft") setActiveThumb((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+      if (e.key === "ArrowRight") setActiveThumb((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isZoomModalOpen]);
 
   const { isAuthenticated } = useAuth();
   const router = useRouter();
@@ -357,15 +413,42 @@ export default function ProductContent({ slug }) {
             )}
 
             {/* Main Image */}
-            <div className="relative flex-1 aspect-[3/4] overflow-hidden bg-ivory group cursor-zoom-in" style={{ borderRadius: "8px" }}>
+            <div
+              className="relative flex-1 aspect-[3/4] overflow-hidden bg-ivory group cursor-zoom-in select-none"
+              style={{ borderRadius: "8px" }}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              onMouseMove={handleMouseMove}
+              onClick={() => {
+                setLightboxScale(1);
+                setIsZoomModalOpen(true);
+              }}
+            >
               {images.length > 0 ? (
-                <Image src={getImageUrl(primary?.url)} alt={product.name} fill className="object-cover transition-transform ease-out group-hover:scale-110"
-                style={{ transitionDuration: "1200ms" }} priority sizes="(max-width: 1024px) 100vw, 50vw" />
+                <Image
+                  src={getImageUrl(primary?.url)}
+                  alt={product.name}
+                  fill
+                  className="object-cover transition-transform duration-200 ease-out pointer-events-none"
+                  style={{
+                    transformOrigin: isHovered ? `${zoomPos.x}% ${zoomPos.y}%` : "center center",
+                    transform: isHovered ? "scale(2.2)" : "scale(1)",
+                  }}
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                />
               ) : (
                 <Image src="/placeholder.jpg" alt={product.name} fill className="object-cover" />
               )}
+
+              {/* Hover Zoom Hint */}
+              <div className="absolute bottom-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-noir/80 backdrop-blur-md text-white text-[9px] tracking-widest uppercase px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/10">
+                <IconZoomIn className="h-3.5 w-3.5 text-gold" />
+                <span>Click to Expand</span>
+              </div>
+
               {/* Badges */}
-              <div className="absolute top-5 left-5 z-20 flex flex-col gap-2">
+              <div className="absolute top-5 left-5 z-20 flex flex-col gap-2 pointer-events-none">
                 {product.flashSale?.isActive && (
                   <span className="px-4 py-2 text-[9px] font-bold uppercase tracking-[0.2em] flex items-center gap-1.5" style={{ backgroundColor: "#B8976A", color: "#fff", borderRadius: "4px" }}>
                     <IconBolt className="h-3 w-3" stroke={2} /> Flash Sale
@@ -375,13 +458,24 @@ export default function ProductContent({ slug }) {
                   <span className="px-4 py-2 text-[9px] font-bold uppercase tracking-[0.2em]" style={{ backgroundColor: "#111111", color: "#fff", borderRadius: "4px" }}>Sold Out</span>
                 )}
               </div>
+
               {/* Wishlist */}
-              <button onClick={handleWishlist} disabled={isAddingToWishlist} className="absolute top-5 right-5 w-12 h-12 backdrop-blur-md flex items-center justify-center transition-all duration-300 z-20" style={{ borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.9)", border: "none" }} aria-label="Wishlist">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleWishlist();
+                }}
+                disabled={isAddingToWishlist}
+                className="absolute top-5 right-5 w-12 h-12 backdrop-blur-md flex items-center justify-center transition-all duration-300 z-20 hover:scale-110 active:scale-95"
+                style={{ borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.9)", border: "none" }}
+                aria-label="Wishlist"
+              >
                 <IconHeart className={`h-5 w-5 transition-colors ${isInWishlist ? "text-red-500" : "text-noir/50 hover:text-red-400"}`} stroke={1.5} fill={isInWishlist ? "currentColor" : "none"} />
               </button>
+
               {/* Image count */}
               {images.length > 1 && (
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-4 py-1.5 backdrop-blur-md text-[10px] tracking-[0.15em] z-20 font-display" style={{ backgroundColor: "rgba(17,17,17,0.5)", color: "#fff", borderRadius: "6px" }}>
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-4 py-1.5 backdrop-blur-md text-[10px] tracking-[0.15em] z-20 font-display pointer-events-none" style={{ backgroundColor: "rgba(17,17,17,0.5)", color: "#fff", borderRadius: "6px" }}>
                   {activeThumb + 1} / {images.length}
                 </div>
               )}
@@ -538,32 +632,73 @@ export default function ProductContent({ slug }) {
 
             {/* Meta */}
             <div className="pt-6 space-y-3" style={{ borderTop: "1px solid #EAEAEA" }}>
-              <div className="flex text-[12px] items-baseline">
-                <span className="w-24 text-[9px] font-semibold uppercase tracking-[0.2em]" style={{ color: "#666666" }}>Category</span>
-                <span className="tracking-wide" style={{ color: "#111111" }}>{product.category?.name || "Fragrance"}</span>
-              </div>
+              {product.category && (
+                <div className="flex text-[12px] items-baseline">
+                  <span className="w-24 text-[9px] font-semibold uppercase tracking-[0.2em]" style={{ color: "#666666" }}>Category</span>
+                  <Link
+                    href={`/category/${product.category.slug}`}
+                    className="tracking-wide text-noir hover:text-gold transition-colors font-medium hover:underline underline-offset-4"
+                  >
+                    {product.category.name}
+                  </Link>
+                </div>
+              )}
               {product.brand && (
                 <div className="flex text-[12px] items-baseline">
                   <span className="w-24 text-[9px] font-semibold uppercase tracking-[0.2em]" style={{ color: "#666666" }}>Brand</span>
-                  <span className="tracking-wide" style={{ color: "#111111" }}>{product.brand.name}</span>
+                  <Link
+                    href={`/brand/${product.brand.slug}`}
+                    className="tracking-wide text-noir hover:text-gold transition-colors font-medium hover:underline underline-offset-4"
+                  >
+                    {product.brand.name}
+                  </Link>
                 </div>
               )}
             </div>
 
             {/* Share */}
             <div className="flex items-center gap-4 mt-6 pt-6" style={{ borderTop: "1px solid #EAEAEA" }}>
-              <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em]" style={{ color: "#666666" }}><IconShare className="h-3.5 w-3.5" stroke={1.5} /> Share</span>
-              <div className="flex gap-2">
-                {[
-                  { l: "WA", u: `https://api.whatsapp.com/send?text=${typeof window !== "undefined" ? encodeURIComponent(window.location.href) : ""}` },
-                  { l: "FB", u: `https://www.facebook.com/sharer/sharer.php?u=${typeof window !== "undefined" ? encodeURIComponent(window.location.href) : ""}` },
-                  { l: "TW", u: `https://twitter.com/intent/tweet?url=${typeof window !== "undefined" ? encodeURIComponent(window.location.href) : ""}` },
-                ].map((s) => (
-                  <a key={s.l} href={s.u} target="_blank" rel="noopener noreferrer" className="w-9 h-9 flex items-center justify-center text-[9px] font-semibold tracking-[0.1em] transition-all duration-300" style={{ border: "1px solid #EAEAEA", borderRadius: "6px", color: "#666666" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#111111"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "#111111"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#666666"; e.currentTarget.style.borderColor = "#EAEAEA"; }}
-                  >{s.l}</a>
-                ))}
+              <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-medium" style={{ color: "#666666" }}>
+                <IconShare className="h-4 w-4 text-gold" stroke={1.5} /> Share
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleSocialShare("whatsapp")}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-line hover:border-emerald-600 hover:bg-emerald-600 hover:text-white text-stone transition-all duration-300 shadow-sm"
+                  title="Share on WhatsApp"
+                  aria-label="Share on WhatsApp"
+                >
+                  <IconBrandWhatsapp className="w-4 h-4" stroke={1.8} />
+                </button>
+                <button
+                  onClick={() => handleSocialShare("facebook")}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-line hover:border-blue-600 hover:bg-blue-600 hover:text-white text-stone transition-all duration-300 shadow-sm"
+                  title="Share on Facebook"
+                  aria-label="Share on Facebook"
+                >
+                  <IconBrandFacebook className="w-4 h-4" stroke={1.8} />
+                </button>
+                <button
+                  onClick={() => handleSocialShare("twitter")}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-line hover:border-noir hover:bg-noir hover:text-white text-stone transition-all duration-300 shadow-sm"
+                  title="Share on X"
+                  aria-label="Share on X"
+                >
+                  <IconBrandX className="w-4 h-4" stroke={1.8} />
+                </button>
+                <button
+                  onClick={() => handleSocialShare("copy")}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-line hover:border-noir hover:bg-noir hover:text-white text-stone transition-all duration-300 shadow-sm relative"
+                  title="Copy Link"
+                  aria-label="Copy Link"
+                >
+                  {copied ? <IconCheck className="w-4 h-4 text-emerald-500" stroke={2} /> : <IconLink className="w-4 h-4" stroke={1.8} />}
+                  {copied && (
+                    <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-noir text-white text-[9px] px-2 py-0.5 rounded shadow whitespace-nowrap animate-fadeIn">
+                      Copied!
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -626,7 +761,8 @@ export default function ProductContent({ slug }) {
             { key: "legalInfo", label: "Legal Information" },
           ].map(({ key, label }) => {
             const content = product[key];
-            if (!content) return null;
+            const hasNotesList = key === "fragranceNotes" && product.notes && product.notes.length > 0;
+            if (!content && !hasNotesList) return null;
             const isOpen = !!openSections[key];
             return (
               <div key={key} style={{ borderBottom: "1px solid #EAEAEA" }}>
@@ -643,9 +779,31 @@ export default function ProductContent({ slug }) {
                 </button>
                 <div
                   className="overflow-hidden transition-all duration-500"
-                  style={{ maxHeight: isOpen ? "800px" : "0", opacity: isOpen ? 1 : 0, marginBottom: isOpen ? "24px" : "0" }}
+                  style={{ maxHeight: isOpen ? "1200px" : "0", opacity: isOpen ? 1 : 0, marginBottom: isOpen ? "24px" : "0" }}
                 >
-                  <div className="text-[14px] leading-relaxed font-light tracking-wide" style={{ color: "#666666" }} dangerouslySetInnerHTML={{ __html: content }} />
+                  {key === "fragranceNotes" && product.notes && product.notes.length > 0 && (
+                    <div className="mb-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 py-2">
+                        {product.notes.map((note) => (
+                          <div key={note.id || note.title} className="flex flex-col items-center p-3 rounded-xl border border-line/60 bg-ivory/40 hover:border-gold/50 transition-all text-center group">
+                            <div className="relative w-16 h-16 sm:w-20 sm:h-20 overflow-hidden mb-2 rounded-xl shadow-sm">
+                              <Image
+                                src={getImageUrl(note.image)}
+                                alt={note.title || "Fragrance Note"}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                sizes="80px"
+                              />
+                            </div>
+                            <span className="text-[11px] font-medium tracking-wider uppercase text-noir">{note.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {content && (
+                    <div className="text-[14px] leading-relaxed font-light tracking-wide" style={{ color: "#666666" }} dangerouslySetInnerHTML={{ __html: content }} />
+                  )}
                 </div>
               </div>
             );
@@ -760,6 +918,118 @@ export default function ProductContent({ slug }) {
               {isAddingToCart ? "Adding…" : "Add to Bag"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Fullscreen Interactive Lightbox Modal (Click / Mobile Touch Zoom) ── */}
+      {isZoomModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-6 animate-fadeIn select-none">
+          {/* Header Controls */}
+          <div className="flex items-center justify-between z-10 text-white border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xs uppercase tracking-[0.2em] font-medium text-gold">{product.name}</span>
+              {images.length > 1 && (
+                <span className="text-xs text-white/50 tracking-wider">
+                  ({activeThumb + 1} of {images.length})
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg">
+                <button
+                  onClick={() => setLightboxScale((prev) => Math.max(1, prev - 0.5))}
+                  disabled={lightboxScale <= 1}
+                  className="p-2 rounded hover:bg-white/10 text-white disabled:opacity-30 transition-colors"
+                  title="Zoom Out"
+                >
+                  <IconZoomOut className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setLightboxScale(1)}
+                  className="px-2 py-1 text-xs font-mono font-medium text-gold hover:bg-white/10 rounded transition-colors"
+                  title="Reset Zoom"
+                >
+                  {Math.round(lightboxScale * 100)}%
+                </button>
+                <button
+                  onClick={() => setLightboxScale((prev) => Math.min(4, prev + 0.5))}
+                  disabled={lightboxScale >= 4}
+                  className="p-2 rounded hover:bg-white/10 text-white disabled:opacity-30 transition-colors"
+                  title="Zoom In"
+                >
+                  <IconZoomIn className="w-5 h-5" />
+                </button>
+              </div>
+
+              <button
+                onClick={() => setIsZoomModalOpen(false)}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors ml-2"
+                title="Close (Esc)"
+              >
+                <IconX className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Main Lightbox Display */}
+          <div className="relative flex-1 w-full flex items-center justify-center overflow-hidden my-4">
+            {images.length > 1 && (
+              <button
+                onClick={() => setActiveThumb((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-black/60 hover:bg-gold hover:text-noir text-white backdrop-blur-md transition-all"
+                aria-label="Previous Image"
+              >
+                <IconChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            <div
+              className="relative w-full h-full max-w-4xl max-h-[80vh] flex items-center justify-center cursor-pointer overflow-auto p-4"
+              onClick={() => setLightboxScale((prev) => (prev > 1 ? 1 : 2.5))}
+            >
+              <Image
+                src={getImageUrl(images[activeThumb]?.url || primary?.url)}
+                alt={product.name}
+                width={1200}
+                height={1600}
+                className="object-contain max-h-full max-w-full transition-transform duration-300 ease-out select-none"
+                style={{
+                  transform: `scale(${lightboxScale})`,
+                }}
+                priority
+              />
+            </div>
+
+            {images.length > 1 && (
+              <button
+                onClick={() => setActiveThumb((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-black/60 hover:bg-gold hover:text-noir text-white backdrop-blur-md transition-all"
+                aria-label="Next Image"
+              >
+                <IconChevronRight className="w-6 h-6" />
+              </button>
+            )}
+          </div>
+
+          {/* Footer Thumbnails list in Lightbox */}
+          {images.length > 1 && (
+            <div className="flex items-center justify-center gap-3 overflow-x-auto py-2 border-t border-white/10 no-scrollbar z-10">
+              {images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setActiveThumb(idx);
+                    setLightboxScale(1);
+                  }}
+                  className={`relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden transition-all border-2 ${activeThumb === idx ? "border-gold opacity-100 scale-105" : "border-transparent opacity-50 hover:opacity-80"
+                    }`}
+                >
+                  <Image src={getImageUrl(img.url)} alt="" fill className="object-cover" sizes="56px" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

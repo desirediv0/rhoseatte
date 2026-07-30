@@ -269,7 +269,7 @@ export default function ContactPage() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-[0.2em] text-stone font-medium mb-2">
+                      <label className="block text-[11px] uppercase tracking-[0.2em] text-noir font-medium mb-2.5">
                         Full Name *
                       </label>
                       <input
@@ -279,11 +279,11 @@ export default function ContactPage() {
                         onChange={handleInputChange}
                         required
                         placeholder="Your full name"
-                        className="w-full h-13 px-4 border border-line bg-white text-noir text-[13px] placeholder:text-stone/50 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/20 transition-all duration-300"
+                        className="w-full h-12 px-4 py-3 border border-line bg-white text-noir text-[14px] rounded-lg placeholder:text-stone/40 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all duration-300 shadow-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-[0.2em] text-stone font-medium mb-2">
+                      <label className="block text-[11px] uppercase tracking-[0.2em] text-noir font-medium mb-2.5">
                         Phone *
                       </label>
                       <input
@@ -293,13 +293,13 @@ export default function ContactPage() {
                         onChange={handleInputChange}
                         required
                         placeholder="+91 00000 00000"
-                        className="w-full h-13 px-4 border border-line bg-white text-noir text-[13px] placeholder:text-stone/50 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/20 transition-all duration-300"
+                        className="w-full h-12 px-4 py-3 border border-line bg-white text-noir text-[14px] rounded-lg placeholder:text-stone/40 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all duration-300 shadow-sm"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] uppercase tracking-[0.2em] text-stone font-medium mb-2">
+                    <label className="block text-[11px] uppercase tracking-[0.2em] text-noir font-medium mb-2.5">
                       Email *
                     </label>
                     <input
@@ -309,29 +309,34 @@ export default function ContactPage() {
                       onChange={handleInputChange}
                       required
                       placeholder="you@example.com"
-                      className="w-full h-13 px-4 border border-line bg-white text-noir text-[13px] placeholder:text-stone/50 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/20 transition-all duration-300"
+                      className="w-full h-12 px-4 py-3 border border-line bg-white text-noir text-[14px] rounded-lg placeholder:text-stone/40 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all duration-300 shadow-sm"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] uppercase tracking-[0.2em] text-stone font-medium mb-2">
+                    <label className="block text-[11px] uppercase tracking-[0.2em] text-noir font-medium mb-2.5">
                       Subject
                     </label>
-                    <select
-                      name="subject"
-                      value={formData.subject}
-                      onChange={handleInputChange}
-                      className="w-full h-13 px-4 border border-line bg-white text-noir text-[13px] appearance-none focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/20 transition-all duration-300"
-                    >
-                      <option>General Inquiry</option>
-                      <option>Order Status</option>
-                      <option>Collaboration</option>
-                      <option>Feedback</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        name="subject"
+                        value={formData.subject}
+                        onChange={handleInputChange}
+                        className="w-full h-12 px-4 py-3 border border-line bg-white text-noir text-[14px] rounded-lg appearance-none focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all duration-300 shadow-sm cursor-pointer"
+                      >
+                        <option>General Inquiry</option>
+                        <option>Order Status</option>
+                        <option>Collaboration</option>
+                        <option>Feedback</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-stone">
+                        <IconChevronDown className="h-4 w-4" stroke={1.5} />
+                      </div>
+                    </div>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] uppercase tracking-[0.2em] text-stone font-medium mb-2">
+                    <label className="block text-[11px] uppercase tracking-[0.2em] text-noir font-medium mb-2.5">
                       Message *
                     </label>
                     <textarea
@@ -341,7 +346,7 @@ export default function ContactPage() {
                       required
                       rows={5}
                       placeholder="Tell us how we can help..."
-                      className="w-full px-4 py-3.5 border border-line bg-white text-noir text-[13px] resize-none placeholder:text-stone/50 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/20 transition-all duration-300"
+                      className="w-full px-4 py-3.5 border border-line bg-white text-noir text-[14px] rounded-lg resize-none placeholder:text-stone/40 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all duration-300 shadow-sm"
                     />
                   </div>
 
