@@ -53,7 +53,7 @@ const NAV_LINKS = [
 ];
 
 const ANNOUNCEMENTS = [
-  "Complimentary Shipping on Orders Above \u20B99,999",
+  "Complimentary Shipping on orders above \u20B9499 | Proudly handcrafted in India \uD83C\uDDEE\uD83C\uDDF3",
   "Discover the Nightfall Edition",
   "Handcrafted Luxury Fragrances",
   "Private Consultations Available",
