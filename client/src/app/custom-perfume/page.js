@@ -231,6 +231,7 @@ export default function CustomPerfumePage() {
       // 1. Create Razorpay order on backend
       const res = await fetchApi("/custom-perfume-order/create-razorpay", {
         method: "POST",
+        credentials: "include",
         body: JSON.stringify(orderPayload)
       });
 
@@ -270,6 +271,7 @@ export default function CustomPerfumePage() {
             // Verify HMAC payment signature on backend
             const verifyRes = await fetchApi("/custom-perfume-order/verify-payment", {
               method: "POST",
+              credentials: "include",
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,

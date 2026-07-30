@@ -12,21 +12,22 @@ import {
   IconChevronRight,
 } from "@tabler/icons-react";
 
+// Test hero assets: desk.PNG (1672x941 ~16:9) for desktop/tablet, mob.PNG (941x1672 ~9:16) for mobile
 const LOCAL_FALLBACKS = [
   {
     id: "fallback-1",
-    image: "/hero.jpg",
-    tabletImage: "/hero-tablet.jpg",
-    mobileImage: "/hero-mobile.jpg",
+    image: "/desk.PNG",
+    tabletImage: "/desk.PNG",
+    mobileImage: "/mob.PNG",
     title: "Step Into the World of RHOSEATTE",
     subtitle: "A curated gallery of luxury fragrances, crafted for those who appreciate quiet elegance.",
     link: "/products",
   },
   {
     id: "fallback-2",
-    image: "/hero-slide-2.jpg",
-    tabletImage: "/hero-tablet.jpg",
-    mobileImage: "/hero-mobile.jpg",
+    image: "/desk2.PNG",
+    tabletImage: "/desk2.PNG",
+    mobileImage: "/mob1.PNG",
     title: "The Art of Fragrance",
     subtitle: "Each scent tells a story \u2014 layered, complex, and unmistakably yours.",
     link: "/categories",
@@ -108,9 +109,9 @@ export default function HeroSectionStore() {
         if (alive && Array.isArray(arr) && arr.length > 0) {
           const mapped = arr.map((b, i) => ({
             id: b._id || b.id || `banner-${i}`,
-            image: b.image || b.imageUrl || "/hero.jpg",
-            tabletImage: b.tabletImage || b.tabletImg || b.image || b.imageUrl || "/hero-tablet.jpg",
-            mobileImage: b.mobileImage || b.mobileImg || b.image || b.imageUrl || "/hero-mobile.jpg",
+            image: b.image || b.imageUrl || "/desk.PNG",
+            tabletImage: b.tabletImage || b.tabletImg || b.image || b.imageUrl || "/desk.PNG",
+            mobileImage: b.mobileImage || b.mobileImg || b.image || b.imageUrl || "/mob.PNG",
             title: b.title || "RHOSEATTE",
             subtitle: b.subtitle || "Discover luxury, redefined.",
             link: b.link || "/products",
@@ -186,7 +187,7 @@ export default function HeroSectionStore() {
     <section
       className="relative w-full bg-noir text-white overflow-hidden"
       style={{
-        height: isMobile ? "550px" : isTablet ? "600px" : isLaptop ? "700px" : "850px",
+        height: isMobile ? "480px" : isTablet ? "600px" : isLaptop ? "700px" : "850px",
       }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
@@ -232,17 +233,17 @@ export default function HeroSectionStore() {
           className="absolute inset-0 z-20 flex items-center"
         >
           <div className="w-full px-5 sm:px-10 md:px-16 lg:px-20 xl:px-24">
-            <div className="max-w-[620px] pointer-events-auto">
+            <div className="max-w-[520px] sm:max-w-[620px] pointer-events-auto">
               <motion.div
                 custom={0}
                 variants={contentVariants}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="flex items-center gap-3 mb-6 md:mb-8"
+                className="flex items-center gap-2 sm:gap-3 mb-4 md:mb-8"
               >
-                <span className="block h-px w-10 bg-gold" />
-                <span className="text-[10px] md:text-[11px] uppercase tracking-[0.3em] text-white/70 font-light">
+                <span className="block h-px w-6 sm:w-10 bg-gold" />
+                <span className="text-[9px] sm:text-[10px] md:text-[11px] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/70 font-light">
                   The RHOSEATTE Maison
                 </span>
               </motion.div>
@@ -253,9 +254,9 @@ export default function HeroSectionStore() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="font-display font-normal leading-[1.05] mb-6 md:mb-8 text-white"
+                className="font-display font-normal leading-[1.05] mb-4 sm:mb-6 md:mb-8 text-white"
                 style={{
-                  fontSize: isMobile ? "36px" : isTablet ? "48px" : isLaptop ? "60px" : "78px",
+                  fontSize: isMobile ? "26px" : isTablet ? "48px" : isLaptop ? "60px" : "78px",
                 }}
               >
                 {current.title.split(" ").length > 3 ? (
@@ -276,9 +277,9 @@ export default function HeroSectionStore() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="font-light leading-relaxed tracking-wide mb-10 md:mb-12 text-white/70 max-w-[520px]"
+                className="font-light leading-relaxed tracking-wide mb-6 sm:mb-8 md:mb-12 text-white/70 max-w-[520px]"
                 style={{
-                  fontSize: isMobile ? "16px" : isTablet ? "17px" : "19px",
+                  fontSize: isMobile ? "14px" : isTablet ? "17px" : "19px",
                 }}
               >
                 {current.subtitle}
@@ -290,20 +291,20 @@ export default function HeroSectionStore() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="flex flex-wrap gap-4"
+                className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4"
               >
                 <button
                   onClick={() => router.push(current.link || "/products")}
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-gold text-noir text-[13px] font-medium tracking-[0.08em] uppercase rounded-[6px] hover:bg-gold-light transition-all duration-300 active:scale-[0.98]"
-                  style={{ height: "56px", paddingLeft: "34px", paddingRight: "34px" }}
+                  className="inline-flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-8 py-2.5 sm:py-4 bg-gold text-noir text-[12px] sm:text-[13px] font-medium tracking-[0.08em] uppercase rounded-[6px] hover:bg-gold-light transition-all duration-300 active:scale-[0.98]"
+                  style={{ height: isMobile ? "44px" : "56px", paddingLeft: isMobile ? "22px" : "34px", paddingRight: isMobile ? "22px" : "34px" }}
                 >
                   Explore Now
-                  <IconArrowRight className="h-4 w-4" stroke={1.5} />
+                  <IconArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" stroke={1.5} />
                 </button>
                 <Link
                   href="/categories"
-                  className="inline-flex items-center gap-3 px-8 py-4 border border-white/25 text-white text-[13px] font-light tracking-[0.08em] uppercase rounded-[6px] hover:bg-white/10 transition-all duration-300 active:scale-[0.98]"
-                  style={{ height: "56px", paddingLeft: "34px", paddingRight: "34px" }}
+                  className="inline-flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-8 py-2.5 sm:py-4 border border-white/25 text-white text-[12px] sm:text-[13px] font-light tracking-[0.08em] uppercase rounded-[6px] hover:bg-white/10 transition-all duration-300 active:scale-[0.98]"
+                  style={{ height: isMobile ? "44px" : "56px", paddingLeft: isMobile ? "22px" : "34px", paddingRight: isMobile ? "22px" : "34px" }}
                 >
                   Browse Collections
                 </Link>
@@ -317,17 +318,17 @@ export default function HeroSectionStore() {
         <>
           <button
             onClick={prev}
-            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:bg-black/50 transition-all duration-300"
+            className="absolute left-3 sm:left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:bg-black/50 transition-all duration-300"
             aria-label="Previous banner"
           >
-            <IconChevronLeft className="h-6 w-6" stroke={1.5} />
+            <IconChevronLeft className="h-4 w-4 sm:h-6 sm:w-6" stroke={1.5} />
           </button>
           <button
             onClick={next}
-            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:bg-black/50 transition-all duration-300"
+            className="absolute right-3 sm:right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:bg-black/50 transition-all duration-300"
             aria-label="Next banner"
           >
-            <IconChevronRight className="h-6 w-6" stroke={1.5} />
+            <IconChevronRight className="h-4 w-4 sm:h-6 sm:w-6" stroke={1.5} />
           </button>
 
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3">
@@ -336,11 +337,10 @@ export default function HeroSectionStore() {
                 key={i}
                 onClick={() => goTo(i)}
                 aria-label={`Go to slide ${i + 1}`}
-                className={`transition-all duration-300 rounded-full ${
-                  i === currentIndex
-                    ? "w-8 h-2 bg-gold"
-                    : "w-2 h-2 bg-white/30 hover:bg-white/50"
-                }`}
+                className={`transition-all duration-300 rounded-full ${i === currentIndex
+                  ? "w-8 h-2 bg-gold"
+                  : "w-2 h-2 bg-white/30 hover:bg-white/50"
+                  }`}
               />
             ))}
           </div>
@@ -348,11 +348,11 @@ export default function HeroSectionStore() {
       )}
 
       <div className="absolute bottom-0 left-0 right-0 z-10">
-        <div className="w-full px-5 sm:px-10 md:px-16 lg:px-20 xl:px-24 pb-6 md:pb-8 flex items-end justify-between">
-          <span className="text-[9px] uppercase tracking-[0.35em] text-white/25">
+        <div className="w-full px-5 sm:px-10 md:px-16 lg:px-20 xl:px-24 pb-4 sm:pb-6 md:pb-8 flex items-end justify-between">
+          <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.25em] sm:tracking-[0.35em] text-white/25">
             RHOSEATTE \u2014 Luxury Perfume Maison
           </span>
-          <span className="text-[9px] uppercase tracking-[0.35em] text-white/25">
+          <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.25em] sm:tracking-[0.35em] text-white/25">
             {String(currentIndex + 1).padStart(2, "0")} / {String(banners.length).padStart(2, "0")}
           </span>
         </div>
