@@ -291,22 +291,22 @@ export default function HeroSectionStore() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4"
+                className="flex flex-row flex-wrap gap-2 sm:gap-3"
               >
                 <button
                   onClick={() => router.push(current.link || "/products")}
-                  className="inline-flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-8 py-2.5 sm:py-4 bg-gold text-noir text-[12px] sm:text-[13px] font-medium tracking-[0.08em] uppercase rounded-[6px] hover:bg-gold-light transition-all duration-300 active:scale-[0.98]"
-                  style={{ height: isMobile ? "44px" : "56px", paddingLeft: isMobile ? "22px" : "34px", paddingRight: isMobile ? "22px" : "34px" }}
+                  className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-1.5 sm:py-2 bg-gold text-noir text-[10px] sm:text-[12px] font-medium tracking-[0.08em] uppercase rounded-[4px] sm:rounded-[6px] hover:bg-gold-light transition-all duration-300 active:scale-[0.98]"
+                  style={{ height: isMobile ? "32px" : "48px" }}
                 >
-                  Explore Now
-                  <IconArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" stroke={1.5} />
+                  Explore
+                  <IconArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" stroke={1.5} />
                 </button>
                 <Link
                   href="/categories"
-                  className="inline-flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-8 py-2.5 sm:py-4 border border-white/25 text-white text-[12px] sm:text-[13px] font-light tracking-[0.08em] uppercase rounded-[6px] hover:bg-white/10 transition-all duration-300 active:scale-[0.98]"
-                  style={{ height: isMobile ? "44px" : "56px", paddingLeft: isMobile ? "22px" : "34px", paddingRight: isMobile ? "22px" : "34px" }}
+                  className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-1.5 sm:py-2 border border-white/25 text-white text-[10px] sm:text-[12px] font-light tracking-[0.08em] uppercase rounded-[4px] sm:rounded-[6px] hover:bg-white/10 transition-all duration-300 active:scale-[0.98]"
+                  style={{ height: isMobile ? "32px" : "48px" }}
                 >
-                  Browse Collections
+                  Collections
                 </Link>
               </motion.div>
             </div>
