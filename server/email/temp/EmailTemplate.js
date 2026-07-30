@@ -1,31 +1,33 @@
 import { getStoreConfig } from "../../utils/storeConfig.js";
 
 /* ─── Shared styles ──────────────────────────────────────────────────── */
+/* ─── Shared styles ──────────────────────────────────────────────────── */
 const BASE_STYLES = `
-  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #111827; background-color: #FAFBF9; margin: 0; padding: 0; }
-  .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,62,41,0.08); border: 1px solid #E5E7EB; }
-  .header { background: linear-gradient(135deg, #002216, #003E29); color: #ffffff; text-align: center; padding: 40px 40px; }
-  .header.danger-header { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-  .header-accent { display: inline-block; background: rgba(212,175,55,0.2); color: #D4AF37; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; margin-bottom: 16px; border: 1px solid rgba(212,175,55,0.3); }
+  body { font-family: 'Times New Roman', Georgia, 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #111111; background-color: #FAF9F6; margin: 0; padding: 0; }
+  .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.06); border: 1px solid #EAEAEA; }
+  .header { background: linear-gradient(135deg, #111111, #1A1A1A); color: #ffffff; text-align: center; padding: 44px 40px; border-bottom: 2px solid #B8976A; }
+  .header.danger-header { background: linear-gradient(135deg, #dc2626, #b91c1c); border-bottom: 2px solid #f87171; }
+  .header-accent { display: inline-block; background: rgba(184,151,106,0.15); color: #B8976A; font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; padding: 6px 16px; border-radius: 20px; margin-bottom: 16px; border: 1px solid rgba(184,151,106,0.3); }
   .content { padding: 40px; }
-  h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
-  h2 { color: #002216; font-size: 22px; margin-top: 0; font-weight: 700; }
-  p { margin-bottom: 20px; font-size: 15px; color: #4b5563; line-height: 1.7; }
+  h1 { margin: 0; font-size: 26px; font-weight: 400; letter-spacing: -0.01em; color: #ffffff; }
+  h2 { color: #111111; font-size: 22px; margin-top: 0; font-weight: 600; letter-spacing: -0.01em; }
+  p { margin-bottom: 20px; font-size: 15px; color: #444444; line-height: 1.7; }
   .button-container { text-align: center; margin: 32px 0; }
-  .button { display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #003E29, #005a3c); color: #ffffff !important; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 15px; letter-spacing: 0.03em; box-shadow: 0 6px 20px rgba(0,62,41,0.35); }
-  .info-box { background: rgba(0,62,41,0.04); border: 1px solid #E5E7EB; padding: 24px; border-radius: 14px; margin: 24px 0; }
-  .info-box h3 { margin-top: 0; color: #003E29; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; }
-  .feature-item { margin-bottom: 10px; padding-left: 26px; position: relative; color: #374151; font-weight: 500; font-size: 14px; }
-  .feature-item:before { content: '✓'; position: absolute; left: 0; color: #D4AF37; font-weight: 900; }
-  .footer { text-align: center; padding: 28px 30px; font-size: 12px; color: #9ca3af; background: #FAFBF9; border-top: 1px solid #E5E7EB; }
-  .footer a { color: #003E29; text-decoration: none; }
-  .wa-cta { display: inline-block; margin-top: 10px; padding: 10px 24px; background: #25D366; color: white !important; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 13px; }
+  .button { display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #111111, #2A2A2A); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.15em; box-shadow: 0 6px 20px rgba(0,0,0,0.2); border: 1px solid #B8976A; }
+  .info-box { background: #FAF9F6; border: 1px solid #EAEAEA; padding: 24px; border-radius: 12px; margin: 24px 0; }
+  .info-box h3 { margin-top: 0; color: #111111; font-size: 12px; text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; border-bottom: 1px solid #EAEAEA; padding-bottom: 8px; }
+  .feature-item { margin-bottom: 10px; padding-left: 26px; position: relative; color: #333333; font-weight: 500; font-size: 14px; }
+  .feature-item:before { content: '◆'; position: absolute; left: 0; color: #B8976A; font-size: 10px; top: 2px; }
+  .footer { text-align: center; padding: 32px 30px; font-size: 12px; color: #777777; background: #FAF9F6; border-top: 1px solid #EAEAEA; }
+  .footer a { color: #111111; text-decoration: none; font-weight: 600; }
+  .wa-cta { display: inline-block; margin-top: 12px; padding: 10px 24px; background: #111111; color: #B8976A !important; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.15em; border: 1px solid #B8976A; }
 `;
 
 const HEADER_HTML = (title, accent, store, isDanger = false) => `
   <div class="header ${isDanger ? 'danger-header' : ''}">
     <div style="margin-bottom: 18px;">
-      <img src="${store.websiteUrl}/logo.png" alt="${store.storeName}" style="max-height: 55px; width: auto; display: inline-block;" />
+      <h2 style="color: #ffffff; font-size: 24px; letter-spacing: 0.25em; text-transform: uppercase; margin: 0; font-family: 'Times New Roman', Georgia, serif;">RHOSEATTE</h2>
+      <span style="font-size: 9px; uppercase; letter-spacing: 0.3em; color: #B8976A; display: block; margin-top: 4px;">Bespoke Perfumery</span>
     </div>
     ${accent ? `<div class="header-accent">${accent}</div>` : ""}
     <h1>${title}</h1>
@@ -34,10 +36,11 @@ const HEADER_HTML = (title, accent, store, isDanger = false) => `
 
 const FOOTER_HTML = (store) => `
   <div class="footer">
-    © ${new Date().getFullYear()} ${store.storeName} | ${store.storeTagline}<br>
-    <a href="mailto:${store.storeEmail}">${store.storeEmail}</a> &nbsp;·&nbsp; ${store.storePhone}<br>
-    <a href="https://wa.me/${store.socialWhatsapp}" class="wa-cta">Message us on WhatsApp</a><br><br>
-    This is an automated message. Please do not reply directly.
+    <strong style="color: #111111; font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase;">RHOSEATTE — Bespoke Perfumery</strong><br>
+    132, Ramdaspeth, Nagpur, Maharashtra &nbsp;·&nbsp; India<br>
+    <a href="mailto:${store.storeEmail || 'admin@rhoseatte.com'}">${store.storeEmail || 'admin@rhoseatte.com'}</a> &nbsp;·&nbsp; ${store.storePhone || '+91 76783 36268'}<br>
+    <a href="https://wa.me/${store.socialWhatsapp || '917678336268'}" class="wa-cta">Chat on WhatsApp (+91 76783 36268)</a><br><br>
+    <span style="font-size: 11px; color: #999999;">© ${new Date().getFullYear()} RHOSEATTE. All rights reserved.</span>
   </div>
 `;
 
@@ -50,28 +53,28 @@ export const getVerificationTemplate = (verificationLink, storeConfig = null) =>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Email - ${store.storeName}</title>
+    <title>Verify Your Email - RHOSEATTE</title>
     <style>${BASE_STYLES}</style>
 </head>
 <body>
     <div class="container">
-        ${HEADER_HTML(`Welcome to ${store.storeName}`, "Handcrafted Premium Jewellery", store)}
+        ${HEADER_HTML(`Welcome to RHOSEATTE`, "Bespoke Perfumery", store)}
         <div class="content">
             <h2>Verify Your Email Address</h2>
-            <p>Hi there,</p>
-            <p>Thank you for registering with <strong>${store.storeName}</strong> — your premium destination for handcrafted jewellery and customised accessories.</p>
-            <p>Please verify your email address to complete your registration and start ordering:</p>
+            <p>Dear Connoisseur,</p>
+            <p>Thank you for registering with <strong>RHOSEATTE</strong> — your destination for luxury bespoke perfumery and rare fragrance creations.</p>
+            <p>Please verify your email address to complete your registration and explore our collection:</p>
             <div class="button-container">
                 <a href="${verificationLink}" class="button">Verify My Email</a>
             </div>
-            <p style="font-size: 13px; color: #9ca3af;">If the button doesn't work, copy this link: ${verificationLink}</p>
+            <p style="font-size: 13px; color: #888888;">If the button doesn't work, copy this link: ${verificationLink}</p>
             <div class="info-box">
-                <h3>What we offer:</h3>
-                <div class="feature-item">Customised Hair Accessories (Delhi Craftsmanship)</div>
-                <div class="feature-item">50K+ Happy Customers across India & globally</div>
-                <div class="feature-item">Designed by Founder @meandshiningstars</div>
-                <div class="feature-item">Ships Worldwide — Fast & Safe Shipping</div>
-                <div class="feature-item">No COD Available — Secure Online Payments</div>
+                <h3>The Rhoseatte Experience:</h3>
+                <div class="feature-item">Bespoke Perfumery & Natural Botanical Accords</div>
+                <div class="feature-item">Handcrafted Flacons & Custom Engravings</div>
+                <div class="feature-item">Master Perfumers & Founder Vaishnavi Pote</div>
+                <div class="feature-item">Fast Priority Courier Delivery Worldwide</div>
+                <div class="feature-item">100% Encrypted & Secure Transactions</div>
             </div>
         </div>
         ${FOOTER_HTML(store)}
@@ -89,20 +92,20 @@ export const getEmailOtpTemplate = (otp, expiresInMinutes = 10, storeConfig = nu
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your OTP - ${store.storeName}</title>
+    <title>Your OTP - RHOSEATTE</title>
     <style>
         ${BASE_STYLES}
-        .otp { font-size: 42px; letter-spacing: 14px; font-weight: 900; color: #003E29; background: rgba(0,62,41,0.06); padding: 22px; border-radius: 14px; display: inline-block; margin: 20px 0; border: 1px solid #E5E7EB; }
+        .otp { font-size: 42px; letter-spacing: 14px; font-weight: 900; color: #111111; background: #FAF9F6; padding: 22px; border-radius: 12px; display: inline-block; margin: 20px 0; border: 1px solid #B8976A; }
     </style>
 </head>
 <body>
     <div class="container">
-        ${HEADER_HTML("Verification Code", "Security Code", store)}
+        ${HEADER_HTML("Verification Code", "Security Access", store)}
         <div class="content" style="text-align: center;">
-            <p>Use the code below to verify your account at <strong>${store.storeName}</strong>:</p>
+            <p>Use the confidential code below to authenticate your access at <strong>RHOSEATTE</strong>:</p>
             <div class="otp">${otp}</div>
-            <p style="font-size: 14px; color: #ef4444; font-weight: 600;">This code expires in ${expiresInMinutes} minutes.</p>
-            <p style="font-size: 13px; color: #9ca3af;">If you did not request this code, please ignore this email.</p>
+            <p style="font-size: 14px; color: #dc2626; font-weight: 600;">This security code expires in ${expiresInMinutes} minutes.</p>
+            <p style="font-size: 13px; color: #888888;">If you did not request this code, please ignore this notification.</p>
         </div>
         ${FOOTER_HTML(store)}
     </div>

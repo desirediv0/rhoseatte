@@ -3,7 +3,7 @@ import { BadgeAlert, RefreshCw } from "lucide-react";
 
 export const metadata = {
     title: "Return & Cancellation Policy | rhoseatte",
-    description: "Review rhoseatte's handcrafted jewellery return guidelines, customized item restrictions, refund approvals, and replacement terms.",
+    description: "Review rhoseatte's luxury perfume return guidelines, customized item restrictions, refund approvals, and replacement terms.",
 };
 
 const returnSteps = [
@@ -15,7 +15,7 @@ const returnSteps = [
     {
         step: 2,
         title: "Quality Review",
-        description: "Our studio team inspects the item alignment, beads, and materials."
+        description: "Our atelier team inspects the bottle seal, batch, and packaging."
     },
     {
         step: 3,
@@ -34,7 +34,7 @@ export default function ReturnPolicyPage() {
         <div className="bg-slate-50 min-h-screen font-sans">
             <PageHero
                 title="Return & Cancellation Policy"
-                description="Our commitment to handcrafted quality, customized orders, and secure refund processing"
+                description="Our commitment to artisanal quality, customized orders, and secure refund processing"
                 breadcrumbs={[{ label: "Return Policy" }]}
                 variant="default"
                 size="sm"
@@ -70,7 +70,7 @@ export default function ReturnPolicyPage() {
                             <div>
                                 <h4 className="text-sm font-semibold text-amber-900">Important Customization Notice</h4>
                                 <p className="text-xs text-amber-800 leading-relaxed mt-1">
-                                    To maintain artisan quality standards, all **customised hair accessories, bespoke jewelry, and bridal sets** are strictly **non-returnable and non-refundable** once crafting or dispatch has begun. We create these specifically to your requested sizes and designs.
+                                    To maintain artisanal quality and hygiene standards, all **customized bespoke perfumes, personalized engraved bottles, and discovery sets** are strictly **non-returnable and non-refundable** once formulation or dispatch has begun.
                                 </p>
                             </div>
                         </div>
@@ -81,15 +81,15 @@ export default function ReturnPolicyPage() {
                                 Return Eligibility Criteria
                             </h2>
                             <p className="text-slate-600 text-sm leading-relaxed mb-4 font-semibold text-amber-900 bg-amber-50/50 p-3 rounded-xl border border-amber-100/50">
-                                Note: Only non-customized jewellery items can be returned within our 7-day return policy. Customised items are strictly non-returnable.
+                                Note: Only unopened, sealed standard perfume items can be returned within our return policy. Customized items are strictly non-returnable.
                             </p>
                             <p className="text-slate-600 text-sm leading-relaxed mb-4">
-                                Eligible non-customized jewellery items can be returned within **7 days of delivery** under the following conditions:
+                                Eligible unopened perfume items can be returned under the following conditions:
                             </p>
                             <ul className="space-y-3 pl-5 list-disc text-xs md:text-sm text-slate-600">
-                                <li>The item must be completely unworn, clean, and in original packaging.</li>
-                                <li>All tags, labels, and gift boxes must remain intact.</li>
-                                <li>The product must not show physical scratches, damage, or wear.</li>
+                                <li>The item must be completely unopened, unused, with factory seals intact.</li>
+                                <li>All outer packaging, luxury boxes, and seals must remain undamaged.</li>
+                                <li>The product must not show physical tampering, damage, or wear.</li>
                             </ul>
                         </div>
 

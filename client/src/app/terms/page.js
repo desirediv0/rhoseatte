@@ -9,18 +9,18 @@ export const metadata = {
 const provisions = [
     {
         icon: Gavel,
-        title: "Craftsmanship Guidelines",
-        description: "All products are handcrafted, designed with unique variations that represent the true nature of handmade artisan crafts."
+        title: "Artisanal Perfumery Guidelines",
+        description: "All fragrances are handcrafted, composed with natural botanical extracts and rare accords that represent artisanal perfumery."
     },
     {
         icon: ShieldCheck,
         title: "Bespoke Orders & Customization",
-        description: "We require full style and sizing confirmation before beginning work on customised hair accessories and wedding sets."
+        description: "We require full accord and formulation selection before beginning work on bespoke perfumes and discovery sets."
     },
     {
         icon: CreditCard,
-        title: "Secure Payment routing",
-        description: "All payments are securely processed through Razorpay's PCI-DSS compliant infrastructure with no storage of sensitive details."
+        title: "Secure Payment Routing",
+        description: "All payments are securely processed through PCI-DSS compliant infrastructure with no storage of sensitive credentials."
     }
 ];
 
@@ -29,7 +29,7 @@ export default function TermsPage() {
         <div className="bg-slate-50 min-h-screen font-sans">
             <PageHero
                 title="Terms & Conditions"
-                description="Custom design policies, user agreements, Razorpay payment processing terms, and craftsmanship disclaimers"
+                description="Custom perfume formulation policies, user agreements, payment processing terms, and craftsmanship disclaimers"
                 breadcrumbs={[{ label: "Terms & Conditions" }]}
                 variant="default"
                 size="sm"
@@ -45,7 +45,7 @@ export default function TermsPage() {
                                 <div className="w-12 h-12 bg-green-50 text-[#003E29] rounded-xl flex items-center justify-center mb-4">
                                     <item.icon className="h-5.5 w-5.5" />
                                 </div>
-                                <h3 className="font-display   text-slate-900 text-sm mb-2">{item.title}</h3>
+                                <h3 className="font-display text-slate-900 text-sm mb-2">{item.title}</h3>
                                 <p className="text-slate-500 text-[11px] leading-relaxed">{item.description}</p>
                             </div>
                         ))}
@@ -55,77 +55,77 @@ export default function TermsPage() {
                     <div className="bg-white rounded-3xl p-8 md:p-12 border border-[#E5E7EB] shadow-sm space-y-10">
 
                         <div>
-                            <h2 className="font-display text-xl   text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                            <h2 className="font-display text-xl text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 <span className="w-1.5 h-5 bg-[#003E29] rounded-full" />
                                 User Agreement & Acceptance
                             </h2>
                             <p className="text-slate-600 text-sm leading-relaxed">
-                                By visiting rhoseatte, registering an account, purchasing items, submitting design queries, or confirming customised orders, you explicitly accept these Terms and Conditions. These terms govern your use of the website and constitute a binding legal agreement between you and rhoseatte. If you do not agree to these terms, please do not use the platform.
+                                By visiting rhoseatte, registering an account, purchasing items, submitting fragrance queries, or confirming bespoke orders, you explicitly accept these Terms and Conditions. These terms govern your use of the website and constitute a binding legal agreement between you and rhoseatte. If you do not agree to these terms, please do not use the platform.
                             </p>
                         </div>
 
                         <div>
-                            <h2 className="font-display text-xl   text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                            <h2 className="font-display text-xl text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 <span className="w-1.5 h-5 bg-[#D4AF37] rounded-full" />
-                                Customised Jewelry Sourcing & Crafting
+                                Bespoke Perfume Formulations & Crafting
                             </h2>
                             <p className="text-slate-600 text-sm leading-relaxed mb-3">
-                                For all custom orders (including specialised hair accessories, bridal sets, and DIY kits):
+                                For all custom bespoke orders (including specialized fragrance notes, engraved flacons, and discovery sets):
                             </p>
                             <ul className="space-y-2 pl-5 list-disc text-xs md:text-sm text-slate-600">
-                                <li>Custom orders require active styling parameters (color, sizing, bead selection) confirmed by the buyer.</li>
-                                <li>Once customized creation begins at our studio, orders cannot be changed or cancelled.</li>
-                                <li>We reserve the right to cancel and refund any order if required materials are unavailable.</li>
+                                <li>Custom orders require active formulation parameters (scent notes, volume, custom details) confirmed by the buyer.</li>
+                                <li>Once customized creation or maceration begins at our studio, orders cannot be changed or cancelled.</li>
+                                <li>We reserve the right to cancel and refund any order if required rare botanical ingredients are unavailable.</li>
                             </ul>
                         </div>
 
                         <div>
-                            <h2 className="font-display text-xl   text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                            <h2 className="font-display text-xl text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 <span className="w-1.5 h-5 bg-[#003E29] rounded-full" />
-                                Payments, Fees & Secure Processing (Razorpay)
+                                Payments, Fees & Secure Processing
                             </h2>
                             <p className="text-slate-600 text-sm leading-relaxed mb-3">
-                                Online transactions on rhoseatte are processed using the secure Razorpay payment gateway:
+                                Online transactions on rhoseatte are processed using secure payment gateway infrastructure:
                             </p>
                             <ul className="space-y-2 pl-5 list-disc text-xs md:text-sm text-slate-600">
-                                <li>We accept major Credit Cards, Debit Cards, Net Banking, UPI, and authorized Wallets supported by Razorpay.</li>
+                                <li>We accept major Credit Cards, Debit Cards, Net Banking, UPI, and authorized Wallets.</li>
                                 <li>All payments are billed in Indian Rupees (INR). You agree to pay the complete price listed at checkout, including any shipping fees.</li>
-                                <li>In the event of payment failure or technical error, the transaction may be rolled back, and any debited amount will be refunded directly via Razorpay within 5–7 business days.</li>
+                                <li>In the event of payment failure or technical error, the transaction may be rolled back, and any debited amount will be refunded directly within 5–7 business days.</li>
                             </ul>
                         </div>
 
                         <div>
-                            <h2 className="font-display text-xl   text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                            <h2 className="font-display text-xl text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 <span className="w-1.5 h-5 bg-[#D4AF37] rounded-full" />
-                                Product Returns & 7-Day Refund Policy
+                                Product Returns & Refund Policy
                             </h2>
                             <p className="text-slate-600 text-sm leading-relaxed mb-3">
-                                Our return policy preserves handcrafted product safety:
+                                Our return policy preserves artisanal perfume purity and hygiene:
                             </p>
                             <ul className="space-y-2 pl-5 list-disc text-xs md:text-sm text-slate-600">
-                                <li>Only non-customized jewellery items can be returned within our standard 7-day return policy.</li>
-                                <li>All customized hair accessories, bridal sets, and DIY kits are strictly non-returnable and non-refundable once production or dispatch begins.</li>
-                                <li>Returned items must be completely unworn, clean, and in original packaging.</li>
+                                <li>Standard unopened perfume boxes in original sealed packaging can be returned within our return window.</li>
+                                <li>All customized bespoke formulations, opened perfume flacons, and discovery sets are non-returnable and non-refundable once unsealed or dispatched.</li>
+                                <li>Returned items must be completely unopened, unused, and in original packaging.</li>
                             </ul>
                         </div>
 
                         <div>
-                            <h2 className="font-display text-xl   text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                            <h2 className="font-display text-xl text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 <span className="w-1.5 h-5 bg-[#003E29] rounded-full" />
                                 Craftsmanship Disclaimer
                             </h2>
                             <p className="text-slate-600 text-sm leading-relaxed">
-                                The informational content, styling advice, and dimensions presented on rhoseatte are for reference. All items are handcrafted, meaning minor variations in colour, bead alignment, finish, and stone texture are natural and part of the unique handmade charm. Handcrafted items should be handled with care to prevent wear and tear.
+                                The informational content, fragrance notes, and description presented on rhoseatte are for reference. All items are handcrafted and macerated, meaning natural variations in botanical harvesting, batch maturation, and ingredient shades are natural and part of luxury perfumery.
                             </p>
                         </div>
 
                         <div>
-                            <h2 className="font-display text-xl   text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                            <h2 className="font-display text-xl text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 <span className="w-1.5 h-5 bg-[#D4AF37] rounded-full" />
                                 Governing Law & Jurisdiction
                             </h2>
                             <p className="text-slate-600 text-sm leading-relaxed">
-                                These Terms and Conditions and any transactions executed on this platform shall be governed by and construed in accordance with the laws of India. Any disputes arising out of or in connection with these terms shall be subject to the exclusive jurisdiction of the courts in New Delhi, India.
+                                These Terms and Conditions and any transactions executed on this platform shall be governed by and construed in accordance with the laws of India. Any disputes arising out of or in connection with these terms shall be subject to the exclusive jurisdiction of the courts in Nagpur, Maharashtra, India.
                             </p>
                         </div>
 
