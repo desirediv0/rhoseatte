@@ -1,19 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { IconMail, IconArrowRight, IconCheck } from "@tabler/icons-react";
+import { IconMail, IconArrowRight, IconCheck, IconLoader2 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { fetchApi } from "@/lib/utils";
 import Reveal from "@/components/ui/Reveal";
 
 export default function JoinTheCultSection() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setSubscribed(true);
-    toast.success("Welcome to the Cult! You are now subscribed to exclusive updates.");
+
+    const trimmed = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetchApi("/newsletter/subscribe", {
+        method: "POST",
+        body: JSON.stringify({ email: trimmed }),
+      });
+
+      if (res?.success) {
+        setSubscribed(true);
+        toast.success("Welcome to the Cult! Check your inbox for exclusive updates.");
+      } else {
+        toast.error(res?.message || "Something went wrong. Please try again.");
+      }
+    } catch (err) {
+      console.error("Newsletter subscription error:", err);
+      toast.error(err?.data?.message || err?.message || "Subscription failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,10 +79,20 @@ export default function JoinTheCultSection() {
               </div>
               <button
                 type="submit"
-                className="px-8 py-3.5 bg-gold text-noir font-medium text-xs uppercase tracking-[0.15em] rounded-lg hover:bg-gold-light transition-colors flex items-center justify-center gap-2 shrink-0"
+                disabled={loading}
+                className="px-8 py-3.5 bg-gold text-noir font-medium text-xs uppercase tracking-[0.15em] rounded-lg hover:bg-gold-light disabled:bg-gold/60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shrink-0"
               >
-                Subscribe
-                <IconArrowRight className="w-4 h-4" />
+                {loading ? (
+                  <>
+                    <IconLoader2 className="w-4 h-4 animate-spin" />
+                    Subscribing...
+                  </>
+                ) : (
+                  <>
+                    Subscribe
+                    <IconArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
           )}

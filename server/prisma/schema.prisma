@@ -1580,6 +1580,18 @@ model EmailLog {
   @@index([email])
 }
 
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  source    String   @default("join_the_cult")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([createdAt])
+}
+
 enum EmailCampaignStatus {
   DRAFT
   SENDING

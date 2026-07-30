@@ -62,6 +62,7 @@ import FragranceQuizAnalyticsPage from "./pages/FragranceQuizAnalyticsPage";
 import FragranceQuizResponsesPage from "./pages/FragranceQuizResponsesPage";
 import CustomPerfumeManagementPage from "./pages/CustomPerfumeManagementPage";
 import CustomPerfumeOrdersPage from "./pages/CustomPerfumeOrdersPage";
+import NewsletterSubscribersPage from "./pages/NewsletterSubscribersPage";
 import { LanguageProvider } from "./context/LanguageContext";
 
 // Protected Route Component
@@ -453,6 +454,18 @@ const App = () => {
                   action={Action.CREATE}
                 >
                   <EmailMarketingPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="newsletter-subscribers"
+              element={
+                <ProtectedRoute
+                  resource={Resource.USERS}
+                  action={Action.READ}
+                >
+                  <NewsletterSubscribersPage />
                 </ProtectedRoute>
               }
             />

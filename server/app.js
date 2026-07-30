@@ -46,6 +46,8 @@ import secretAccessRoutes from "./routes/secretAccess.routes.js";
 import adminFragranceQuizRoutes from "./routes/admin.fragrance-quiz.routes.js";
 import fragranceQuizRoutes from "./routes/fragrance-quiz.routes.js";
 import adminEmailMarketingRoutes from "./routes/admin.email-marketing.routes.js";
+import newsletterRoutes from "./routes/newsletter.routes.js";
+import adminNewsletterRoutes from "./routes/admin.newsletter.routes.js";
 import customPerfumeRoutes from "./routes/custom-perfume.routes.js";
 import adminCustomPerfumeRoutes from "./routes/admin.custom-perfume.routes.js";
 import customPerfumeOrderRoutes from "./routes/custom-perfume-order.routes.js";
@@ -179,6 +181,8 @@ app.use("/api/secret-access", secretAccessRoutes);
   app.use("/api/admin/fragrance-quiz", adminFragranceQuizRoutes);
 
 app.use("/api/admin", adminEmailMarketingRoutes);
+app.use("/api/admin", adminNewsletterRoutes);
+app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/admin", adminCustomPerfumeRoutes);
 app.use("/api/fragrance-quiz", fragranceQuizRoutes);
 app.use("/api/custom-perfume", customPerfumeRoutes);
