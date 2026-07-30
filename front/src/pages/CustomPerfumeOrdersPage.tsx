@@ -175,7 +175,7 @@ export default function CustomPerfumeOrdersPage() {
                   <th className="py-3.5 px-4">Order #</th>
                   <th className="py-3.5 px-4">Customer</th>
                   <th className="py-3.5 px-4">Formula Specs</th>
-                  <th className="py-3.5 px-4">Engraving</th>
+                  <th className="py-3.5 px-4">Label</th>
                   <th className="py-3.5 px-4">Amount</th>
                   <th className="py-3.5 px-4">Payment</th>
                   <th className="py-3.5 px-4">Progress Status</th>
@@ -199,7 +199,7 @@ export default function CustomPerfumeOrdersPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-700 italic">
-                      {order.monogramEngraving && order.monogramEngraving !== "None" ? `"${order.monogramEngraving}"` : "-"}
+                      {order.monogramEngraving && order.monogramEngraving !== "None" ? order.monogramEngraving : "-"}
                     </td>
                     <td className="py-3.5 px-4 font-bold text-slate-900">₹{Number(order.amount).toLocaleString()}</td>
                     <td className="py-3.5 px-4">
@@ -248,7 +248,7 @@ export default function CustomPerfumeOrdersPage() {
                 <div><strong>Bottle Silhouette:</strong> {selectedOrder.bottleSilhouette}</div>
                 {selectedOrder.monogramEngraving && (
                   <div className="sm:col-span-2 text-purple-900 font-serif italic">
-                    <strong>Custom Engraving:</strong> &quot;{selectedOrder.monogramEngraving}&quot;
+                    <strong>Custom Label:</strong> {selectedOrder.monogramEngraving}
                   </div>
                 )}
               </div>

@@ -130,7 +130,7 @@ async function sendCustomOrderEmails(order, type = "CONFIRMATION", extraData = {
             <p style="margin: 4px 0;"><strong>Heart Notes:</strong> ${heartList}</p>
             <p style="margin: 4px 0;"><strong>Top Notes:</strong> ${topList}</p>
             <p style="margin: 4px 0;"><strong>Bottle Silhouette:</strong> ${order.bottleSilhouette}</p>
-            ${order.monogramEngraving ? `<p style="margin: 4px 0;"><strong>Custom Engraving:</strong> "${order.monogramEngraving}"</p>` : ""}
+            ${order.monogramEngraving ? `<p style="margin: 4px 0;"><strong>Custom Label:</strong> ${order.monogramEngraving}</p>` : ""}
           </div>
 
           <p><strong>Shipping Address:</strong><br/>

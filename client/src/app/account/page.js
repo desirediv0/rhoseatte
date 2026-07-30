@@ -409,7 +409,7 @@ function CustomPerfumeOrdersSection() {
                 <p className="text-stone"><strong className="text-noir font-medium">Top:</strong> {order.topNotes?.join(", ") || "None"}</p>
                 <p className="text-stone"><strong className="text-noir font-medium">Bottle:</strong> {order.bottleSilhouette}</p>
                 {order.monogramEngraving && (
-                  <p className="text-[#4A2478] italic font-serif"><strong className="text-noir font-medium font-sans">Engraving:</strong> &quot;{order.monogramEngraving}&quot;</p>
+                  <p className="text-[#4A2478] italic font-serif"><strong className="text-noir font-medium font-sans">Custom Label:</strong> {order.monogramEngraving}</p>
                 )}
               </div>
 

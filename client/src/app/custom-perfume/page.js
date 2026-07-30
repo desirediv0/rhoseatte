@@ -732,22 +732,27 @@ export default function CustomPerfumePage() {
                     })}
                   </div>
 
-                  {/* Custom Engraving Input */}
+                  {/* Custom Label Input */}
                   <div className="p-6 border border-[#B8976A]/40 rounded-3xl bg-white shadow-md space-y-2">
                     <label className="block text-xs uppercase tracking-wider font-bold text-[#240E42]">
-                      Custom Monogram Bottle Engraving (Optional)
+                      Custom Label on Bottle (Optional)
                     </label>
                     <input
                       type="text"
-                      maxLength={30}
+                      maxLength={15}
                       value={engraving}
                       onChange={(e) => setEngraving(e.target.value)}
-                      placeholder="e.g. 'VAISHNAVI POTE' or 'RHOSEATTE 2026'"
+                      placeholder="e.g. 'AMARA' or 'LOVE 2026'"
                       className="w-full px-4 py-3.5 border border-[#E8DAFA] rounded-xl text-sm text-[#240E42] bg-[#FAF8FC] focus:outline-none focus:border-[#4A2478]"
                     />
-                    <p className="text-[11px] text-[#7E52BC] italic">
-                      Engraved directly onto the glass shoulder of your 100 ml bottle.
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] text-[#7E52BC] italic">
+                        Your name or word will appear on the bottle label. Max 15 characters.
+                      </p>
+                      <span className="text-[10px] text-[#7E52BC] font-medium">
+                        {engraving.length}/15
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -828,12 +833,12 @@ export default function CustomPerfumePage() {
                     <div className="absolute top-0 left-0 bottom-0 w-3 bg-gradient-to-r from-white/60 via-white/20 to-transparent pointer-events-none z-20" />
                     <div className="absolute top-0 right-0 bottom-0 w-2.5 bg-gradient-to-l from-white/50 via-white/10 to-transparent pointer-events-none z-20" />
                     
-                    {/* Monogram Engraving Plaque */}
+                    {/* Custom Label Preview */}
                     {engraving.trim() && (
                       <div className="absolute top-10 left-3 right-3 text-center z-30 pointer-events-none">
                         <div className="bg-gradient-to-r from-[#F4E6C3] via-[#FFFDF5] to-[#E0C992] px-2.5 py-1 rounded-md border border-[#B8976A]/60 shadow-md">
                           <span className="text-[10px] font-serif uppercase tracking-[0.15em] font-bold text-[#3C1D68] block truncate">
-                            &quot;{engraving.trim()}&quot;
+                            {engraving.trim()}
                           </span>
                         </div>
                       </div>
@@ -996,7 +1001,7 @@ export default function CustomPerfumePage() {
                     Formula: {selectedBase.map(n => n.name).join(", ")} | {selectedHeart.map(n => n.name).join(", ")} | {selectedTop.map(n => n.name).join(", ")}
                   </p>
                   {engraving && (
-                    <p className="text-[11px] text-[#7048A0] italic">Engraving: &quot;{engraving}&quot;</p>
+                    <p className="text-[11px] text-[#7048A0] italic">Label: {engraving}</p>
                   )}
                 </div>
 
