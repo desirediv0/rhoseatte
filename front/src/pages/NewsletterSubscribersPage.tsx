@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Search, Loader2, RefreshCw, Trash2, Users, CheckCircle2, XCircle } from "lucide-react";
+import { Mail, Search, Loader2, RefreshCw, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import api from "@/api/api";
 import { toast } from "sonner";

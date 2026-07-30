@@ -413,6 +413,16 @@ export default function DashboardLayout() {
                   Action.CREATE
                 )}
               />
+              <NavItem
+                href="/newsletter-subscribers"
+                icon={<Users className="h-[1.125rem] w-[1.125rem]" />}
+                title="Cult Subscribers"
+                hasPermission={hasPermissionFor(
+                  admin,
+                  Resource.USERS,
+                  Action.READ
+                )}
+              />
 
               {/* Bundle Management - Single Item */}
               <NavItem
@@ -925,6 +935,17 @@ export default function DashboardLayout() {
                   admin,
                   Resource.SETTINGS,
                   Action.CREATE
+                )}
+              />
+              <NavItem
+                href="/newsletter-subscribers"
+                icon={<Users className="h-[1.125rem] w-[1.125rem]" />}
+                title="Cult Subscribers"
+                onClick={toggleMobileMenu}
+                hasPermission={hasPermissionFor(
+                  admin,
+                  Resource.USERS,
+                  Action.READ
                 )}
               />
 
