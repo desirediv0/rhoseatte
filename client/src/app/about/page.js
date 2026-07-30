@@ -67,6 +67,12 @@ export default function AboutPage() {
       bio: "Leading brand strategy, digital storytelling, creative campaigns, and luxury audience engagement for Rhoseatte."
     },
     {
+      name: "Prajakta",
+      role: "Finance Head",
+      image: "/Prajakta - Finance Head.jpeg",
+      bio: "Overseeing financial strategy, fiscal planning, and sustainable growth for Rhoseatte."
+    },
+    {
       name: "Suvarna",
       role: "Operations & Supply Chain Head",
       image: "/Suvarna.jpeg",
@@ -197,47 +203,23 @@ export default function AboutPage() {
 
         {/* ── SECTION 4: Meet the team ── */}
         <section className="border-t border-[#EAEAEA] pt-20 pb-12">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-12 gap-4">
-            <div>
-              <span className="text-xs uppercase tracking-[0.3em] text-[#B8976A] font-semibold block mb-2">
-                4. Meet the Team
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-normal text-[#111111]">
-                The Minds Behind Rhoseatte
-              </h2>
-            </div>
-
-            {/* Horizontal Scroll Nav Buttons */}
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={scrollLeft}
-                className="w-10 h-10 rounded-full border border-[#D0D0D0] flex items-center justify-center text-[#111111] hover:border-[#B8976A] hover:text-[#B8976A] transition-colors"
-                aria-label="Scroll left"
-              >
-                <IconChevronLeft className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={scrollRight}
-                className="w-10 h-10 rounded-full border border-[#D0D0D0] flex items-center justify-center text-[#111111] hover:border-[#B8976A] hover:text-[#B8976A] transition-colors"
-                aria-label="Scroll right"
-              >
-                <IconChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+          <div className="mb-12">
+            <span className="text-xs uppercase tracking-[0.3em] text-[#B8976A] font-semibold block mb-2">
+              4. Meet the Team
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-normal text-[#111111]">
+              The Minds Behind Rhoseatte
+            </h2>
           </div>
 
-          {/* Horizontal Scrollable Team Cards */}
-          <div 
-            ref={scrollRef}
-            className="flex gap-6 overflow-x-auto pb-6 scrollbar-none snap-x snap-mandatory"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
+          {/* 2-by-2 Grid Layout */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
             {teamMembers.map((member, idx) => (
               <div 
                 key={idx}
-                className="min-w-[280px] sm:min-w-[340px] max-w-[360px] bg-white border border-[#E0E0E0] rounded-xl p-6 snap-start flex-shrink-0 shadow-sm hover:border-[#B8976A] transition-colors"
+                className="bg-white border border-[#E0E0E0] rounded-xl p-6 sm:p-7 shadow-sm hover:border-[#B8976A] hover:shadow-md transition-all duration-300 flex flex-col h-full"
               >
-                <div className="relative aspect-[4/5] w-full rounded-lg overflow-hidden mb-6 bg-[#FAF9F6]">
+                <div className="relative aspect-[4/5] w-full rounded-lg overflow-hidden mb-6 bg-[#FAF9F6] border border-[#EAEAEA]">
                   <Image
                     src={member.image}
                     alt={member.name}
@@ -247,7 +229,7 @@ export default function AboutPage() {
                 </div>
                 <h3 className="text-xl font-bold text-[#111111] mb-1">{member.name}</h3>
                 <p className="text-xs uppercase tracking-widest text-[#B8976A] font-semibold mb-3">{member.role}</p>
-                <p className="text-sm text-[#555555] leading-relaxed font-normal">{member.bio}</p>
+                <p className="text-sm text-[#555555] leading-relaxed font-normal mt-auto">{member.bio}</p>
               </div>
             ))}
           </div>
