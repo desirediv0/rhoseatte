@@ -58,37 +58,16 @@ export function CartProvider({ children }) {
     // Initialize cart based on authentication status
     useEffect(() => {
         if (!mounted) return;
-
-        if (isAuthenticated) {
-            // User is logged in, fetch their cart from server
-            fetchCart();
-        } else {
-            // User is not logged in, load guest cart from localStorage
-            setLoading(true);
-            const guestCart = getGuestCart();
-            setCart(guestCart);
-            setLoading(false);
-        }
+        fetchCart();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, mounted]);
 
     // Clear cart when user logs out
     useEffect(() => {
         if (mounted && !isAuthenticated) {
-            // Reset merge flag when user logs out
             mergeCompletedRef.current = false;
-            // Don't clear cart for guest users - they should see their guest cart
-            // Only clear if we have server cart data (authenticated user logged out)
-            if (
-                cart.items.length > 0 &&
-                cart.items[0]?.id &&
-                !cart.items[0]?.id.startsWith("guest_")
-            ) {
-                setCart({ items: [], subtotal: 0, itemCount: 0, totalQuantity: 0 });
-                setCoupon(null);
-            }
         }
-    }, [isAuthenticated, mounted, cart.items]);
+    }, [isAuthenticated, mounted]);
 
     // Merge guest cart when user logs in
     useEffect(() => {
