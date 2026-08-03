@@ -75,6 +75,9 @@ export const updateSettings = asyncHandler(async (req, res) => {
 
     if (bookingMode !== undefined && (bookingMode === "AUTO" || bookingMode === "MANUAL")) {
         updateData.bookingMode = bookingMode;
+        if (bookingMode === "AUTO") {
+            updateData.isEnabled = true;
+        }
     }
 
     if (defaultLength !== undefined) {

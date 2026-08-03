@@ -1126,17 +1126,23 @@ export default function OrderDetailsPage() {
                       </CardTitle>
                       <p className="text-sm text-[#9CA3AF]">Courier management & live tracking</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
+                  </div>                  <div className="flex items-center gap-2">
                     {orderDetails.shiprocket.orderId && (
-                      <Badge className="bg-[#ECFDF5] text-[#22C55E] border-[#D1FAE5] text-xs">
+                      <Badge className={cn(
+                        "text-xs border",
+                        (orderDetails.shiprocket.status === "CANCELLED" || orderDetails.status === "CANCELLED")
+                          ? "bg-gray-100 text-gray-500 border-gray-200"
+                          : "bg-[#ECFDF5] text-[#22C55E] border-[#D1FAE5]"
+                      )}>
                         ✓ Synced to Shiprocket
                       </Badge>
                     )}
                     {orderDetails.shiprocket.status && (
                       <Badge className={cn(
                         "text-xs font-medium border",
-                        orderDetails.shiprocket.status === "PICKUP_SCHEDULED"
+                        orderDetails.shiprocket.status === "CANCELLED"
+                          ? "bg-red-50 text-red-600 border-red-200"
+                          : orderDetails.shiprocket.status === "PICKUP_SCHEDULED"
                           ? "bg-[#FEF3C7] text-[#D97706] border-[#FCD34D]"
                           : orderDetails.shiprocket.status === "AWB_ASSIGNED"
                           ? "bg-[#EFF6FF] text-[#3B82F6] border-[#DBEAFE]"
@@ -1153,23 +1159,37 @@ export default function OrderDetailsPage() {
                   <div className="space-y-4">
                     {/* AWB Code with Track Live */}
                     {orderDetails.shiprocket.awbCode && (
-                      <div className="p-4 bg-[#ECFDF5] border border-[#D1FAE5] rounded-xl">
+                      <div className={cn(
+                        "p-4 border rounded-xl",
+                        (orderDetails.shiprocket.status === "CANCELLED" || orderDetails.status === "CANCELLED")
+                          ? "bg-gray-50 border-gray-200"
+                          : "bg-[#ECFDF5] border-[#D1FAE5]"
+                      )}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-xs text-[#22C55E] font-medium mb-1">AWB / TRACKING NUMBER</p>
+                            <p className={cn(
+                              "text-xs font-medium mb-1",
+                              (orderDetails.shiprocket.status === "CANCELLED" || orderDetails.status === "CANCELLED")
+                                ? "text-gray-500"
+                                : "text-[#22C55E]"
+                            )}>
+                              AWB / TRACKING NUMBER {(orderDetails.shiprocket.status === "CANCELLED" || orderDetails.status === "CANCELLED") && "(CANCELLED)"}
+                            </p>
                             <p className="font-mono text-xl font-bold text-[#1F2937]">
                               {orderDetails.shiprocket.awbCode}
                             </p>
                           </div>
-                          <a
-                            href={`https://shiprocket.co/tracking/${orderDetails.shiprocket.awbCode}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#22C55E] text-white rounded-lg hover:bg-[#16A34A] transition-colors"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            Track Live
-                          </a>
+                          {orderDetails.shiprocket.status !== "CANCELLED" && orderDetails.status !== "CANCELLED" && (
+                            <a
+                              href={`https://shiprocket.co/tracking/${orderDetails.shiprocket.awbCode}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-[#22C55E] text-white rounded-lg hover:bg-[#16A34A] transition-colors"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              Track Live
+                            </a>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1198,74 +1218,93 @@ export default function OrderDetailsPage() {
 
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-3 pt-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            const response = await orders.getShippingLabel(id!);
-                            if (response.data.success && response.data.data.label?.label_url) {
-                              window.open(response.data.data.label.label_url, '_blank');
-                            } else {
-                              toast.error("Failed to generate label");
-                            }
-                          } catch (error) {
-                            toast.error("Failed to download label");
-                          }
-                        }}
-                        className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
-                      >
-                        Download Label
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            const response = await orders.getOrderInvoice(id!);
-                            if (response.data.success && response.data.data.invoice?.invoice_url) {
-                              window.open(response.data.data.invoice.invoice_url, '_blank');
-                            } else {
-                              toast.error("Failed to generate invoice");
-                            }
-                          } catch (error) {
-                            toast.error("Failed to download invoice");
-                          }
-                        }}
-                        className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
-                      >
-                        Print Invoice
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={async () => {
-                          if (!confirm("Are you sure you want to cancel this shipment?")) return;
-                          try {
-                            const response = await orders.cancelShiprocketShipment(id!);
-                            if (response.data.success) {
-                              toast.success("Shipment cancelled successfully");
-                              await fetchOrderDetails();
-                            } else {
-                              toast.error(response.data?.message || "Failed to cancel shipment");
-                            }
-                          } catch (error) {
-                            toast.error("Failed to cancel shipment");
-                          }
-                        }}
-                        className="border-[#EF4444] text-[#EF4444] hover:bg-[#FEF2F2]"
-                      >
-                        Cancel Shipment
-                      </Button>
+                      {orderDetails.shiprocket.status !== "CANCELLED" && orderDetails.status !== "CANCELLED" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const response = await orders.getShippingLabel(id!);
+                                if (response.data.success && response.data.data.label?.label_url) {
+                                  window.open(response.data.data.label.label_url, '_blank');
+                                } else {
+                                  toast.error("Failed to generate label");
+                                }
+                              } catch (error) {
+                                toast.error("Failed to download label");
+                              }
+                            }}
+                            className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                          >
+                            Download Label
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const response = await orders.getOrderInvoice(id!);
+                                if (response.data.success && response.data.data.invoice?.invoice_url) {
+                                  window.open(response.data.data.invoice.invoice_url, '_blank');
+                                } else {
+                                  toast.error("Failed to generate invoice");
+                                }
+                              } catch (error) {
+                                toast.error("Failed to download invoice");
+                              }
+                            }}
+                            className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                          >
+                            Print Invoice
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              if (!confirm("Are you sure you want to cancel this shipment?")) return;
+                              try {
+                                const response = await orders.cancelShiprocketShipment(id!);
+                                if (response.data.success) {
+                                  toast.success("Shipment cancelled successfully");
+                                  await fetchOrderDetails();
+                                } else {
+                                  toast.error(response.data?.message || "Failed to cancel shipment");
+                                }
+                              } catch (error) {
+                                toast.error("Failed to cancel shipment");
+                              }
+                            }}
+                            className="border-[#EF4444] text-[#EF4444] hover:bg-[#FEF2F2]"
+                          >
+                            Cancel Shipment
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" disabled className="bg-red-50 text-red-600 border-red-200 cursor-not-allowed">
+                            Shipment Cancelled
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Info Note */}
-                    <div className="flex items-start gap-2 p-3 bg-[#EFF6FF] border border-[#DBEAFE] rounded-lg">
-                      <CheckCircle className="h-4 w-4 text-[#3B82F6] mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-[#1E40AF]">
-                        Shipment booked in Shiprocket. AWB assigned. Click "Track Live" for live location updates.
-                      </p>
-                    </div>
+                    {orderDetails.shiprocket.status === "CANCELLED" || orderDetails.status === "CANCELLED" ? (
+                      <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-red-700 font-medium">
+                          This shipment has been cancelled. Pickup and dispatch are stopped.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2 p-3 bg-[#EFF6FF] border border-[#DBEAFE] rounded-lg">
+                        <CheckCircle className="h-4 w-4 text-[#3B82F6] mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-[#1E40AF]">
+                          Shipment booked in Shiprocket. AWB assigned. Click "Track Live" for live location updates.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-6">

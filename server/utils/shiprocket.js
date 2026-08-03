@@ -487,12 +487,12 @@ export async function buildShiprocketOrderPayload(order) {
 
         orderItems.push({
             name: item.product.name,
-            sku: variant.sku,
+            sku: variant.sku || `SKU-${variant.id.slice(-6).toUpperCase()}`,
             units: item.quantity,
             selling_price: parseFloat(item.price),
             discount: 0,
-            tax: 0,
-            hsn: "", // HSN code - can be added later
+            tax: item.product?.taxRate || variant?.taxRate || 18,
+            hsn: item.product?.hsnCode || variant?.hsnCode || "33030010",
         });
     }
 
@@ -529,6 +529,8 @@ export async function buildShiprocketOrderPayload(order) {
         return `${year}-${month}-${day} ${hours}:${minutes}`;
     };
 
+    const shippingFee = parseFloat(order.shippingCost || 0);
+
     // Build the payload
     const payload = {
         order_id: order.orderNumber,
@@ -564,10 +566,8 @@ export async function buildShiprocketOrderPayload(order) {
 
         // Payment
         payment_method: order.paymentMethod === "CASH" ? "COD" : "Prepaid",
-        // Include shipping cost in sub_total for Shiprocket
-        // Shiprocket calculates: sub_total - total_discount = final amount
-        // So we need: (subTotal + shipping) - discount = total
-        sub_total: parseFloat(order.subTotal) + parseFloat(order.shippingCost || 0),
+        sub_total: parseFloat(order.subTotal) + shippingFee,
+        shipping_charges: shippingFee,
         total_discount: parseFloat(order.discount) || 0,
 
         // Dimensions
@@ -611,11 +611,11 @@ export async function buildShiprocketOrderPayload(order) {
  * - MANUAL: Skips auto-sync (admin manually syncs from order details)
  */
 export async function processOrderForShipping(orderId) {
-    // Check if Shiprocket is enabled FIRST before doing anything
     const settings = await getShiprocketSettings();
 
-    if (!settings.isEnabled) {
-        console.log("Shiprocket is disabled, skipping shipping integration");
+    // If bookingMode is AUTO, ensure auto-sync executes even if isEnabled flag wasn't explicitly flipped
+    if (!settings.isEnabled && settings.bookingMode !== "AUTO") {
+        console.log("Shiprocket is disabled and not in AUTO mode, skipping shipping integration");
         return null;
     }
 
