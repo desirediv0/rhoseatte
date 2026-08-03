@@ -194,10 +194,20 @@ export function CartProvider({ children }) {
         setLoading(true);
         try {
             let serverItems = [];
+            let serverShippingTotal = 0;
+            let serverFreeShippingThreshold = 0;
+            let serverShippingMessage = "";
+
             if (isAuthenticated) {
                 try {
                     const res = await fetchApi("/cart", { credentials: "include" });
                     serverItems = res.data?.items || [];
+                    // Capture shipping info from server response
+                    if (res.data?.shippingTotal !== undefined) {
+                        serverShippingTotal = parseFloat(res.data.shippingTotal) || 0;
+                        serverFreeShippingThreshold = parseFloat(res.data.freeShippingThreshold) || 0;
+                        serverShippingMessage = res.data.shippingMessage || "";
+                    }
                 } catch (e) {
                     console.warn("Server cart fetch warning, utilizing local guest cart:", e);
                 }
@@ -225,6 +235,9 @@ export function CartProvider({ children }) {
             const finalCart = {
                 items: mergedItems,
                 subtotal,
+                shippingTotal: serverShippingTotal,
+                freeShippingThreshold: serverFreeShippingThreshold,
+                shippingMessage: serverShippingMessage,
                 itemCount,
                 totalQuantity,
             };

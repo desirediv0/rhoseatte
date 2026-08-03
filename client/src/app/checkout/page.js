@@ -620,6 +620,10 @@ export default function CheckoutPage() {
                                     </div>
                                 )}
                                 <div className="flex justify-between">
+                                    <span className="text-black/40 uppercase tracking-wider">Tax (0%)</span>
+                                    <span className="font-medium text-black">₹0.00</span>
+                                </div>
+                                <div className="flex justify-between">
                                     <span className="text-black/40 uppercase tracking-wider">Shipping</span>
                                     {totals.shipping > 0 ? (
                                         <span className="font-medium text-black">{formatCurrency(totals.shipping)}</span>
@@ -627,6 +631,9 @@ export default function CheckoutPage() {
                                         <span className="font-medium text-green-600 uppercase tracking-widest text-[10px]">Free</span>
                                     )}
                                 </div>
+                                {totals.shipping === 0 && cart.freeShippingThreshold > 0 && (
+                                    <p className="text-[9px] text-green-600 text-right">🎉 Free shipping applied!</p>
+                                )}
                             </div>
 
                             {/* Total */}

@@ -287,7 +287,20 @@ export const checkout = asyncHandler(async (req, res) => {
       }
     }
 
-    const finalAmount = Math.max(subTotal - discountAmount, 1);
+    // Calculate shipping cost (same logic as paymentVerification)
+    let shippingCost = 0;
+    const shiprocketSettings = await prisma.shiprocketSettings.findFirst();
+    if (shiprocketSettings) {
+      const threshold = parseFloat(shiprocketSettings.freeShippingThreshold || 0);
+      const charge = parseFloat(shiprocketSettings.shippingCharge || 0);
+      if (threshold > 0 && subTotal >= threshold) {
+        shippingCost = 0;
+      } else {
+        shippingCost = charge;
+      }
+    }
+
+    const finalAmount = Math.max(subTotal + shippingCost - discountAmount, 1);
 
     // Generate receipt
     const shortUserId = userId.slice(-4);
@@ -301,6 +314,8 @@ export const checkout = asyncHandler(async (req, res) => {
     notes.paymentGateway = paymentConfig.paymentSettings.gateway;
     notes.paymentMode = paymentConfig.paymentSettings.mode;
     notes.paymentOwnerId = paymentConfig.paymentSettings.userId;
+    notes.shippingCost = shippingCost; // Store so verify can use exact same value
+    notes.subTotal = subTotal; // Store recalculated subtotal for reference
 
     const amountInPaise = Math.round(parseFloat(finalAmount.toFixed(2)) * 100);
 
@@ -320,6 +335,7 @@ export const checkout = asyncHandler(async (req, res) => {
     const responseData = {
       ...order,
       serverCalculatedAmount: finalAmount,
+      shippingCost,
       couponData: Object.keys(notes).length > 0 ? notes : null,
     };
 
@@ -692,6 +708,13 @@ export const paymentVerification = asyncHandler(async (req, res) => {
             if (razorpayOrderDetails.notes.paymentOwnerId) {
               paymentOwnerId = razorpayOrderDetails.notes.paymentOwnerId;
             }
+
+            // Read shippingCost from notes if stored — this ensures we use the
+            // exact shipping amount that was charged to the customer
+            if (razorpayOrderDetails.notes.shippingCost !== undefined) {
+              shippingCost = parseFloat(razorpayOrderDetails.notes.shippingCost || 0);
+              console.log(`[Payment Verify] Using shippingCost from Razorpay notes: ₹${shippingCost}`);
+            }
           }
         }
 
@@ -730,6 +753,19 @@ export const paymentVerification = asyncHandler(async (req, res) => {
       razorpay_payment_id
     );
     const paymentMethod = mapRazorpayMethod(razorpayPaymentDetails.method);
+
+    // ── RECONCILE: Trust Razorpay captured amount as source of truth ──────────
+    // If our recalculated total doesn't match what Razorpay actually captured,
+    // adjust shippingCost so the DB order total exactly equals what was charged.
+    const razorpayAmountINR = parseFloat((razorpayPaymentDetails.amount / 100).toFixed(2));
+    const ourCalculatedTotal = parseFloat((subTotal + shippingCost - discount).toFixed(2));
+    if (Math.abs(razorpayAmountINR - ourCalculatedTotal) > 0.5) {
+      // Razorpay captured a different amount — adjust shipping to match
+      const impliedShipping = Math.max(0, parseFloat((razorpayAmountINR - subTotal + discount).toFixed(2)));
+      console.warn(`[Payment Verify] Shipping mismatch: calculated=₹${ourCalculatedTotal}, Razorpay captured=₹${razorpayAmountINR}. Adjusting shippingCost ${shippingCost} → ${impliedShipping}`);
+      shippingCost = impliedShipping;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Create order and process payment in a transaction
     const result = await prisma.$transaction(async (tx) => {
