@@ -295,7 +295,7 @@ export function CartProvider({ children }) {
     };
 
     // Add bundle to cart
-    const addBundleToCart = async (bundleCampaignId, selectedProductIds) => {
+    const addBundleToCart = async (bundleCampaignId, selectedProductIds, bundleMeta = {}) => {
         if (!mounted) return;
 
         setLoading(true);
@@ -314,14 +314,33 @@ export function CartProvider({ children }) {
                 return res.data;
             } else {
                 // Support guest bundle adding to local cart
+                const bPrice = bundleMeta.price || 0;
+                const aPrice = bundleMeta.actualPrice || bPrice;
                 const updatedGuestCart = await addToGuestCart({
                     id: `bundle_${bundleCampaignId}_${Date.now()}`,
+                    cartItemType: "BUNDLE",
                     productVariantId: `bundle_${bundleCampaignId}`,
-                    name: "Curated Bundle",
-                    price: 0, // Guest cart will calculate from items or bundle api
+                    productName: bundleMeta.title || "Curated Bundle",
+                    productSlug: bundleMeta.slug ? `/bundles/${bundleMeta.slug}` : "#",
+                    price: bPrice,
+                    subtotal: bPrice.toFixed(2),
+                    quantity: 1,
+                    image: bundleMeta.banner || "/rhoseatte_lavender_perfume.png",
                     isBundle: true,
                     bundleCampaignId,
                     selectedProductIds,
+                    bundleCampaign: {
+                        id: bundleCampaignId,
+                        title: bundleMeta.title || "Curated Bundle",
+                        slug: bundleMeta.slug,
+                        banner: bundleMeta.banner,
+                    },
+                    bundleData: {
+                        bundlePrice: bPrice,
+                        actualPrice: aPrice,
+                        savings: Math.max(0, aPrice - bPrice),
+                        selectedProducts: bundleMeta.selectedProductDetails || [],
+                    },
                 });
                 await fetchCart();
                 return updatedGuestCart;

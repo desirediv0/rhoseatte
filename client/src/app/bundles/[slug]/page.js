@@ -101,7 +101,16 @@ export default function BundleDetailPage({ params }) {
 
     try {
       setAddingToCart(true);
-      await addBundleToCart(bundle.id, selectedProducts);
+      const bPrice = getBundlePrice();
+      const aPrice = getActualPrice();
+      await addBundleToCart(bundle.id, selectedProducts, {
+        title: bundle.title || "Curated Bundle",
+        price: bPrice || aPrice || 0,
+        actualPrice: aPrice,
+        banner: bundle.banner || products.find(p => selectedProducts.includes(p.id))?.images?.[0]?.url || "/rhoseatte_lavender_perfume.png",
+        slug: bundle.slug,
+        selectedProductDetails: products.filter(p => selectedProducts.includes(p.id)),
+      });
       toast.success("Bundle added to cart!");
       setSelectedProducts([]);
     } catch (err) {

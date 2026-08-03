@@ -40,21 +40,29 @@ export const addToGuestCart = async (productVariantId, quantity = 1) => {
         // Handle product objects (from Fragrance Finder, custom builder, or quick view)
         if (typeof productVariantId === "object" && productVariantId !== null) {
             const customObj = productVariantId;
-            const vId = customObj.variantId || customObj.productVariantId || customObj.id || `item_${Date.now()}`;
+            const vId = customObj.variantId || customObj.productVariantId || customObj.variants?.[0]?.id || customObj.id || `item_${Date.now()}`;
+            const itemPrice = parseFloat(customObj.salePrice || customObj.price || customObj.variants?.[0]?.salePrice || customObj.variants?.[0]?.price || 0);
+            
             newItem = {
-                id: customObj.id || `item_${Date.now()}`,
+                id: customObj.id || `item_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                cartItemType: customObj.cartItemType || (customObj.isBundle ? "BUNDLE" : "STANDARD"),
                 productVariantId: vId,
                 productId: customObj.productId || customObj.id || vId,
-                productName: customObj.name || customObj.productName || "Fragrance",
+                productName: customObj.name || customObj.productName || customObj.title || "Fragrance",
                 productSlug: customObj.slug || customObj.productSlug || "product",
-                variantName: customObj.variantName || customObj.customDetails
+                variantName: customObj.variantName || (customObj.customDetails
                     ? `Base: ${customObj.customDetails?.baseNotes || ""} | Heart: ${customObj.customDetails?.heartNotes || ""}`
-                    : "Standard Bottling",
-                price: customObj.salePrice || customObj.price || 0,
+                    : customObj.variants?.[0]?.name || "Standard Bottling"),
+                price: itemPrice,
                 quantity: quantity,
-                subtotal: ((customObj.salePrice || customObj.price || 0) * quantity).toFixed(2),
-                image: customObj.image || customObj.images?.[0]?.url || "/rhoseatte_lavender_perfume.png",
+                subtotal: (itemPrice * quantity).toFixed(2),
+                image: customObj.image || customObj.images?.[0]?.url || customObj.images?.[0] || "/rhoseatte_lavender_perfume.png",
                 isCustom: customObj.isCustom || false,
+                isBundle: customObj.isBundle || false,
+                bundleCampaignId: customObj.bundleCampaignId || null,
+                selectedProductIds: customObj.selectedProductIds || null,
+                bundleCampaign: customObj.bundleCampaign || null,
+                bundleData: customObj.bundleData || null,
                 customDetails: customObj.customDetails || null
             };
         } else {
