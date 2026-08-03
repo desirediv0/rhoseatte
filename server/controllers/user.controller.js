@@ -34,9 +34,11 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "All fields are required");
   }
 
+  const normalizedEmail = String(email).toLowerCase().trim();
+
   // Check if email already exists
   const existingUser = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
   });
 
   if (existingUser) {
@@ -67,7 +69,7 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     const user = await tx.user.create({
       data: {
         name,
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         phone: phone || "",
         otp: otpCode,
@@ -191,9 +193,11 @@ export const loginUser = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "Email and password are required");
   }
 
+  const normalizedEmail = String(email).toLowerCase().trim();
+
   // Find user
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
   });
 
   if (!user) {
@@ -349,11 +353,13 @@ export const verifyOtp = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "Email and OTP are required");
   }
 
+  const normalizedEmail = String(email).toLowerCase().trim();
+
   if (!isValidOTP(otp)) {
     throw new ApiError(400, "Invalid OTP format");
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -426,9 +432,11 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "Email is required");
   }
 
+  const normalizedEmail = String(email).toLowerCase().trim();
+
   // Find user
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
   });
 
   if (!user) {
@@ -1778,9 +1786,11 @@ export const resendVerificationEmail = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "Email is required");
   }
 
+  const normalizedEmail = String(email).toLowerCase().trim();
+
   // Find user by email
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
   });
 
   if (!user) {
