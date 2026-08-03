@@ -448,21 +448,23 @@ export function CartProvider({ children }) {
     const clearCart = async () => {
         setLoading(true);
         try {
+            // Always clear guest cart storage so items don't leak into new sessions
+            clearGuestCart();
             if (isAuthenticated) {
                 // User is logged in, clear server cart
-                const res = await fetchApi("/cart/clear", {
-                    method: "DELETE",
-                    credentials: "include",
-                });
-                setCart({ items: [], subtotal: 0, itemCount: 0, totalQuantity: 0 });
-                setCoupon(null);
-                return res.data;
-            } else {
-                // User is not logged in, clear guest cart
-                const emptyCart = clearGuestCart();
-                setCart(emptyCart);
-                return emptyCart;
+                try {
+                    await fetchApi("/cart/clear", {
+                        method: "DELETE",
+                        credentials: "include",
+                    });
+                } catch (e) {
+                    console.warn("Server cart clear warning:", e);
+                }
             }
+            const emptyCart = { items: [], subtotal: 0, itemCount: 0, totalQuantity: 0 };
+            setCart(emptyCart);
+            setCoupon(null);
+            return emptyCart;
         } catch (err) {
             setError(err.message);
             throw err;
