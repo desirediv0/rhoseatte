@@ -1461,17 +1461,14 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
   // Cancel Shiprocket order if it exists (outside transaction, non-blocking)
   if (order.shiprocketOrderId) {
     try {
-      const { cancelShiprocketOrder, getShiprocketSettings } = await import("../utils/shiprocket.js");
-      const settings = await getShiprocketSettings();
-      if (settings.isEnabled) {
-        await cancelShiprocketOrder(order.shiprocketOrderId);
-        // Update order shiprocket status
-        await prisma.order.update({
-          where: { id: orderId },
-          data: { shiprocketStatus: "CANCELLED" },
-        });
-        console.log(`User cancelled Shiprocket order ${order.shiprocketOrderId}`);
-      }
+      const { cancelShiprocketOrder } = await import("../utils/shiprocket.js");
+      await cancelShiprocketOrder(order.shiprocketOrderId);
+      // Update order shiprocket status
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { shiprocketStatus: "CANCELLED" },
+      });
+      console.log(`User cancelled Shiprocket order ${order.shiprocketOrderId}`);
     } catch (error) {
       console.error("Failed to cancel Shiprocket order:", error.message);
       // Non-critical - order is already cancelled in our system
