@@ -314,8 +314,8 @@ export function CartProvider({ children }) {
                 return res.data;
             } else {
                 // Support guest bundle adding to local cart
-                const bPrice = bundleMeta.price || 0;
-                const aPrice = bundleMeta.actualPrice || bPrice;
+                const bPrice = Number(bundleMeta.price) || 0;
+                const aPrice = Number(bundleMeta.actualPrice) || bPrice;
                 const updatedGuestCart = await addToGuestCart({
                     id: `bundle_${bundleCampaignId}_${Date.now()}`,
                     cartItemType: "BUNDLE",

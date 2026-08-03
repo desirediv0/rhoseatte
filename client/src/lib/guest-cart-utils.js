@@ -124,7 +124,7 @@ export const addToGuestCart = async (productVariantId, quantity = 1) => {
 
         // Recalculate cart totals
         currentCart.subtotal = currentCart.items
-            .reduce((sum, item) => sum + parseFloat(item.subtotal), 0)
+            .reduce((sum, item) => sum + (parseFloat(item.subtotal) || parseFloat(item.price || 0) * (item.quantity || 1) || 0), 0)
             .toFixed(2);
         currentCart.itemCount = currentCart.items.length;
         currentCart.totalQuantity = currentCart.items.reduce(
