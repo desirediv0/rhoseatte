@@ -615,6 +615,31 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     },
   });
 
+  // Send cancellation email to customer when admin cancels order
+  if (status === "CANCELLED") {
+    try {
+      const userRecord = await prisma.user.findUnique({
+        where: { id: order.userId },
+        select: { email: true, name: true },
+      });
+      if (userRecord?.email) {
+        await sendEmail({
+          email: userRecord.email,
+          subject: `Your Order #${order.orderNumber} has been Cancelled — RHOSEATTE`,
+          html: getOrderCancelledTemplate({
+            userName: userRecord.name || "Customer",
+            orderNumber: order.orderNumber,
+            reason: notes || "Cancelled by admin",
+            refundAmount: order.paymentMethod !== "CASH" ? parseFloat(order.total) : null,
+          }),
+        });
+        console.log(`Admin cancellation email sent to ${userRecord.email} for order #${order.orderNumber}`);
+      }
+    } catch (emailErr) {
+      console.error("Failed to send admin cancellation email:", emailErr.message);
+    }
+  }
+
   res
     .status(200)
     .json(

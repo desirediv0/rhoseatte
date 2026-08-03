@@ -8,6 +8,8 @@ import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
+import sendEmail from "../utils/sendEmail.js";
+import { getOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
 import {
     authenticate,
     getShiprocketSettings,
@@ -270,8 +272,6 @@ export const checkOrderServiceability = asyncHandler(async (req, res) => {
     );
 });
 
-import sendEmail from "../utils/sendEmail.js";
-import { getOrderCancellationEmailTemplate } from "../utils/emailTemplates.js";
 
 // Sync order to Shiprocket (supports manual sync & courier selection)
 export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
@@ -455,8 +455,13 @@ export const cancelShipment = asyncHandler(async (req, res) => {
         try {
             await sendEmail({
                 email: order.user.email,
-                subject: `Order #${order.orderNumber} Cancelled — RHOSEATTE`,
-                html: getOrderCancellationEmailTemplate(order, order.user),
+                subject: `Your Order #${order.orderNumber} has been Cancelled — RHOSEATTE`,
+                html: getOrderCancelledTemplate({
+                    userName: order.user.name || "Customer",
+                    orderNumber: order.orderNumber,
+                    reason: req.body?.reason || "Cancelled by admin",
+                    refundAmount: order.paymentMethod !== "CASH" ? parseFloat(order.total || 0) : null,
+                }),
             });
             console.log(`Cancellation email sent to ${order.user.email} for order #${order.orderNumber}`);
         } catch (emailErr) {
