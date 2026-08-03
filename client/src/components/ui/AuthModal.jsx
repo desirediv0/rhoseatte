@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import {
@@ -220,6 +221,7 @@ function ModalLoginForm({ onSwitch, onSuccess, login }) {
 }
 
 function ModalRegisterForm({ onSwitch, onSuccess, register }) {
+  const router = useRouter();
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -261,9 +263,19 @@ function ModalRegisterForm({ onSwitch, onSuccess, register }) {
 
     setIsSubmitting(true);
     try {
-      await register(formData);
-      toast.success("Account created successfully!");
+      const res = await register(formData);
+      const payload = res?.data ?? res;
+      const emailSent = payload?.emailSent !== false;
+
+      if (emailSent) {
+        toast.success("Account created! Check your email for verification OTP.");
+      } else {
+        toast.warning(res?.message || "Account created, but verification email could not be sent.");
+      }
+
+      localStorage.setItem("registeredEmail", formData.email);
       onSuccess();
+      router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}`);
     } catch (error) {
       const msg = error.message || "Registration failed.";
       setErrorMsg(msg);

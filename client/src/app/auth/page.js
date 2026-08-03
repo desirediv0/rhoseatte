@@ -298,26 +298,54 @@ function RegisterForm({ onSwitch, redirect }) {
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const { register } = useAuth();
   const router = useRouter();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (errorMsg) setErrorMsg("");
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const validateForm = () => {
-    if (formData.name.trim().length < 3) { toast.error("Name should be at least 3 characters"); return false; }
-    if (!formData.phone || formData.phone.length < 10) { toast.error("Please enter a valid phone number"); return false; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { toast.error("Please enter a valid email"); return false; }
-    if (formData.password.length < 8) { toast.error("Password should be at least 8 characters"); return false; }
-    if (formData.password !== formData.confirmPassword) { toast.error("Passwords do not match"); return false; }
+    if (formData.name.trim().length < 3) {
+      const msg = "Name should be at least 3 characters";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return false;
+    }
+    if (!formData.phone || formData.phone.length < 10) {
+      const msg = "Please enter a valid phone number";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      const msg = "Please enter a valid email";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return false;
+    }
+    if (formData.password.length < 8) {
+      const msg = "Password should be at least 8 characters";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      const msg = "Passwords do not match";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return false;
+    }
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg("");
     if (!validateForm()) return;
     setIsSubmitting(true);
     try {
@@ -334,7 +362,9 @@ function RegisterForm({ onSwitch, redirect }) {
       localStorage.setItem("registeredEmail", formData.email);
       setTimeout(() => router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}`), 600);
     } catch (error) {
-      toast.error(error.message || "Registration failed.");
+      const msg = error.message || "Registration failed.";
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally { setIsSubmitting(false); }
   };
 
@@ -352,6 +382,15 @@ function RegisterForm({ onSwitch, redirect }) {
         <h2 className="font-display text-2xl text-noir tracking-tight mb-1">Create account</h2>
         <p className="text-[13px] text-stone font-light">Join the RHOSEATTE family</p>
       </div>
+
+      {errorMsg && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded flex items-center justify-between animate-in fade-in duration-200">
+          <span>{errorMsg}</span>
+          <button type="button" onClick={() => setErrorMsg("")} className="text-red-500 hover:text-red-800 text-sm font-bold ml-2">
+            &times;
+          </button>
+        </div>
+      )}
 
       {fields.map(({ label, name, type, icon: Icon, placeholder }) => (
         <div key={name}>
