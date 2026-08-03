@@ -187,9 +187,13 @@ const CartItem = React.memo(
                             <div>
                                 {isBundle ? (
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-sm font-semibold text-black">{formatCurrency(item.bundleData?.bundlePrice)}</span>
-                                        {item.bundleData?.actualPrice > item.bundleData?.bundlePrice && (
-                                            <span className="text-[10px] text-black/30 line-through">{formatCurrency(item.bundleData.actualPrice)}</span>
+                                        <span className="text-sm font-semibold text-black">
+                                            {formatCurrency(item.bundleData?.bundlePrice || item.price || item.subtotal)}
+                                        </span>
+                                        {item.bundleData?.actualPrice > (item.bundleData?.bundlePrice || item.price) && (
+                                            <span className="text-[10px] text-black/30 line-through">
+                                                {formatCurrency(item.bundleData.actualPrice)}
+                                            </span>
                                         )}
                                     </div>
                                 ) : (
@@ -217,9 +221,13 @@ const CartItem = React.memo(
                             ) : isBundle ? (
                                 <>
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-sm font-semibold text-black">{formatCurrency(item.bundleData?.bundlePrice)}</span>
-                                        {item.bundleData?.actualPrice > item.bundleData?.bundlePrice && (
-                                            <span className="text-[10px] text-black/30 line-through">{formatCurrency(item.bundleData.actualPrice)}</span>
+                                        <span className="text-sm font-semibold text-black">
+                                            {formatCurrency(item.bundleData?.bundlePrice || item.price || item.subtotal)}
+                                        </span>
+                                        {item.bundleData?.actualPrice > (item.bundleData?.bundlePrice || item.price) && (
+                                            <span className="text-[10px] text-black/30 line-through">
+                                                {formatCurrency(item.bundleData.actualPrice)}
+                                            </span>
                                         )}
                                     </div>
                                     {item.bundleData?.savings > 0 && (
