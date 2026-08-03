@@ -70,7 +70,7 @@ export default function TermsPage() {
                                 Bespoke Perfume Formulations & Crafting
                             </h2>
                             <p className="text-slate-600 text-sm leading-relaxed mb-3">
-                                For all custom bespoke orders (including specialized fragrance notes, engraved flacons, and discovery sets):
+                                For all custom bespoke orders (including specialized fragrance notes, personalized bottles, and discovery sets):
                             </p>
                             <ul className="space-y-2 pl-5 list-disc text-xs md:text-sm text-slate-600">
                                 <li>Custom orders require active formulation parameters (scent notes, volume, custom details) confirmed by the buyer.</li>
@@ -97,16 +97,14 @@ export default function TermsPage() {
                         <div>
                             <h2 className="font-display text-xl text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
                                 <span className="w-1.5 h-5 bg-[#D4AF37] rounded-full" />
-                                Product Returns & Refund Policy
+                                Product Returns &amp; Refund Policy
                             </h2>
-                            <p className="text-slate-600 text-sm leading-relaxed mb-3">
-                                Our return policy preserves artisanal perfume purity and hygiene:
+                            <p className="text-slate-600 text-sm leading-relaxed">
+                                Please refer to our{" "}
+                                <Link href="/return-policy" className="text-[#4A2478] font-semibold underline hover:text-[#38195E]">
+                                    Returns and Refund policy
+                                </Link>.
                             </p>
-                            <ul className="space-y-2 pl-5 list-disc text-xs md:text-sm text-slate-600">
-                                <li>Standard unopened perfume boxes in original sealed packaging can be returned within our return window.</li>
-                                <li>All customized bespoke formulations, opened perfume flacons, and discovery sets are non-returnable and non-refundable once unsealed or dispatched.</li>
-                                <li>Returned items must be completely unopened, unused, and in original packaging.</li>
-                            </ul>
                         </div>
 
                         <div>
