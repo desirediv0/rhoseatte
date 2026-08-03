@@ -175,6 +175,7 @@ function LoginForm({ onSwitch, redirect }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const { login } = useAuth();
   const router = useRouter();
@@ -182,7 +183,13 @@ function LoginForm({ onSwitch, redirect }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { toast.error("Email and password are required"); return; }
+    setErrorMsg("");
+    if (!email || !password) {
+      const msg = "Email and password are required";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return;
+    }
     setIsSubmitting(true);
     try {
       await login(email, password);
@@ -192,6 +199,7 @@ function LoginForm({ onSwitch, redirect }) {
       setTimeout(() => router.push(returnUrl ? decodeURIComponent(returnUrl) : "/"), 300);
     } catch (error) {
       const msg = error.message || "Login failed.";
+      setErrorMsg(msg);
       if (msg.toLowerCase().includes("verify")) {
         toast.error(<div>{msg}{" "}<Link href="/resend-verification" className="font-medium underline text-black">Resend</Link></div>);
       } else { toast.error(msg); }
@@ -204,6 +212,15 @@ function LoginForm({ onSwitch, redirect }) {
         <h2 className="font-display text-2xl text-noir tracking-tight mb-1">Welcome back</h2>
         <p className="text-[13px] text-stone font-light">Sign in to access your account</p>
       </div>
+
+      {errorMsg && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded flex items-center justify-between animate-in fade-in duration-200">
+          <span>{errorMsg}</span>
+          <button type="button" onClick={() => setErrorMsg("")} className="text-red-500 hover:text-red-800 text-sm font-bold ml-2">
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Email */}
       <div>

@@ -152,20 +152,6 @@ export function Navbar() {
             : "sticky bg-white border-b border-line/60"
         )}
       >
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            style: {
-              background: "#111111",
-              color: "#FFFFFF",
-              border: "1px solid rgba(184,151,106,0.2)",
-              borderRadius: "6px",
-              fontSize: "12px",
-              letterSpacing: "0.02em",
-            },
-          }}
-        />
-
         {/* Announcement Bar */}
         <div
           className={cn(

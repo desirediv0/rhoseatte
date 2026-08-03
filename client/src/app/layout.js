@@ -6,6 +6,7 @@ import { CartProvider } from "@/lib/cart-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { FloatingWhatsApp } from "@/components/ui/FloatingWhatsApp";
 import { AuthModal } from "@/components/ui/AuthModal";
+import { Toaster } from "sonner";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -40,6 +41,21 @@ export default function RootLayout({ children }) {
       <body className="antialiased">
         <AuthProvider>
           <CartProvider>
+            <Toaster
+              position="top-center"
+              style={{ zIndex: 999999 }}
+              toastOptions={{
+                style: {
+                  background: "#111111",
+                  color: "#FFFFFF",
+                  border: "1px solid rgba(184,151,106,0.2)",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  letterSpacing: "0.02em",
+                  zIndex: 999999,
+                },
+              }}
+            />
             {/* <SiteFX /> */}
             <Navbar />
             <main className="min-h-screen">

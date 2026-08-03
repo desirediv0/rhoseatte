@@ -97,11 +97,15 @@ function ModalLoginForm({ onSwitch, onSuccess, login }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg("");
     if (!email || !password) {
-      toast.error("Email and password are required");
+      const msg = "Email and password are required";
+      setErrorMsg(msg);
+      toast.error(msg);
       return;
     }
     setIsSubmitting(true);
@@ -112,6 +116,7 @@ function ModalLoginForm({ onSwitch, onSuccess, login }) {
       onSuccess();
     } catch (error) {
       const msg = error.message || "Login failed.";
+      setErrorMsg(msg);
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -120,6 +125,15 @@ function ModalLoginForm({ onSwitch, onSuccess, login }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {errorMsg && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded flex items-center justify-between animate-in fade-in duration-200">
+          <span>{errorMsg}</span>
+          <button type="button" onClick={() => setErrorMsg("")} className="text-red-500 hover:text-red-800 text-sm font-bold ml-2">
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Email */}
       <div>
         <label className="block text-[10px] uppercase tracking-[0.2em] text-stone font-medium mb-1.5">
@@ -130,7 +144,10 @@ function ModalLoginForm({ onSwitch, onSuccess, login }) {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (errorMsg) setErrorMsg("");
+            }}
             required
             placeholder="you@example.com"
             className="w-full h-11 pl-10 pr-3 bg-ivory border border-line text-noir text-[13px] font-light placeholder:text-stone/50 focus:outline-none focus:border-gold transition-all"
@@ -157,7 +174,10 @@ function ModalLoginForm({ onSwitch, onSuccess, login }) {
           <input
             type={showPassword ? "text" : "password"}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (errorMsg) setErrorMsg("");
+            }}
             required
             placeholder="Enter password"
             className="w-full h-11 pl-10 pr-10 bg-ivory border border-line text-noir text-[13px] font-light placeholder:text-stone/50 focus:outline-none focus:border-gold transition-all"
@@ -203,18 +223,41 @@ function ModalRegisterForm({ onSwitch, onSuccess, register }) {
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (errorMsg) setErrorMsg("");
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.name.trim().length < 3) { toast.error("Name should be at least 3 characters"); return; }
-    if (!formData.phone || formData.phone.length < 10) { toast.error("Please enter a valid phone number"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { toast.error("Please enter a valid email"); return; }
-    if (formData.password.length < 8) { toast.error("Password should be at least 8 characters"); return; }
+    setErrorMsg("");
+    if (formData.name.trim().length < 3) {
+      const msg = "Name should be at least 3 characters";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return;
+    }
+    if (!formData.phone || formData.phone.length < 10) {
+      const msg = "Please enter a valid phone number";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      const msg = "Please enter a valid email";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return;
+    }
+    if (formData.password.length < 8) {
+      const msg = "Password should be at least 8 characters";
+      setErrorMsg(msg);
+      toast.error(msg);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -222,7 +265,9 @@ function ModalRegisterForm({ onSwitch, onSuccess, register }) {
       toast.success("Account created successfully!");
       onSuccess();
     } catch (error) {
-      toast.error(error.message || "Registration failed.");
+      const msg = error.message || "Registration failed.";
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -230,6 +275,14 @@ function ModalRegisterForm({ onSwitch, onSuccess, register }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {errorMsg && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded flex items-center justify-between animate-in fade-in duration-200">
+          <span>{errorMsg}</span>
+          <button type="button" onClick={() => setErrorMsg("")} className="text-red-500 hover:text-red-800 text-sm font-bold ml-2">
+            &times;
+          </button>
+        </div>
+      )}
       <div>
         <label className="block text-[10px] uppercase tracking-[0.2em] text-stone font-medium mb-1">Name</label>
         <div className="relative">
