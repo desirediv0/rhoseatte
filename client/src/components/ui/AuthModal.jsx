@@ -127,11 +127,28 @@ function ModalLoginForm({ onSwitch, onSuccess, login }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {errorMsg && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded flex items-center justify-between animate-in fade-in duration-200">
-          <span>{errorMsg}</span>
-          <button type="button" onClick={() => setErrorMsg("")} className="text-red-500 hover:text-red-800 text-sm font-bold ml-2">
-            &times;
-          </button>
+        <div className={`p-3 border text-xs font-medium rounded animate-in fade-in duration-200 ${
+          errorMsg.toLowerCase().includes("verify")
+            ? "bg-amber-50 border-amber-300 text-amber-900"
+            : "bg-red-50 border-red-200 text-red-700 flex items-center justify-between"
+        }`}>
+          <div>
+            <p>{errorMsg}</p>
+            {errorMsg.toLowerCase().includes("verify") && (
+              <Link
+                href={`/verify-otp?email=${encodeURIComponent(email)}`}
+                onClick={onSuccess}
+                className="inline-block mt-2 px-3 py-1.5 bg-noir text-ivory text-[10px] uppercase tracking-wider font-semibold hover:bg-gold transition-colors"
+              >
+                Enter OTP &amp; Verify Now &rarr;
+              </Link>
+            )}
+          </div>
+          {!errorMsg.toLowerCase().includes("verify") && (
+            <button type="button" onClick={() => setErrorMsg("")} className="text-red-500 hover:text-red-800 text-sm font-bold ml-2">
+              &times;
+            </button>
+          )}
         </div>
       )}
 

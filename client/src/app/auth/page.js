@@ -201,7 +201,14 @@ function LoginForm({ onSwitch, redirect }) {
       const msg = error.message || "Login failed.";
       setErrorMsg(msg);
       if (msg.toLowerCase().includes("verify")) {
-        toast.error(<div>{msg}{" "}<Link href="/resend-verification" className="font-medium underline text-black">Resend</Link></div>);
+        toast.error(
+          <div>
+            {msg}{" "}
+            <Link href={`/verify-otp?email=${encodeURIComponent(email)}`} className="font-medium underline text-white ml-1">
+              Verify OTP
+            </Link>
+          </div>
+        );
       } else { toast.error(msg); }
     } finally { setIsSubmitting(false); }
   };
@@ -214,11 +221,27 @@ function LoginForm({ onSwitch, redirect }) {
       </div>
 
       {errorMsg && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded flex items-center justify-between animate-in fade-in duration-200">
-          <span>{errorMsg}</span>
-          <button type="button" onClick={() => setErrorMsg("")} className="text-red-500 hover:text-red-800 text-sm font-bold ml-2">
-            &times;
-          </button>
+        <div className={`p-3.5 border text-xs font-medium rounded animate-in fade-in duration-200 ${
+          errorMsg.toLowerCase().includes("verify")
+            ? "bg-amber-50 border-amber-300 text-amber-900"
+            : "bg-red-50 border-red-200 text-red-700 flex items-center justify-between"
+        }`}>
+          <div>
+            <p>{errorMsg}</p>
+            {errorMsg.toLowerCase().includes("verify") && (
+              <Link
+                href={`/verify-otp?email=${encodeURIComponent(email)}`}
+                className="inline-block mt-2.5 px-4 py-2 bg-noir text-ivory text-[10px] uppercase tracking-wider font-semibold hover:bg-gold transition-colors shadow-sm"
+              >
+                Enter OTP to Verify Account &rarr;
+              </Link>
+            )}
+          </div>
+          {!errorMsg.toLowerCase().includes("verify") && (
+            <button type="button" onClick={() => setErrorMsg("")} className="text-red-500 hover:text-red-800 text-sm font-bold ml-2">
+              &times;
+            </button>
+          )}
         </div>
       )}
 
