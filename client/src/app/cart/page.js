@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
+import { useAuth } from "@/lib/auth-context";
 
 import {
     Trash2,
@@ -335,11 +336,7 @@ export default function CartPage() {
     const [couponError, setCouponError] = useState("");
     const router = useRouter();
 
-    React.useEffect(() => {
-        if (!isAuthenticated && !loading) {
-            router.push("/auth?redirect=cart");
-        }
-    }, [isAuthenticated, loading, router]);
+    const { openAuthModal } = useAuth();
 
     const handleQuantityChange = useCallback(
         async (cartItemId, currentQuantity, change) => {
@@ -416,21 +413,21 @@ export default function CartPage() {
     const totals = useMemo(() => getCartTotals(), [getCartTotals]);
 
     const handleCheckout = useCallback(() => {
-        if (!isAuthenticated && hidePricesForGuests) {
-            router.push("/auth?redirect=checkout");
-            return;
-        }
         const calculatedAmount = totals.subtotal - totals.discount;
         if (calculatedAmount < 1) {
             toast.info("Minimum order amount is ₹1");
             return;
         }
         if (!isAuthenticated) {
-            router.push("/auth?redirect=checkout");
+            if (typeof openAuthModal === "function") {
+                openAuthModal();
+            } else {
+                router.push("/auth?redirect=checkout");
+            }
         } else {
             router.push("/checkout");
         }
-    }, [isAuthenticated, router, totals, hidePricesForGuests]);
+    }, [isAuthenticated, router, totals, openAuthModal]);
 
     const itemCount = cart.items?.length || 0;
     const bundleCount = cart.items?.filter(i => i.cartItemType === "BUNDLE").length || 0;

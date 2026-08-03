@@ -313,7 +313,7 @@ export function Navbar() {
                 </Link>
 
                 <ClientOnly>
-                  <Link href={isAuthenticated ? "/cart" : "/auth?redirect=cart"} className={iconBtn} aria-label="Cart">
+                  <Link href="/cart" className={iconBtn} aria-label="Cart">
                     <IconShoppingBag className="h-6 w-6" stroke={1.5} />
                     {cartCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center bg-gold px-1">
