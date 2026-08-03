@@ -206,18 +206,18 @@ export function CartProvider({ children }) {
             const guestCart = getGuestCart();
             let mergedItems = [...serverItems];
 
-            if (guestCart.items && guestCart.items.length > 0) {
-                const existingIds = new Set(mergedItems.map((i) => i.id || i.productVariantId));
-                for (const gItem of guestCart.items) {
-                    const gId = gItem.id || gItem.productVariantId;
-                    if (gId && !existingIds.has(gId)) {
-                        mergedItems.push(gItem);
-                    }
+            if (isAuthenticated) {
+                // When authenticated, if server cart has items, clear local guest storage so it doesn't linger and duplicate
+                if (serverItems.length > 0 && guestCart.items && guestCart.items.length > 0) {
+                    clearGuestCart();
                 }
+            } else if (guestCart.items && guestCart.items.length > 0) {
+                // For non-authenticated users, use guestCart items cleanly
+                mergedItems = [...guestCart.items];
             }
 
             const subtotal = mergedItems
-                .reduce((sum, item) => sum + parseFloat(item.subtotal || (parseFloat(item.price) * item.quantity) || 0), 0)
+                .reduce((sum, item) => sum + parseFloat(item.subtotal || (parseFloat(item.price) * (item.quantity || 1)) || 0), 0)
                 .toFixed(2);
             const itemCount = mergedItems.length;
             const totalQuantity = mergedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -247,9 +247,6 @@ export function CartProvider({ children }) {
 
         setLoading(true);
         try {
-            // ALWAYS save to local guest cart first so non-logged-in users persist items reliably
-            const updatedGuestCart = await addToGuestCart(productVariantId, quantity);
-
             if (isAuthenticated && typeof productVariantId !== "object") {
                 try {
                     await fetchApi("/cart/add", {
@@ -257,13 +254,18 @@ export function CartProvider({ children }) {
                         credentials: "include",
                         body: JSON.stringify({ productVariantId, quantity }),
                     });
+                    // Clear local guest cart on successful server add so localStorage does not duplicate server cart
+                    clearGuestCart();
                 } catch (e) {
                     console.warn("Server cart add warning, using local item:", e);
+                    await addToGuestCart(productVariantId, quantity);
                 }
+            } else {
+                await addToGuestCart(productVariantId, quantity);
             }
 
-            await fetchCart();
-            return updatedGuestCart;
+            const updatedCart = await fetchCart();
+            return updatedCart;
         } catch (err) {
             setError(err.message);
             toast.error(err.message || "Failed to add item to cart");
