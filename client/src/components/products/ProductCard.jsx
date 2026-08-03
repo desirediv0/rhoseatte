@@ -30,7 +30,7 @@ const parsePrice = (value) => {
 
 export const ProductCard = ({ product, viewMode = "grid" }) => {
   const isList = viewMode === "list";
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, openAuthModal } = useAuth();
   const { addToCart } = useCart();
   const router = useRouter();
 
@@ -154,7 +154,11 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
 
   const handleAddToCart = async (e) => {
     e.preventDefault(); e.stopPropagation();
-    if (!showPrice) { toast.error("Please login to purchase items"); return; }
+    if (!showPrice) {
+      if (typeof openAuthModal === "function") openAuthModal();
+      else toast.error("Please login to purchase items");
+      return;
+    }
     const variantId = product.variants?.[0]?.id;
     if (!variantId) {
       toast.error("Select options on product page");
@@ -214,17 +218,9 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
                 {originalPrice && <span className="text-xs text-stone line-through">{formatCurrency(originalPrice)}</span>}
               </div>
             ) : (
-              <Link href="/auth" className="text-xs text-gold-dark mt-2 block hover:underline">Login for Price</Link>
-            )}
-            {product.avgRating > 0 && (
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <div className="flex">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star key={s} className={cn("w-3 h-3", s <= Math.round(product.avgRating) ? "fill-gold text-gold" : "text-line fill-line")} />
-                  ))}
-                </div>
-                <span className="text-[10px] text-stone">({product.reviewCount || 0})</span>
-              </div>
+              <button onClick={() => openAuthModal && openAuthModal()} className="text-xs text-gold-dark mt-2 block hover:underline text-left">
+                Login for Price
+              </button>
             )}
           </div>
           <button
@@ -351,9 +347,9 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
               )}
             </div>
           ) : (
-            <Link href="/auth" className="text-[11px] uppercase tracking-[0.12em] text-gold-dark hover:underline">
+            <button onClick={() => openAuthModal && openAuthModal()} className="text-[11px] uppercase tracking-[0.12em] text-gold-dark hover:underline">
               Login for Price
-            </Link>
+            </button>
           )}
         </div>
       </div>

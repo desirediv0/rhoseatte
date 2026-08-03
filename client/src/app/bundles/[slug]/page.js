@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { fetchApi } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { IconCheck, IconShoppingCart, IconX } from "@tabler/icons-react";
 
 export default function BundleDetailPage({ params }) {
   const slug = params?.slug;
   const { addBundleToCart } = useCart();
+  const { isAuthenticated, openAuthModal } = useAuth();
   const [bundle, setBundle] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);

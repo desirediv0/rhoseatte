@@ -222,8 +222,8 @@ export function Navbar() {
 
         {/* Main Header */}
         <div className="transition-all duration-500">
-          <div className="px-5 md:px-10 lg:px-20">
-            <div className="max-w-[1440px] mx-auto flex items-center justify-between h-[70px] md:h-[85px] lg:h-[100px] gap-6">
+          <div className="px-4 sm:px-6 md:px-8 lg:px-12">
+            <div className="max-w-[1440px] mx-auto flex items-center justify-between h-[70px] md:h-[85px] lg:h-[100px] gap-2 md:gap-4 lg:gap-6">
               {/* Mobile: Search Icon */}
               <button
                 onClick={() => setIsSearchOpen(true)}
@@ -251,8 +251,8 @@ export function Navbar() {
               </div>
 
               {/* Desktop: Center Navigation */}
-              <nav className="hidden lg:flex items-center justify-center flex-1 mx-2">
-                <div className="flex items-center gap-0.5 xl:gap-1.5 2xl:gap-2">
+              <nav className="hidden lg:flex items-center justify-center flex-1 mx-1 xl:mx-2 overflow-hidden">
+                <div className="flex items-center gap-0.5 xl:gap-1 2xl:gap-2">
                   {NAV_LINKS.map(({ href, label }) => {
                     const active = pathname === href;
                     return (
@@ -260,7 +260,7 @@ export function Navbar() {
                         key={href}
                         href={href}
                         className={cn(
-                          "relative px-2.5 xl:px-3.5 2xl:px-4 py-2 text-[13px] xl:text-[14px]  tracking-[0.02em] font-medium transition-all duration-300 rounded-[6px] whitespace-nowrap",
+                          "relative px-1.5 xl:px-2.5 2xl:px-3.5 py-2 text-[12px] xl:text-[13px] 2xl:text-[14px] tracking-[0.01em] font-medium transition-all duration-300 rounded-[6px] whitespace-nowrap",
                           overHero
                             ? active
                               ? "text-gold-light"
@@ -273,7 +273,7 @@ export function Navbar() {
                         {label}
                         <span
                           className={cn(
-                            "absolute bottom-0.5 left-2.5 right-2.5 xl:left-3.5 xl:right-3.5 h-[2px] transition-all duration-300",
+                            "absolute bottom-0.5 left-1.5 right-1.5 xl:left-2.5 xl:right-2.5 h-[2px] transition-all duration-300",
                             overHero ? "bg-gold-light" : "bg-gold",
                             active ? "scale-x-100 opacity-100" : "scale-x-0 opacity-0"
                           )}
@@ -285,7 +285,7 @@ export function Navbar() {
               </nav>
 
               {/* Right: Icons */}
-              <div className="flex items-center gap-1 ">
+              <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                 <button
                   onClick={() => setIsSearchOpen(true)}
                   className={cn("hidden lg:flex", iconBtn)}

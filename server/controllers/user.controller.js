@@ -464,7 +464,7 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
     console.log("Password reset email sent to:", email);
   } catch (error) {
     console.error("Error sending password reset email:", error);
-    // Don't throw error, still return success response
+    throw new ApiError(500, `Failed to send password reset email: ${error.message || 'SMTP error'}`);
   }
 
   res

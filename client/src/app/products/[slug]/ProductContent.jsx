@@ -112,7 +112,7 @@ export default function ProductContent({ slug }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isZoomModalOpen]);
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, openAuthModal } = useAuth();
   const router = useRouter();
   const { addVariantToCart } = useAddVariantToCart();
   const { addToCart } = useCart();

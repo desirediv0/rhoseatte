@@ -17,26 +17,26 @@ export const metadata = {
 export default function Home() {
   return (
     <main>
-      {/* 1. Cover Photo / Hero */}
+      {/* 1. Banner */}
       <HeroSectionStore />
 
-      {/* 2. Shop By Collection */}
-      <CategoryGrid />
-
-      {/* 3. Watch & Buy */}
-      <WatchAndBuySection />
-
-      {/* 4. New Arrivals */}
-      <NewArrivals />
-
-      {/* 5. Fragrance Finder */}
+      {/* 2. Find Your Fragrance */}
       <FragranceFinderSection />
 
-      {/* 6. Featured */}
-      <FeaturedProducts />
+      {/* 3. Shop By Collection */}
+      <CategoryGrid />
 
-      {/* 7. Custom Perfume */}
+      {/* 4. Customised Perfume */}
       <CustomPerfumeSection />
+
+      {/* 5. Watch & Buy */}
+      <WatchAndBuySection />
+
+      {/* 6. New Arrivals */}
+      <NewArrivals />
+
+      {/* 7. Featured Products */}
+      <FeaturedProducts />
 
       {/* 8. The Rhoseatte Promise */}
       <TrustBadgesSection />
@@ -44,7 +44,7 @@ export default function Home() {
       {/* 9. FAQ */}
       <HomeFAQSection />
 
-      {/* 10. Join the Cult */}
+      {/* 10. Join The Cult / Footer precedes */}
       <JoinTheCultSection />
     </main>
   );

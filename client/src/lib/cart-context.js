@@ -18,7 +18,7 @@ import {
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, openAuthModal } = useAuth();
     const [cart, setCart] = useState({
         items: [],
         subtotal: 0,
@@ -266,15 +266,6 @@ export function CartProvider({ children }) {
     const addToCart = async (productVariantId, quantity = 1) => {
         if (!mounted) return;
 
-        // Require authentication for adding to cart
-        if (!isAuthenticated) {
-            toast.info("Please log in to add items to your cart");
-            if (typeof window !== "undefined") {
-                window.location.href = "/auth?redirect=cart";
-            }
-            return;
-        }
-
         setLoading(true);
         try {
             // ALWAYS save to local guest cart first so non-logged-in users persist items reliably
@@ -322,7 +313,18 @@ export function CartProvider({ children }) {
                 await fetchCart();
                 return res.data;
             } else {
-                throw new Error("Please login to add bundles to cart");
+                // Support guest bundle adding to local cart
+                const updatedGuestCart = await addToGuestCart({
+                    id: `bundle_${bundleCampaignId}_${Date.now()}`,
+                    productVariantId: `bundle_${bundleCampaignId}`,
+                    name: "Curated Bundle",
+                    price: 0, // Guest cart will calculate from items or bundle api
+                    isBundle: true,
+                    bundleCampaignId,
+                    selectedProductIds,
+                });
+                await fetchCart();
+                return updatedGuestCart;
             }
         } catch (err) {
             setError(err.message);

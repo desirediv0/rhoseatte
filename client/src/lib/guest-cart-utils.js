@@ -216,25 +216,32 @@ export const mergeGuestCartWithUserCart = async () => {
         // Process all items in parallel for faster merging
         const mergePromises = guestItemsToMerge.map(async (guestItem) => {
             try {
-                // Validate quantity before sending
                 const quantity = Math.max(1, parseInt(guestItem.quantity) || 1);
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:4004/api" : "https://api.rhoseatte.com/api");
 
-                const addResponse = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:4004/api" : "https://api.rhoseatte.com/api")}/cart/add`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        credentials: "include",
-                        body: JSON.stringify({
-                            productVariantId: guestItem.productVariantId,
-                            quantity: quantity,
-                        }),
-                        // Add timeout to prevent hanging requests
-                        signal: AbortSignal.timeout(10000), // 10 second timeout
-                    }
-                );
+                let endpoint = `${apiBase}/cart/add`;
+                let payload = {
+                    productVariantId: guestItem.productVariantId,
+                    quantity: quantity,
+                };
+
+                if (guestItem.isBundle && guestItem.bundleCampaignId) {
+                    endpoint = `${apiBase}/cart/add-bundle`;
+                    payload = {
+                        bundleCampaignId: guestItem.bundleCampaignId,
+                        selectedProductIds: guestItem.selectedProductIds || [],
+                    };
+                }
+
+                const addResponse = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    credentials: "include",
+                    body: JSON.stringify(payload),
+                    signal: AbortSignal.timeout(10000),
+                });
 
                 if (addResponse.ok) {
                     return { success: true, item: guestItem };

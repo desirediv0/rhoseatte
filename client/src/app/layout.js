@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { CartProvider } from "@/lib/cart-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { FloatingWhatsApp } from "@/components/ui/FloatingWhatsApp";
-// import SiteFX from "@/components/ui/SiteFX";
+import { AuthModal } from "@/components/ui/AuthModal";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -47,6 +47,7 @@ export default function RootLayout({ children }) {
             </main>
             <Footer />
             <FloatingWhatsApp />
+            <AuthModal />
           </CartProvider>
         </AuthProvider>
       </body>

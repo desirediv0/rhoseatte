@@ -393,6 +393,11 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+    const openAuthModal = () => setIsAuthModalOpen(true);
+    const closeAuthModal = () => setIsAuthModalOpen(false);
+
     // Compute isAuthenticated based on user state and loading state
     const isAuthenticated = !loading && !!user;
 
@@ -410,6 +415,9 @@ export function AuthProvider({ children }) {
         resetPassword,
         updateProfile,
         isAuthenticated,
+        isAuthModalOpen,
+        openAuthModal,
+        closeAuthModal,
         // Add helper methods
         isCustomer: user?.role === "CUSTOMER",
         userId: user?.id,
