@@ -270,9 +270,13 @@ export const checkOrderServiceability = asyncHandler(async (req, res) => {
     );
 });
 
-// Sync order to Shiprocket
+import sendEmail from "../utils/sendEmail.js";
+import { getOrderCancellationEmailTemplate } from "../utils/emailTemplates.js";
+
+// Sync order to Shiprocket (supports manual sync & courier selection)
 export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
+    const { courierId } = req.body || {};
 
     const order = await prisma.order.findUnique({
         where: { id: orderId },
@@ -286,7 +290,7 @@ export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Order already synced to Shiprocket");
     }
 
-    const result = await processOrderForShipping(orderId);
+    const result = await processOrderForShipping(orderId, courierId || null, true);
 
     if (!result) {
         throw new ApiError(400, "Shiprocket is disabled or configuration is missing");
@@ -307,6 +311,73 @@ export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
     res.status(200).json(
         new ApiResponsive(200, { order: updatedOrder, shiprocketResponse: result }, "Order synced to Shiprocket successfully")
     );
+});
+
+// Fetch available courier delivery partners for a specific order
+export const getCouriersForOrder = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+            shippingAddress: true,
+            items: {
+                include: { variant: true }
+            }
+        }
+    });
+
+    if (!order) {
+        throw new ApiError(404, "Order not found");
+    }
+
+    // If order already has AWB or is cancelled, return empty to prevent duplicate fetching
+    if (order.shiprocketOrderId || order.status === "CANCELLED") {
+        return res.status(200).json(
+            new ApiResponsive(200, { couriers: [], alreadySynced: true }, "Order is already processed or cancelled")
+        );
+    }
+
+    const settings = await getShiprocketSettings();
+    const pickupAddress = await prisma.shiprocketPickupAddress.findFirst({
+        where: { isDefault: true }
+    }) || await prisma.shiprocketPickupAddress.findFirst();
+
+    if (!pickupAddress || !order.shippingAddress?.postalCode) {
+        throw new ApiError(400, "Pickup address or shipping pincode missing");
+    }
+
+    let totalWeight = 0;
+    for (const item of order.items) {
+        totalWeight += (item.variant?.shippingWeight || settings.defaultWeight || 0.5) * item.quantity;
+    }
+
+    try {
+        const result = await checkServiceability({
+            pickupPincode: pickupAddress.pinCode,
+            deliveryPincode: order.shippingAddress.postalCode,
+            weight: totalWeight,
+            cod: order.paymentMethod === "CASH"
+        });
+
+        const availableCompanies = result?.data?.available_courier_companies || [];
+        const couriers = availableCompanies.map((c) => ({
+            id: c.courier_company_id,
+            name: c.courier_name,
+            rate: c.rate,
+            etd: c.etd,
+            estimatedDeliveryDays: c.estimated_delivery_days,
+            rating: c.rating,
+            cod: c.cod === 1
+        })).sort((a, b) => a.rate - b.rate);
+
+        return res.status(200).json(
+            new ApiResponsive(200, { couriers, count: couriers.length }, "Available courier partners fetched successfully")
+        );
+    } catch (error) {
+        console.error("Error checking couriers:", error);
+        throw new ApiError(500, `Failed to fetch courier partners: ${error.message}`);
+    }
 });
 
 // Get tracking info for an order
@@ -340,37 +411,61 @@ export const getOrderTracking = asyncHandler(async (req, res) => {
     );
 });
 
-// Cancel Shiprocket shipment
+// Cancel Shiprocket shipment & send email notification to customer
 export const cancelShipment = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
 
     const order = await prisma.order.findUnique({
         where: { id: orderId },
-        select: {
-            shiprocketOrderId: true,
-            shiprocketStatus: true,
-        },
+        include: {
+            user: true,
+            items: {
+                include: { product: true }
+            }
+        }
     });
 
     if (!order) {
         throw new ApiError(404, "Order not found");
     }
 
-    if (!order.shiprocketOrderId) {
-        throw new ApiError(400, "Order not synced to Shiprocket");
+    let result = null;
+    if (order.shiprocketOrderId) {
+        try {
+            result = await cancelShiprocketOrder(order.shiprocketOrderId);
+        } catch (err) {
+            console.warn("Shiprocket cancellation warning:", err);
+        }
     }
 
-    const result = await cancelShiprocketOrder(order.shiprocketOrderId);
-
-    await prisma.order.update({
+    // Update order status in database to CANCELLED
+    const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: {
             shiprocketStatus: "CANCELLED",
+            status: "CANCELLED",
+            cancelledAt: new Date(),
+            cancelledBy: req.user?.id || "ADMIN",
+            cancelReason: req.body?.reason || "Cancelled by admin"
         },
     });
 
+    // Send cancellation email to customer
+    if (order.user?.email) {
+        try {
+            await sendEmail({
+                email: order.user.email,
+                subject: `Order #${order.orderNumber} Cancelled — RHOSEATTE`,
+                html: getOrderCancellationEmailTemplate(order, order.user),
+            });
+            console.log(`Cancellation email sent to ${order.user.email} for order #${order.orderNumber}`);
+        } catch (emailErr) {
+            console.error("Error sending order cancellation email:", emailErr);
+        }
+    }
+
     res.status(200).json(
-        new ApiResponsive(200, { result }, "Shipment cancelled successfully")
+        new ApiResponsive(200, { result, order: updatedOrder }, "Order and shipment cancelled successfully and email sent to customer")
     );
 });
 

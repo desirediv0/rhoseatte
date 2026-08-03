@@ -398,12 +398,9 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
       // Cancel Shiprocket order if it exists
       if (order.shiprocketOrderId) {
         try {
-          const settings = await getShiprocketSettings();
-          if (settings.isEnabled) {
-            await cancelShiprocketOrder(order.shiprocketOrderId);
-            orderData.shiprocketStatus = "CANCELLED";
-            console.log(`Admin cancelled Shiprocket order ${order.shiprocketOrderId}`);
-          }
+          await cancelShiprocketOrder(order.shiprocketOrderId);
+          orderData.shiprocketStatus = "CANCELLED";
+          console.log(`Admin cancelled Shiprocket order ${order.shiprocketOrderId}`);
         } catch (error) {
           console.error("Failed to cancel Shiprocket order:", error.message);
           // Continue with order cancellation even if Shiprocket fails

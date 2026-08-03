@@ -363,13 +363,26 @@ export default function OrderDetailsPage() {
     }
   };
 
-  // Handle manual sync to Shiprocket
-  const handleSyncToShiprocket = async () => {
+  interface CourierPartner {
+    id: number | string;
+    name: string;
+    rate: number;
+    etd: string;
+    estimatedDeliveryDays: number;
+    rating: number;
+    cod: boolean;
+  }
+
+  const [availableCouriers, setAvailableCouriers] = useState<CourierPartner[]>([]);
+  const [isFetchingCouriers, setIsFetchingCouriers] = useState(false);
+
+  // Handle manual sync to Shiprocket (with optional specific courierId)
+  const handleSyncToShiprocket = async (courierId?: number | string) => {
     if (!id) return;
 
     try {
       setIsSyncing(true);
-      const response = await orders.syncToShiprocket(id);
+      const response = await orders.syncToShiprocket(id, courierId ? { courierId } : undefined);
 
       if (response && response.data && response.data.success) {
         toast.success("Order synced to Shiprocket successfully!");
@@ -388,6 +401,29 @@ export default function OrderDetailsPage() {
       }
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  // Fetch available courier delivery partners (rates, time) for this order
+  const handleFetchCouriers = async () => {
+    if (!id || orderDetails?.shiprocket?.orderId || orderDetails?.status === "CANCELLED") return;
+    setIsFetchingCouriers(true);
+    try {
+      const response = await orders.getCouriersForOrder(id);
+      if (response.data?.success) {
+        const list = response.data.data?.couriers || [];
+        setAvailableCouriers(list);
+        if (list.length === 0) {
+          toast.info("No courier partners available for this address/weight");
+        } else {
+          toast.success(`Fetched ${list.length} delivery partners!`);
+        }
+      }
+    } catch (error: any) {
+      console.error("Error fetching couriers:", error);
+      toast.error(error.response?.data?.message || "Failed to fetch courier partners");
+    } finally {
+      setIsFetchingCouriers(false);
     }
   };
 
@@ -1307,31 +1343,91 @@ export default function OrderDetailsPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-6">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#F3F4F6] mb-4">
-                      <Truck className="h-8 w-8 text-[#9CA3AF]" />
+                  <div className="py-4 space-y-4">
+                    <div className="text-center">
+                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 mb-3 border border-emerald-100">
+                        <Truck className="h-7 w-7 text-emerald-600" />
+                      </div>
+                      <p className="font-semibold text-[#1F2937] text-base mb-1">Not Synced to Shiprocket Yet</p>
+                      <p className="text-sm text-[#6B7280] mb-4 max-w-md mx-auto">
+                        In Manual Mode, you can fetch available courier partners to compare rates &amp; estimated delivery time, or auto-assign the best courier directly.
+                      </p>
+
+                      <div className="flex flex-wrap justify-center gap-3">
+                        <Button
+                          onClick={handleFetchCouriers}
+                          disabled={isFetchingCouriers || isSyncing}
+                          variant="outline"
+                          className="border-[#3B82F6] text-[#3B82F6] hover:bg-[#EFF6FF]"
+                        >
+                          {isFetchingCouriers ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Fetching Rates &amp; Couriers...
+                            </>
+                          ) : (
+                            <>
+                              <Truck className="mr-2 h-4 w-4" />
+                              View Delivery Partners (Rates &amp; Speed)
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => handleSyncToShiprocket()}
+                          disabled={isSyncing}
+                          className="bg-[#22C55E] hover:bg-[#16A34A] text-white"
+                        >
+                          {isSyncing ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Syncing...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Auto-Assign Best Courier
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <p className="font-semibold text-[#1F2937] mb-1">Not synced to Shiprocket yet</p>
-                    <p className="text-sm text-[#9CA3AF] mb-4">
-                      Click "Sync to Shiprocket" to create shipment and get AWB number.
-                    </p>
-                    <Button
-                      onClick={handleSyncToShiprocket}
-                      disabled={isSyncing}
-                      className="bg-[#22C55E] hover:bg-[#16A34A] text-white"
-                    >
-                      {isSyncing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Syncing...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Sync to Shiprocket
-                        </>
-                      )}
-                    </Button>
+
+                    {availableCouriers.length > 0 && (
+                      <div className="mt-4 border rounded-xl p-4 bg-gray-50/60 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-2">
+                            <Truck className="h-4 w-4 text-emerald-600" />
+                            Available Courier Partners ({availableCouriers.length})
+                          </h4>
+                          <span className="text-xs text-gray-500">Sorted by lowest rate</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-1">
+                          {availableCouriers.map((courier) => (
+                            <div key={courier.id} className="p-3 bg-white border border-gray-200 rounded-lg hover:border-emerald-500 flex items-center justify-between transition-colors shadow-sm">
+                              <div>
+                                <p className="font-semibold text-gray-900 text-sm">{courier.name}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  ⚡ Delivery: <span className="font-medium text-gray-700">{courier.etd || `${courier.estimatedDeliveryDays} Days`}</span>
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">₹{courier.rate}</span>
+                                  {courier.rating > 0 && <span className="text-xs text-amber-600 font-medium">★ {courier.rating}</span>}
+                                  {courier.cod && <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">COD Available</span>}
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => handleSyncToShiprocket(courier.id)}
+                                disabled={isSyncing}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3"
+                              >
+                                {isSyncing ? "Booking..." : "Book Shipment"}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

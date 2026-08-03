@@ -610,18 +610,17 @@ export async function buildShiprocketOrderPayload(order) {
  * - AUTO: Auto-syncs on order placement
  * - MANUAL: Skips auto-sync (admin manually syncs from order details)
  */
-export async function processOrderForShipping(orderId) {
+export async function processOrderForShipping(orderId, courierId = null, isManualSync = false) {
     const settings = await getShiprocketSettings();
 
-    // If bookingMode is AUTO, ensure auto-sync executes even if isEnabled flag wasn't explicitly flipped
-    if (!settings.isEnabled && settings.bookingMode !== "AUTO") {
-        console.log("Shiprocket is disabled and not in AUTO mode, skipping shipping integration");
+    // If not manual sync and booking mode is MANUAL, skip auto-sync
+    if (!isManualSync && settings.bookingMode === "MANUAL") {
+        console.log("Shiprocket booking mode is MANUAL, skipping auto-sync. Admin can manually sync from order details.");
         return null;
     }
 
-    // Check booking mode - if MANUAL, skip auto-sync (admin will manually sync)
-    if (settings.bookingMode === "MANUAL") {
-        console.log("Shiprocket booking mode is MANUAL, skipping auto-sync. Admin can manually sync from order details.");
+    if (!settings.isEnabled && settings.bookingMode !== "AUTO" && !isManualSync) {
+        console.log("Shiprocket is disabled and not in AUTO mode, skipping shipping integration");
         return null;
     }
 
@@ -658,9 +657,9 @@ export async function processOrderForShipping(orderId) {
             },
         });
 
-        // Try to assign AWB
+        // Try to assign AWB (with specific courierId if provided by admin)
         try {
-            const awbResponse = await assignAWB(shiprocketResponse.shipment_id);
+            const awbResponse = await assignAWB(shiprocketResponse.shipment_id, courierId);
 
             const awbCode = awbResponse.response?.data?.awb_code || null;
             const courierName = awbResponse.response?.data?.courier_name || null;

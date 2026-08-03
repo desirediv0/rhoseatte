@@ -516,8 +516,11 @@ export const orders = {
   updateOrderStatus: (orderId: string, data: { status: string }) => {
     return api.patch(`/api/admin/orders/${orderId}/status`, data);
   },
-  syncToShiprocket: (orderId: string) => {
-    return api.post(`/api/admin/shiprocket/orders/${orderId}/sync`);
+  getCouriersForOrder: (orderId: string) => {
+    return api.get(`/api/admin/shiprocket/orders/${orderId}/couriers`);
+  },
+  syncToShiprocket: (orderId: string, data?: { courierId?: number | string }) => {
+    return api.post(`/api/admin/shiprocket/orders/${orderId}/sync`, data);
   },
   getOrderTracking: (orderId: string) => {
     return api.get(`/api/admin/shiprocket/orders/${orderId}/tracking`);
