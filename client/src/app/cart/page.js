@@ -130,29 +130,24 @@ const CartItem = React.memo(
                             )}
 
                             {isBundle && item.bundleData?.selectedProducts?.length > 0 && (
-                                <div className="mt-1.5">
-                                    <p className="text-[10px] text-black/40 uppercase tracking-widest font-medium mb-1">
-                                        {item.bundleData.selectedProducts.length} items included
+                                <div className="mt-2 space-y-1 p-2.5 bg-black/[0.02] border border-black/5 rounded-lg">
+                                    <p className="text-[10px] text-black/60 uppercase tracking-widest font-semibold">
+                                        Included Fragrances ({item.bundleData.selectedProducts.length}):
                                     </p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {item.bundleData.selectedProducts.slice(0, 3).map((product) => (
+                                    <div className="flex flex-wrap gap-1.5 pt-1">
+                                        {item.bundleData.selectedProducts.map((product) => (
                                             <span
                                                 key={product.id}
-                                                className="inline-flex items-center text-[10px] text-black/50 bg-black/[0.03] px-2 py-0.5 rounded-sm"
+                                                className="inline-flex items-center text-[10px] font-medium text-black/70 bg-white border border-black/10 px-2 py-0.5 rounded"
                                             >
-                                                {product.name}
+                                                ✨ {product.name}
                                             </span>
                                         ))}
-                                        {item.bundleData.selectedProducts.length > 3 && (
-                                            <span className="text-[10px] text-black/40 px-1">
-                                                +{item.bundleData.selectedProducts.length - 3} more
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                             )}
 
-                            {isBundle && !item.isValid && (
+                            {isBundle && item.isValid === false && item.validationMessage && (
                                 <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-sm">
                                     <AlertCircle className="h-3 w-3" />
                                     {item.validationMessage}
