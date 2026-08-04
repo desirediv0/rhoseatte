@@ -158,6 +158,7 @@ export const getProductsByType = asyncHandler(async (req, res, next) => {
 
   // Build filter conditions for product type
   const filterConditions = {
+    isDeleted: false,
     isActive: true,
     productType: {
       array_contains: [productType],
@@ -288,6 +289,7 @@ export const getProducts = asyncHandler(async (req, res, next) => {
 
   // Build filter conditions
   const filterConditions = {
+    isDeleted: false,
     ...(search && {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
@@ -469,7 +471,7 @@ export const getProductById = asyncHandler(async (req, res, next) => {
     },
   });
 
-  if (!product) {
+  if (!product || product.isDeleted) {
     throw new ApiError(404, "Product not found");
   }
 
@@ -2845,7 +2847,7 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
         new ApiResponsive(
           200,
           { orderCount, archived: true },
-          `Product archived. It exists in ${orderCount} order(s) and cannot be permanently deleted.`
+          "Product deleted successfully"
         )
       );
   }
