@@ -2638,11 +2638,10 @@ export function ProductForm({
             <div className="space-y-2">
               <div
                 {...getVideoRootProps()}
-                className={`border-2 border-dashed rounded-md p-8 cursor-pointer transition-colors text-center bg-white ${
-                  isVideoDragActive
+                className={`border-2 border-dashed rounded-md p-8 cursor-pointer transition-colors text-center bg-white ${isVideoDragActive
                     ? "border-blue-400 bg-blue-50"
                     : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <input {...getVideoInputProps()} />
                 <svg
@@ -3442,12 +3441,17 @@ function ProductsList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [visibilityFilter, setVisibilityFilter] = useState("");
+
+  // Reset to page 1 whenever debounced search query or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery, selectedCategory, visibilityFilter]);
 
   // States for delete dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -3557,11 +3561,7 @@ function ProductsList() {
     return parentCategories;
   };
 
-  // Handle search
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-  };
+
 
   // Handle product deletion
   const handleDeleteProduct = async (
@@ -3822,13 +3822,24 @@ function ProductsList() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9CA3AF]" />
               <Input
-                type="search"
+                type="text"
                 placeholder={t("products.list.search_placeholder")}
-                className="pl-9 rounded-full border-[#E5E7EB] bg-[#FFFFFF] focus:border-primary"
+                className="pl-9 pr-8 rounded-full border-[#E5E7EB] bg-[#FFFFFF] focus:border-primary"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSearch(e)}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#4B5563]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
             <Button
               asChild
