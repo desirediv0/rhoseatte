@@ -244,7 +244,7 @@ export default function HeroSectionStore() {
               >
                 <span className="block h-px w-6 sm:w-10 bg-gold" />
                 <span className="text-[9px] sm:text-[10px] md:text-[11px] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/70 font-light">
-                  The RHOSEATTE Maison
+                  House of Rhoseatte
                 </span>
               </motion.div>
 

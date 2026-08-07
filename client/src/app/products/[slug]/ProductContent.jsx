@@ -12,7 +12,6 @@ import {
   IconCircleCheck,
   IconBolt,
   IconTruck,
-  IconRefresh,
   IconShieldCheck,
   IconChevronRight,
   IconChevronLeft,
@@ -279,8 +278,8 @@ export default function ProductContent({ slug }) {
   const getDeliveryDates = () => {
     const today = new Date();
     const f = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    const s = new Date(today); s.setDate(today.getDate() + 3);
-    const e = new Date(today); e.setDate(today.getDate() + 6);
+    const s = new Date(today); s.setDate(today.getDate() + 5);
+    const e = new Date(today); e.setDate(today.getDate() + 7);
     return `${f(s).toUpperCase()} – ${f(e).toUpperCase()}`;
   };
 
@@ -607,19 +606,12 @@ export default function ProductContent({ slug }) {
             </div>
 
             {/* Delivery */}
-            <div className="grid grid-cols-2 gap-4 mb-7">
+            <div className="mb-7">
               <div className="flex items-center gap-3 p-4" style={{ border: "1px solid #EAEAEA", borderRadius: "8px" }}>
                 <IconTruck className="h-5 w-5 flex-shrink-0" style={{ color: "#B8976A" }} stroke={1.5} />
                 <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: "#111111" }}>Free Delivery</p>
-                  <p className="text-[10px] mt-0.5 font-light" style={{ color: "#666666" }}>2–3 business days</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-4" style={{ border: "1px solid #EAEAEA", borderRadius: "8px" }}>
-                <IconRefresh className="h-5 w-5 flex-shrink-0" style={{ color: "#B8976A" }} stroke={1.5} />
-                <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: "#111111" }}>Easy Returns</p>
-                  <p className="text-[10px] mt-0.5 font-light" style={{ color: "#666666" }}>7-day return policy</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: "#111111" }}>Delivery</p>
+                  <p className="text-[10px] mt-0.5 font-light" style={{ color: "#666666" }}>5–7 business days</p>
                 </div>
               </div>
             </div>
