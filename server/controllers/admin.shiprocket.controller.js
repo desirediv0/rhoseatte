@@ -22,6 +22,7 @@ import {
     printInvoice,
     getPickupLocations,
     addPickupLocation,
+    pickWarehouseForOrder,
 } from "../utils/shiprocket.js";
 
 // Get Shiprocket settings
@@ -276,7 +277,7 @@ export const checkOrderServiceability = asyncHandler(async (req, res) => {
 // Sync order to Shiprocket (supports manual sync & courier selection)
 export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
-    const { courierId } = req.body || {};
+    const { courierId, warehouseId } = req.body || {};
 
     const order = await prisma.order.findUnique({
         where: { id: orderId },
@@ -290,7 +291,12 @@ export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Order already synced to Shiprocket");
     }
 
-    const result = await processOrderForShipping(orderId, courierId || null, true);
+    const result = await processOrderForShipping(
+        orderId,
+        courierId || null,
+        true,
+        warehouseId || null
+    );
 
     if (!result) {
         throw new ApiError(400, "Shiprocket is disabled or configuration is missing");
@@ -305,11 +311,60 @@ export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
             awbCode: true,
             courierName: true,
             shiprocketStatus: true,
+            warehouseId: true,
+            warehouseNickname: true,
+            warehouseAssignedBy: true,
         },
     });
 
     res.status(200).json(
         new ApiResponsive(200, { order: updatedOrder, shiprocketResponse: result }, "Order synced to Shiprocket successfully")
+    );
+});
+
+// Which warehouse would be used for this order (auto-pick preview) + full list
+export const getOrderWarehouseOptions = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { shippingAddress: true },
+    });
+    if (!order) throw new ApiError(404, "Order not found");
+
+    const warehouses = await prisma.shiprocketPickupAddress.findMany({
+        orderBy: [{ isDefault: "desc" }, { nickname: "asc" }],
+    });
+
+    let suggested = null;
+    if (warehouses.length > 0) {
+        try {
+            const { warehouse } = await pickWarehouseForOrder(order, null);
+            suggested = warehouse?.id || null;
+        } catch {
+            suggested = null;
+        }
+    }
+
+    res.status(200).json(
+        new ApiResponsive(
+            200,
+            {
+                warehouses: warehouses.map((w) => ({
+                    id: w.id,
+                    nickname: w.nickname,
+                    city: w.city,
+                    state: w.state,
+                    pincode: w.pincode || w.pinCode,
+                    isDefault: w.isDefault,
+                })),
+                suggestedWarehouseId: suggested,
+                currentWarehouseId: order.warehouseId || null,
+                currentWarehouseNickname: order.warehouseNickname || null,
+                assignedBy: order.warehouseAssignedBy || null,
+            },
+            "Warehouse options fetched"
+        )
     );
 });
 

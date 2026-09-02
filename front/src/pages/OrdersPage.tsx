@@ -383,6 +383,19 @@ export default function OrdersPage() {
                               {order.shiprocket.courierName}
                             </span>
                           )}
+                          {order.shiprocket.warehouseNickname && (
+                            <span className="text-xs text-[#6B7280] inline-flex items-center gap-1">
+                              <span className="text-[#9CA3AF]">Warehouse:</span>
+                              <span className="font-medium text-[#1F2937]">
+                                {order.shiprocket.warehouseNickname}
+                              </span>
+                              {order.shiprocket.warehouseAssignedBy && (
+                                <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF]">
+                                  ({order.shiprocket.warehouseAssignedBy})
+                                </span>
+                              )}
+                            </span>
+                          )}
                           {order.shiprocket.status && (
                             <Badge className={cn(
                               "text-xs",

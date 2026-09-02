@@ -158,6 +158,9 @@ export const getOrders = asyncHandler(async (req, res, next) => {
       awbCode: order.awbCode,
       courierName: order.courierName,
       status: order.shiprocketStatus,
+      warehouseId: order.warehouseId,
+      warehouseNickname: order.warehouseNickname,
+      warehouseAssignedBy: order.warehouseAssignedBy,
     },
   }));
 
@@ -332,6 +335,9 @@ export const getOrderById = asyncHandler(async (req, res, next) => {
       awbCode: order.awbCode,
       courierName: order.courierName,
       status: order.shiprocketStatus,
+      warehouseId: order.warehouseId,
+      warehouseNickname: order.warehouseNickname,
+      warehouseAssignedBy: order.warehouseAssignedBy,
     },
   };
 

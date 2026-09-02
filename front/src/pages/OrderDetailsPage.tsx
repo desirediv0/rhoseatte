@@ -376,13 +376,26 @@ export default function OrderDetailsPage() {
   const [availableCouriers, setAvailableCouriers] = useState<CourierPartner[]>([]);
   const [isFetchingCouriers, setIsFetchingCouriers] = useState(false);
 
+  // Warehouse (pickup location) options for this order
+  const [warehouseOptions, setWarehouseOptions] = useState<
+    { id: string; nickname: string; city?: string; state?: string; pincode?: string; isDefault?: boolean }[]
+  >([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
+  const [suggestedWarehouseId, setSuggestedWarehouseId] = useState<string>("");
+
   // Handle manual sync to Shiprocket (with optional specific courierId)
   const handleSyncToShiprocket = async (courierId?: number | string) => {
     if (!id) return;
 
     try {
       setIsSyncing(true);
-      const response = await orders.syncToShiprocket(id, courierId ? { courierId } : undefined);
+      const payload: { courierId?: number | string; warehouseId?: string } = {};
+      if (courierId) payload.courierId = courierId;
+      if (selectedWarehouseId) payload.warehouseId = selectedWarehouseId;
+      const response = await orders.syncToShiprocket(
+        id,
+        Object.keys(payload).length ? payload : undefined
+      );
 
       if (response && response.data && response.data.success) {
         toast.success("Order synced to Shiprocket successfully!");
@@ -403,6 +416,34 @@ export default function OrderDetailsPage() {
       setIsSyncing(false);
     }
   };
+
+  // Load warehouse options + the auto-suggested one for this order
+  useEffect(() => {
+    if (!id) return;
+    if (orderDetails?.shiprocket?.orderId) return; // already synced
+    let cancelled = false;
+    orders
+      .getOrderWarehouseOptions(id)
+      .then((res) => {
+        if (cancelled || !res.data?.success) return;
+        const d = res.data.data || {};
+        const list = d.warehouses || [];
+        setWarehouseOptions(list);
+        const suggested =
+          d.suggestedWarehouseId ||
+          list.find((w: { isDefault?: boolean }) => w.isDefault)?.id ||
+          list[0]?.id ||
+          "";
+        setSuggestedWarehouseId(d.suggestedWarehouseId || "");
+        setSelectedWarehouseId((prev) => prev || suggested);
+      })
+      .catch(() => {
+        /* warehouse picker is optional; ignore */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, orderDetails?.shiprocket?.orderId]);
 
   // Fetch available courier delivery partners (rates, time) for this order
   const handleFetchCouriers = async () => {
@@ -1352,6 +1393,33 @@ export default function OrderDetailsPage() {
                       <p className="text-sm text-[#6B7280] mb-4 max-w-md mx-auto">
                         In Manual Mode, you can fetch available courier partners to compare rates &amp; estimated delivery time, or auto-assign the best courier directly.
                       </p>
+
+                      {warehouseOptions.length > 1 && (
+                        <div className="max-w-sm mx-auto mb-4 text-left">
+                          <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                            Ship from warehouse
+                          </label>
+                          <select
+                            value={selectedWarehouseId}
+                            onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                            className="w-full border border-[#D1D5DB] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#22C55E]/30"
+                          >
+                            {warehouseOptions.map((w) => (
+                              <option key={w.id} value={w.id}>
+                                {w.nickname}
+                                {w.city ? ` — ${w.city}` : ""}
+                                {w.pincode ? ` (${w.pincode})` : ""}
+                                {w.id === suggestedWarehouseId ? "  · nearest" : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-[11px] text-[#9CA3AF] mt-1">
+                            {suggestedWarehouseId
+                              ? "Pre-selected the warehouse nearest the delivery pincode. Change it if needed."
+                              : "Pick which warehouse this order ships from."}
+                          </p>
+                        </div>
+                      )}
 
                       <div className="flex flex-wrap justify-center gap-3">
                         <Button

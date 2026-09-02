@@ -519,7 +519,13 @@ export const orders = {
   getCouriersForOrder: (orderId: string) => {
     return api.get(`/api/admin/shiprocket/orders/${orderId}/couriers`);
   },
-  syncToShiprocket: (orderId: string, data?: { courierId?: number | string }) => {
+  getOrderWarehouseOptions: (orderId: string) => {
+    return api.get(`/api/admin/shiprocket/orders/${orderId}/warehouse-options`);
+  },
+  syncToShiprocket: (
+    orderId: string,
+    data?: { courierId?: number | string; warehouseId?: string }
+  ) => {
     return api.post(`/api/admin/shiprocket/orders/${orderId}/sync`, data);
   },
   getOrderTracking: (orderId: string) => {

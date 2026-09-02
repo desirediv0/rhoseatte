@@ -14,6 +14,7 @@ import {
     deletePickupAddress,
     checkOrderServiceability,
     getCouriersForOrder,
+    getOrderWarehouseOptions,
     syncOrderToShiprocket,
     getOrderTracking,
     cancelShipment,
@@ -40,6 +41,7 @@ router.post("/serviceability", isAdmin, checkOrderServiceability);
 
 // Order operations
 router.get("/orders/:orderId/couriers", isAdmin, getCouriersForOrder);
+router.get("/orders/:orderId/warehouse-options", isAdmin, getOrderWarehouseOptions);
 router.post("/orders/:orderId/sync", isAdmin, syncOrderToShiprocket);
 router.get("/orders/:orderId/tracking", isAdmin, getOrderTracking);
 router.post("/orders/:orderId/cancel", isAdmin, cancelShipment);

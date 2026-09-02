@@ -439,6 +439,12 @@ model Order {
   awbCode                      String?
   courierName                  String?
   shiprocketStatus             String?
+  // Which warehouse this order ships from (chosen automatically by pincode, or
+  // picked by an admin before a manual sync). warehouseNickname is denormalised
+  // so the order list still shows something if the warehouse row is later deleted.
+  warehouseId                  String?
+  warehouseNickname            String?
+  warehouseAssignedBy          String? // "AUTO" or "MANUAL"
   shippingAddress              Address?             @relation(fields: [shippingAddressId], references: [id])
   user                         User                 @relation(fields: [userId], references: [id])
   items                        OrderItem[]

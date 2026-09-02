@@ -384,9 +384,65 @@ export async function addPickupLocation(locationData) {
  * Get default pickup address from database
  */
 export async function getDefaultPickupAddress() {
-    return prisma.shiprocketPickupAddress.findFirst({
-        where: { isDefault: true },
-    });
+    return (
+        (await prisma.shiprocketPickupAddress.findFirst({
+            where: { isDefault: true },
+        })) || (await prisma.shiprocketPickupAddress.findFirst())
+    );
+}
+
+/**
+ * Pick the warehouse an order should ship from.
+ *
+ * - If warehouseId is given (admin picked it for a manual sync), use that.
+ * - Otherwise choose the warehouse "nearest" the delivery pincode by comparing
+ *   PIN prefixes: an exact 3-digit match beats a 2-digit match beats a 1-digit
+ *   (region) match. Falls back to the default warehouse when nothing matches.
+ *
+ * Returns { warehouse, assignedBy: "AUTO" | "MANUAL" }.
+ */
+export async function pickWarehouseForOrder(order, warehouseId = null) {
+    const warehouses = await prisma.shiprocketPickupAddress.findMany();
+
+    if (warehouses.length === 0) {
+        throw new Error("No pickup address configured");
+    }
+
+    if (warehouseId) {
+        const chosen = warehouses.find((w) => w.id === warehouseId);
+        if (!chosen) throw new Error("Selected warehouse not found");
+        return { warehouse: chosen, assignedBy: "MANUAL" };
+    }
+
+    if (warehouses.length === 1) {
+        return { warehouse: warehouses[0], assignedBy: "AUTO" };
+    }
+
+    const deliveryPin = String(
+        order?.shippingAddress?.postalCode ||
+        order?.shippingAddress?.pincode ||
+        ""
+    ).replace(/\D/g, "");
+
+    const defaultWarehouse =
+        warehouses.find((w) => w.isDefault) || warehouses[0];
+
+    if (deliveryPin.length < 3) {
+        return { warehouse: defaultWarehouse, assignedBy: "AUTO" };
+    }
+
+    let best = { warehouse: defaultWarehouse, score: 0 };
+    for (const w of warehouses) {
+        const whPin = String(w.pincode || w.pinCode || "").replace(/\D/g, "");
+        if (whPin.length < 1) continue;
+        let score = 0;
+        if (whPin.slice(0, 3) === deliveryPin.slice(0, 3)) score = 3;
+        else if (whPin.slice(0, 2) === deliveryPin.slice(0, 2)) score = 2;
+        else if (whPin.slice(0, 1) === deliveryPin.slice(0, 1)) score = 1;
+        if (score > best.score) best = { warehouse: w, score };
+    }
+
+    return { warehouse: best.warehouse, assignedBy: "AUTO" };
 }
 
 /**
@@ -446,9 +502,14 @@ async function ensurePickupAddressSynced(pickupAddress) {
 /**
  * Build order payload for Shiprocket from our Order
  */
-export async function buildShiprocketOrderPayload(order) {
+export async function buildShiprocketOrderPayload(order, warehouseId = null) {
     const settings = await getShiprocketSettings();
-    const pickupAddress = await getDefaultPickupAddress();
+
+    // Choose which warehouse to ship from (admin pick, or nearest-by-pincode).
+    const { warehouse: pickupAddress, assignedBy } = await pickWarehouseForOrder(
+        order,
+        warehouseId
+    );
 
     if (!pickupAddress) {
         throw new Error("No pickup address configured");
@@ -456,6 +517,8 @@ export async function buildShiprocketOrderPayload(order) {
 
     // Ensure pickup address is synced to Shiprocket
     const syncedPickupAddress = await ensurePickupAddressSynced(pickupAddress);
+    // Stash the choice so processOrderForShipping can persist it on the order.
+    order.__chosenWarehouse = { warehouse: pickupAddress, assignedBy };
 
     // Get shipping address
     const shippingAddress = order.shippingAddress;
@@ -610,7 +673,7 @@ export async function buildShiprocketOrderPayload(order) {
  * - AUTO: Auto-syncs on order placement
  * - MANUAL: Skips auto-sync (admin manually syncs from order details)
  */
-export async function processOrderForShipping(orderId, courierId = null, isManualSync = false) {
+export async function processOrderForShipping(orderId, courierId = null, isManualSync = false, warehouseId = null) {
     const settings = await getShiprocketSettings();
 
     // If not manual sync and booking mode is MANUAL, skip auto-sync
@@ -644,16 +707,25 @@ export async function processOrderForShipping(orderId, courierId = null, isManua
 
     try {
         // Build and send order to Shiprocket
-        const payload = await buildShiprocketOrderPayload(order);
+        const payload = await buildShiprocketOrderPayload(order, warehouseId);
         const shiprocketResponse = await createShiprocketOrder(payload);
 
-        // Update order with Shiprocket details
+        const chosen = order.__chosenWarehouse;
+
+        // Update order with Shiprocket details + the warehouse it shipped from
         await prisma.order.update({
             where: { id: orderId },
             data: {
                 shiprocketOrderId: shiprocketResponse.order_id,
                 shiprocketShipmentId: shiprocketResponse.shipment_id,
                 shiprocketStatus: "CREATED",
+                ...(chosen
+                    ? {
+                        warehouseId: chosen.warehouse.id,
+                        warehouseNickname: chosen.warehouse.nickname,
+                        warehouseAssignedBy: chosen.assignedBy,
+                    }
+                    : {}),
             },
         });
 
