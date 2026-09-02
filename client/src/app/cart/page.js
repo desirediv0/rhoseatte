@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
+import CheckoutRecommendations from "@/components/sections/CheckoutRecommendations";
 
 import {
     Trash2,
@@ -519,7 +520,7 @@ export default function CartPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
                     {/* Cart Items */}
-                    <div className="lg:col-span-8">
+                    <div className="lg:col-span-8 space-y-5">
                         <div className="bg-white border border-black/5 rounded-lg overflow-hidden">
                             <div className="divide-y divide-black/[0.03]">
                                 {cart.items.map((item) => (
@@ -533,6 +534,9 @@ export default function CartPage() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Recommended products */}
+                        <CheckoutRecommendations title="You May Also Like" />
                     </div>
 
                     {/* Summary */}

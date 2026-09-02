@@ -842,9 +842,10 @@ function CouponForm({
       return false;
     }
 
-    // Validate discount value based on discount type
-    if (formData.discountType === "PERCENTAGE" && discountValue > 100) {
-      setError(t('coupons.messages.discount_percentage_limit'));
+    // Validate discount value based on discount type.
+    // Percentage is capped at 95% — no 100%-off coupons.
+    if (formData.discountType === "PERCENTAGE" && discountValue > 95) {
+      setError("Percentage discount cannot exceed 95%");
       return false;
     }
 
@@ -1177,6 +1178,7 @@ function CouponForm({
                     name="discountValue"
                     type="number"
                     min="0"
+                    max={formData.discountType === "PERCENTAGE" ? "95" : undefined}
                     step={formData.discountType === "PERCENTAGE" ? "1" : "0.01"}
                     placeholder={
                       formData.discountType === "PERCENTAGE" ? "10" : "100"

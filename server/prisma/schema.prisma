@@ -774,6 +774,18 @@ model FAQ {
   updatedAt   DateTime @updatedAt
 }
 
+// Products an admin hand-picks to recommend on the cart / checkout pages.
+model CheckoutRecommendation {
+  id        String   @id @default(uuid())
+  productId String   @unique
+  position  Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, position])
+}
+
 model ContactSubmission {
   id        String   @id @default(uuid())
   name      String

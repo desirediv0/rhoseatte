@@ -51,6 +51,7 @@ import adminNewsletterRoutes from "./routes/admin.newsletter.routes.js";
 import customPerfumeRoutes from "./routes/custom-perfume.routes.js";
 import adminCustomPerfumeRoutes from "./routes/admin.custom-perfume.routes.js";
 import customPerfumeOrderRoutes from "./routes/custom-perfume-order.routes.js";
+import adminCheckoutRecommendationRoutes from "./routes/admin.checkout-recommendation.routes.js";
 
 const app = express();
 
@@ -187,6 +188,7 @@ app.use("/api/admin", adminCustomPerfumeRoutes);
 app.use("/api/fragrance-quiz", fragranceQuizRoutes);
 app.use("/api/custom-perfume", customPerfumeRoutes);
 app.use("/api", customPerfumeOrderRoutes);
+app.use("/api/admin", adminCheckoutRecommendationRoutes);
 
 // Shiprocket webhook (public endpoint)
 app.use("/api/webhooks/shiprocket", adminShiprocketRoutes);

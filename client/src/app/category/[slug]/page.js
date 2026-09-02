@@ -6,7 +6,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { fetchApi } from "@/lib/utils";
 import { AlertCircle, ChevronDown, ChevronLeft, Grid, List, Package } from "lucide-react";
-import { getPharmaIcon } from "@/lib/pharma-icons";
 import { ProductCard } from "@/components/products/ProductCard";
 
 const getImageUrl = (image) => {
@@ -131,63 +130,62 @@ export default function CategoryPage() {
         );
     }
 
-    const { Icon: CatIcon, color: catColor } = getPharmaIcon(category?.name || "", category?.slug || "");
-
     return (
         <div className="min-h-screen" style={{ background: "#F7FAFC" }}>
-            {/* Hero */}
+            {/* Hero — full-width banner using the category image as background */}
             <section
-                className="relative py-10 md:py-14 overflow-hidden"
-                style={{ background: "linear-gradient(135deg, #111111 0%, #1A1A1A 60%, #222222 100%)" }}
+                className="relative overflow-hidden flex items-end"
+                style={{
+                    minHeight: "clamp(320px, 42vw, 460px)",
+                    background: "linear-gradient(135deg, #111111 0%, #1A1A1A 60%, #222222 100%)",
+                }}
             >
-                <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <div className="absolute -top-20 right-0 w-72 h-72 rounded-full opacity-10" style={{ background: "radial-gradient(circle, #D4AF37, transparent 70%)" }} />
-                </div>
+                {/* Background image */}
+                {category?.image && (
+                    <Image
+                        src={getImageUrl(category.image)}
+                        alt={category.name || "Collection"}
+                        fill
+                        priority
+                        sizes="100vw"
+                        className="object-cover"
+                    />
+                )}
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6">
+                {/* Overlays for text legibility */}
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        background:
+                            "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.35) 100%)",
+                    }}
+                />
+                <div className="absolute -top-20 right-0 w-72 h-72 rounded-full opacity-10 pointer-events-none" style={{ background: "radial-gradient(circle, #D4AF37, transparent 70%)" }} />
+
+                <div className="relative z-10 w-full max-w-7xl mx-auto px-6 pb-8 md:pb-12 pt-24">
                     {/* Breadcrumb */}
-                    <div className="flex items-center text-xs text-white/50 mb-5 gap-2 font-sans">
-                        <Link href="/" className="hover:text-white/80 transition-colors">Home</Link>
+                    <div className="flex items-center text-xs text-white/60 mb-5 gap-2 font-sans">
+                        <Link href="/" className="hover:text-white transition-colors">Home</Link>
                         <span>/</span>
-                        <Link href="/categories" className="hover:text-white/80 transition-colors">Categories</Link>
+                        <Link href="/categories" className="hover:text-white transition-colors">Categories</Link>
                         <span>/</span>
-                        <span className="text-white/75">{category?.name}</span>
+                        <span className="text-white/85">{category?.name}</span>
                     </div>
 
-                    <div className="flex flex-col md:flex-row md:items-center gap-5 font-sans">
-                        {/* Category Image or Icon */}
+                    <div className="font-sans">
                         <div
-                            className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center bg-white/10"
-                            style={{ border: "1px solid rgba(255,255,255,0.15)" }}
+                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-3 border uppercase tracking-wider"
+                            style={{ background: "rgba(212,175,55,0.18)", borderColor: "rgba(212,175,55,0.35)", color: "#D4AF37" }}
                         >
-                            {category?.image ? (
-                                <Image
-                                    src={getImageUrl(category.image)}
-                                    alt={category.name}
-                                    width={96}
-                                    height={96}
-                                    className="w-full h-full object-contain p-2"
-                                />
-                            ) : (
-                                <CatIcon size={40} style={{ color: "#D4AF37" }} />
-                            )}
+                            <Package className="w-3 h-3" />
+                            {pagination.total} Products
                         </div>
-
-                        <div className="flex-1">
-                            <div
-                                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-3 border uppercase tracking-wider"
-                                style={{ background: "rgba(212,175,55,0.15)", borderColor: "rgba(212,175,55,0.3)", color: "#D4AF37" }}
-                            >
-                                <Package className="w-3 h-3" />
-                                {pagination.total} Products
-                            </div>
-                            <h1 className="text-2xl md:text-4xl font-display text-white mb-2">
-                                {category?.name}
-                            </h1>
-                            {category?.description && (
-                                <p className="text-white/65 max-w-2xl text-sm leading-relaxed">{category.description}</p>
-                            )}
-                        </div>
+                        <h1 className="text-3xl md:text-5xl font-display text-white mb-2 drop-shadow-sm">
+                            {category?.name}
+                        </h1>
+                        {category?.description && (
+                            <p className="text-white/75 max-w-2xl text-sm md:text-base leading-relaxed drop-shadow-sm">{category.description}</p>
+                        )}
                     </div>
                 </div>
             </section>

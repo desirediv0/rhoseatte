@@ -257,18 +257,23 @@ export const loginUser = asyncHandler(async (req, res, next) => {
 // Logout user
 export const logoutUser = asyncHandler(async (req, res, next) => {
   try {
-    // Clear cookies regardless of whether a user is authenticated
-    res.clearCookie("accessToken", {
+    // Clear cookies regardless of whether a user is authenticated.
+    // These options must match how the cookies were set (see setCookies) or the
+    // browser won't clear them.
+    const isProduction = process.env.NODE_ENV === "production";
+    const clearOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      path: "/",
+      ...(isProduction && process.env.COOKIE_DOMAIN
+        ? { domain: process.env.COOKIE_DOMAIN }
+        : {}),
+    };
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
+    res.clearCookie("accessToken", clearOptions);
+    res.clearCookie("refreshToken", clearOptions);
+    res.clearCookie("user_session", { ...clearOptions, httpOnly: false });
 
     res.status(200).json(new ApiResponsive(200, {}, "Logged out successfully"));
   } catch (error) {

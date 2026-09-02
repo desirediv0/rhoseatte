@@ -402,6 +402,18 @@ export default function DashboardLayout() {
                 )}
               />
 
+              {/* Checkout Recommendations - Single Item */}
+              <NavItem
+                href="/checkout-recommendations"
+                icon={<Sparkles className="h-[1.125rem] w-[1.125rem]" />}
+                title="Checkout Recommendations"
+                hasPermission={hasPermissionFor(
+                  admin,
+                  Resource.PRODUCTS,
+                  Action.READ
+                )}
+              />
+
               {/* Email Marketing - Single Item */}
               <NavItem
                 href="/email-marketing"
@@ -921,6 +933,19 @@ export default function DashboardLayout() {
                 hasPermission={hasPermissionFor(
                   admin,
                   Resource.BANNERS,
+                  Action.READ
+                )}
+              />
+
+              {/* Checkout Recommendations - Single Item */}
+              <NavItem
+                href="/checkout-recommendations"
+                icon={<Sparkles className="h-[1.125rem] w-[1.125rem]" />}
+                title="Checkout Recommendations"
+                onClick={toggleMobileMenu}
+                hasPermission={hasPermissionFor(
+                  admin,
+                  Resource.PRODUCTS,
                   Action.READ
                 )}
               />

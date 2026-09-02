@@ -53,7 +53,7 @@ const NAV_LINKS = [
 ];
 
 const ANNOUNCEMENTS = [
-  "Complimentary Shipping on orders above \u20B9499 | Proudly handcrafted in India \uD83C\uDDEE\uD83C\uDDF3",
+  "Complimentary Shipping on orders above \u20B9999 | Proudly handcrafted in India \uD83C\uDDEE\uD83C\uDDF3",
 ];
 
 function AvatarCircle({ name, size = "sm" }) {

@@ -126,7 +126,18 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
       : 0;
 
   const showPrice = !priceSettings?.hidePricesForGuests || isAuthenticated;
-  const isOutOfStock = product.stock === 0 || product.inStock === false;
+  // Derive stock from variants (the list/detail API returns variants, not a top-level stock).
+  const variantStockList = Array.isArray(product.variants)
+    ? product.variants
+      .filter((v) => v?.isActive !== false)
+      .map((v) => v?.stock ?? v?.quantity)
+      .filter((n) => typeof n === "number")
+    : [];
+  const totalVariantStock = variantStockList.reduce((sum, n) => sum + n, 0);
+  const isOutOfStock =
+    product.stock === 0 ||
+    product.inStock === false ||
+    (variantStockList.length > 0 && totalVariantStock <= 0);
   const inWishlist = wishlistItems[product.id];
 
   const handleAddToWishlist = async (e) => {
@@ -159,7 +170,16 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
       else toast.error("Please login to purchase items");
       return;
     }
-    const variantId = product.variants?.[0]?.id;
+    if (isOutOfStock) {
+      toast.error("This product is out of stock");
+      return;
+    }
+    // Prefer the first in-stock variant, not just variants[0] which may be sold out.
+    const firstAvailable =
+      product.variants?.find(
+        (v) => v?.isActive !== false && (v?.stock ?? v?.quantity ?? 1) > 0
+      ) || product.variants?.[0];
+    const variantId = firstAvailable?.id;
     if (!variantId) {
       toast.error("Select options on product page");
       router.push(`/products/${product.slug}`);

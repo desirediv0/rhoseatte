@@ -156,7 +156,7 @@ const SkeletonLoader = () => (
   <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_1fr] gap-5">
     <div className="animate-pulse bg-ivory-deep" style={{ borderRadius: "8px", height: "600px" }} />
     <div className="grid grid-cols-2 gap-5">
-      {[...Array(4)].map((_, i) => (
+      {[...Array(6)].map((_, i) => (
         <div key={i} className="animate-pulse bg-ivory-deep" style={{ borderRadius: "8px", height: "290px" }} />
       ))}
     </div>
@@ -203,7 +203,7 @@ const CategoryGrid = () => {
   }
 
   const heroCategory = categories[0];
-  const smallCategories = categories.slice(1, 5);
+  const smallCategories = categories.slice(1, 7);
 
   return (
     <section className="py-14 md:py-16  bg-white overflow-hidden">

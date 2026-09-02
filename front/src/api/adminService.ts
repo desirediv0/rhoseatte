@@ -1477,6 +1477,16 @@ export const fragranceQuiz = {
   },
 };
 
+// ==================== Checkout Recommendations ====================
+export const checkoutRecommendations = {
+  get: () => {
+    return api.get("/api/admin/checkout-recommendations");
+  },
+  set: (productIds: string[]) => {
+    return api.put("/api/admin/checkout-recommendations", { productIds });
+  },
+};
+
 // ==================== Email Marketing Services ====================
 export const emailMarketing = {
   getSmtpSettings: () => {

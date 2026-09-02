@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import AddressForm from "@/components/AddressForm";
 import Image from "next/image";
+import CheckoutRecommendations from "@/components/sections/CheckoutRecommendations";
 
 const getImageUrl = (image) => {
     if (!image) return "/rhoseatte_lavender_perfume.png";
@@ -543,6 +544,9 @@ export default function CheckoutPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Recommended products */}
+                        <CheckoutRecommendations title="Add to Your Order" />
                     </div>
 
                     {/* Right Column - Summary */}

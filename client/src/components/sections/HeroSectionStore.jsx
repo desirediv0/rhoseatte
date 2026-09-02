@@ -348,10 +348,7 @@ export default function HeroSectionStore() {
       )}
 
       <div className="absolute bottom-0 left-0 right-0 z-10">
-        <div className="w-full px-5 sm:px-10 md:px-16 lg:px-20 xl:px-24 pb-4 sm:pb-6 md:pb-8 flex items-end justify-between">
-          <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.25em] sm:tracking-[0.35em] text-white/25">
-            RHOSEATTE \u2014 Luxury Perfume Maison
-          </span>
+        <div className="w-full px-5 sm:px-10 md:px-16 lg:px-20 xl:px-24 pb-4 sm:pb-6 md:pb-8 flex items-end justify-end">
           <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.25em] sm:tracking-[0.35em] text-white/25">
             {String(currentIndex + 1).padStart(2, "0")} / {String(banners.length).padStart(2, "0")}
           </span>

@@ -40,12 +40,13 @@ export const createCoupon = asyncHandler(async (req, res) => {
     throw new ApiError(409, "Coupon code already exists");
   }
 
-  // Validate discount value
+  // Validate discount value. Percentage is capped at 95% so a coupon can never
+  // zero out an order (no 100%-off coupons).
   if (
     discountType === "PERCENTAGE" &&
-    (discountValue <= 0 || discountValue > 100)
+    (discountValue <= 0 || discountValue > 95)
   ) {
-    throw new ApiError(400, "Percentage discount must be between 1 and 100");
+    throw new ApiError(400, "Percentage discount must be between 1 and 95");
   }
 
   if (discountType === "FIXED_AMOUNT" && discountValue <= 0) {
@@ -135,9 +136,9 @@ export const updateCoupon = asyncHandler(async (req, res) => {
   if (discountType && discountValue) {
     if (
       discountType === "PERCENTAGE" &&
-      (discountValue <= 0 || discountValue > 100)
+      (discountValue <= 0 || discountValue > 95)
     ) {
-      throw new ApiError(400, "Percentage discount must be between 1 and 100");
+      throw new ApiError(400, "Percentage discount must be between 1 and 95");
     }
 
     if (discountType === "FIXED_AMOUNT" && discountValue <= 0) {
@@ -383,15 +384,15 @@ export const verifyCoupon = asyncHandler(async (req, res) => {
   // Calculate discount based on applicableSubtotal
   let discountAmount = 0;
   if (coupon.discountType === "PERCENTAGE") {
-    // Cap percentage discount at 90%
-    const cappedDiscountValue = Math.min(parseFloat(coupon.discountValue), 90);
+    // Cap percentage discount at 95%
+    const cappedDiscountValue = Math.min(parseFloat(coupon.discountValue), 95);
     discountAmount = (applicableSubtotal * cappedDiscountValue) / 100;
   } else {
     discountAmount = parseFloat(coupon.discountValue);
   }
 
-  // Ensure discount is not more than 90% of applicable subtotal
-  const maxDiscountAllowed = applicableSubtotal * 0.9; // Maximum 90% discount
+  // Never let a coupon discount more than 95% of the applicable subtotal
+  const maxDiscountAllowed = applicableSubtotal * 0.95; // Maximum 95% discount
   discountAmount = Math.min(discountAmount, maxDiscountAllowed);
 
   return res.status(200).json(
@@ -524,14 +525,14 @@ export const applyCoupon = asyncHandler(async (req, res) => {
   // Calculate discount based on applicable subtotal
   let discountAmount = 0;
   if (coupon.discountType === "PERCENTAGE") {
-    const cappedDiscountValue = Math.min(parseFloat(coupon.discountValue), 90);
+    const cappedDiscountValue = Math.min(parseFloat(coupon.discountValue), 95);
     discountAmount = (applicableSubtotal * cappedDiscountValue) / 100;
   } else {
     discountAmount = parseFloat(coupon.discountValue);
   }
 
-  // Ensure discount is not more than 90% of applicable subtotal
-  const maxDiscountAllowed = applicableSubtotal * 0.9;
+  // Never let a coupon discount more than 95% of the applicable subtotal
+  const maxDiscountAllowed = applicableSubtotal * 0.95;
   discountAmount = Math.min(discountAmount, maxDiscountAllowed);
 
   return res.status(200).json(

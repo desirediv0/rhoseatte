@@ -598,6 +598,9 @@ export const addToCart = asyncHandler(async (req, res) => {
         userId,
         productVariantId,
         quantity: parseInt(quantity),
+        // Set explicitly so getUserCart's `cartItemType === "NORMAL"` filter always matches,
+        // instead of relying on the schema default being applied.
+        cartItemType: "NORMAL",
       },
       include: {
         productVariant: {

@@ -62,8 +62,13 @@ export const setCookies = (res, accessToken, refreshToken) => {
   // Only set these options in production
   if (isProduction) {
     cookieOptions.secure = true;
-    cookieOptions.sameSite = "strict";
+    // The storefront (rhoseatte.com) and the API (api.rhoseatte.com) are different
+    // origins, so the auth cookie is sent on a cross-site request. "strict" (and even
+    // "lax") blocks that, which is why authenticated calls like /cart/add and
+    // /users/wishlist silently failed. "none" + Secure lets the cookie ride along.
+    cookieOptions.sameSite = "none";
     if (process.env.COOKIE_DOMAIN) {
+      // e.g. COOKIE_DOMAIN=.rhoseatte.com so the cookie is shared across subdomains.
       cookieOptions.domain = process.env.COOKIE_DOMAIN;
     }
   }

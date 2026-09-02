@@ -88,6 +88,21 @@ export const addToGuestCart = async (productVariantId, quantity = 1) => {
             const variantData = await response.json();
             const variant = variantData.data?.variant || variantData.variant || variantData.data;
 
+            // Block adding out-of-stock / inactive variants to the guest cart,
+            // mirroring the server-side check for logged-in users.
+            const variantStock =
+                variant?.stock ?? variant?.quantity ?? null;
+            if (variant?.isActive === false) {
+                throw new Error("This product is currently unavailable");
+            }
+            if (variantStock !== null && variantStock < quantity) {
+                throw new Error(
+                    variantStock <= 0
+                        ? "This product is out of stock"
+                        : `Only ${variantStock} left in stock`
+                );
+            }
+
             newItem = {
                 id: `guest_${Date.now()}_${Math.random()}`,
                 productVariantId: variant.id || productVariantId,

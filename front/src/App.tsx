@@ -34,6 +34,7 @@ import UserManagementPage from "./pages/UserManagementPage";
 import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
 import BrandsPage from "./pages/BrandsPage";
 import ProductSectionsPage from "./pages/ProductSections";
+import CheckoutRecommendationsPage from "./pages/CheckoutRecommendationsPage";
 import BannersPage from "./pages/BannersPage";
 import VideoReelsPage from "./pages/VideoReelsPage";
 import BundleCampaignsPage from "./pages/BundleCampaignsPage";
@@ -728,6 +729,18 @@ const App = () => {
                   action={Action.UPDATE}
                 >
                   <ProductSectionsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="checkout-recommendations"
+              element={
+                <ProtectedRoute
+                  resource={Resource.PRODUCTS}
+                  action={Action.READ}
+                >
+                  <CheckoutRecommendationsPage />
                 </ProtectedRoute>
               }
             />

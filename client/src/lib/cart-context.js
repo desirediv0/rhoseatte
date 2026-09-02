@@ -159,7 +159,7 @@ export function CartProvider({ children }) {
                 const discountPercentage = (discountAmount / originalCartTotal) * 100;
                 const isDiscountCapped =
                     verifyResponse.data.coupon.discountType === "FIXED_AMOUNT" &&
-                    discountPercentage >= 90;
+                    discountPercentage >= 95;
 
                 setCoupon({
                     id: verifyResponse.data.coupon.id,
@@ -261,18 +261,17 @@ export function CartProvider({ children }) {
         setLoading(true);
         try {
             if (isAuthenticated && typeof productVariantId !== "object") {
-                try {
-                    await fetchApi("/cart/add", {
-                        method: "POST",
-                        credentials: "include",
-                        body: JSON.stringify({ productVariantId, quantity }),
-                    });
-                    // Clear local guest cart on successful server add so localStorage does not duplicate server cart
-                    clearGuestCart();
-                } catch (e) {
-                    console.warn("Server cart add warning, using local item:", e);
-                    await addToGuestCart(productVariantId, quantity);
-                }
+                // Authenticated: the server cart is the source of truth.
+                // If the server rejects the add (out of stock, MOQ, inactive variant, etc.)
+                // we must surface that error instead of silently writing to the guest cart,
+                // which would never be shown for a logged-in user and makes the cart look empty.
+                await fetchApi("/cart/add", {
+                    method: "POST",
+                    credentials: "include",
+                    body: JSON.stringify({ productVariantId, quantity }),
+                });
+                // Clear local guest cart on successful server add so localStorage does not duplicate server cart
+                clearGuestCart();
             } else {
                 await addToGuestCart(productVariantId, quantity);
             }
@@ -511,10 +510,10 @@ export function CartProvider({ children }) {
                 const discountPercentage = (discountAmount / originalCartTotal) * 100;
                 const isDiscountCapped =
                     verifyResponse.data.coupon.discountType === "FIXED_AMOUNT" &&
-                    discountPercentage >= 90;
+                    discountPercentage >= 95;
 
                 if (isDiscountCapped) {
-                    toast.info("The discount has been capped at 90% of your cart value", {
+                    toast.info("The discount has been capped at 95% of your cart value", {
                         duration: 5000,
                     });
                 }

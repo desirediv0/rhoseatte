@@ -26,6 +26,7 @@ import {
 import { getPublishedBanners } from "../controllers/admin.banner.controller.js";
 import { getActiveFlashSales, getActiveProductSections } from "../controllers/public.controller.js";
 import { getActiveVideoReels } from "../controllers/admin.video-reel.controller.js";
+import { getPublicCheckoutRecommendations } from "../controllers/checkout-recommendation.controller.js";
 import { verifyJWTToken, requireSecretAccess } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -66,6 +67,9 @@ router.get("/filter-attributes", getFilterAttributes);
 
 // Price Visibility Settings
 router.get("/price-visibility-settings", getPriceVisibilitySettings);
+
+// Checkout / cart recommended products
+router.get("/checkout-recommendations", getPublicCheckoutRecommendations);
 
 // Video Reels (Watch and Buy)
 router.get("/video-reels", getActiveVideoReels);

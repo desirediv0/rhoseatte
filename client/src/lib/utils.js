@@ -207,19 +207,33 @@ export async function fetchProductsByType(productType, limit = 8) {
   }
 }
 
-// Sort categories according to requested order
+// Sort categories according to the requested homepage order:
+// Discovery Set → Date Night Collection → Solid Perfumes → Gifting → Her → Him
 export function sortCategories(categoriesList) {
   if (!Array.isArray(categoriesList)) return [];
 
-  const getIndex = (name) => {
-    const n = (name || "").toLowerCase();
-    if (n.includes("necklace")) return 0;
-    if (n.includes("earring")) return 1;
-    if (n.includes("bracelet")) return 2;
-    if (n.includes("ring")) return 3;
-    if (n.includes("festive") || n.includes("set")) return 4;
+  // Each entry: keywords that identify the collection (matched against name + slug).
+  const priority = [
+    ["discovery"],
+    ["date night", "date-night"],
+    ["solid perfume", "solid-perfume", "solid"],
+    ["gifting", "gift"],
+    ["her", "for her", "for-her", "women", "woman"],
+    ["him", "for him", "for-him", "men", "man"],
+  ];
+
+  const getIndex = (cat) => {
+    const haystack = `${cat?.name || ""} ${cat?.slug || ""}`.toLowerCase();
+    for (let i = 0; i < priority.length; i++) {
+      if (priority[i].some((kw) => haystack.includes(kw))) return i;
+    }
     return 999;
   };
 
-  return [...categoriesList].sort((a, b) => getIndex(a.name) - getIndex(b.name));
+  return [...categoriesList].sort((a, b) => {
+    const diff = getIndex(a) - getIndex(b);
+    if (diff !== 0) return diff;
+    // Stable-ish fallback: keep alphabetical for anything not in the priority list
+    return (a?.name || "").localeCompare(b?.name || "");
+  });
 }

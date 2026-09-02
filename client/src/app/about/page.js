@@ -33,32 +33,33 @@ export default function AboutPage() {
 
   const processSteps = [
     {
-      title: "1. Raw Botanical Extraction & Distillation",
-      description: "Extracting pure botanical essences using time-honored distillation methods inspired by ancient Indian fragrance heritage.",
-      videoPlaceholder: "Perfume Making & Botanical Extraction"
+      title: "1. Bottles are Painted and Cleaned",
+      description: "Each glass flacon is hand-painted and meticulously cleaned before it ever meets a drop of fragrance.",
+      videoPlaceholder: "Bottle Painting & Cleaning",
+      mediaUrl: "https://desirediv-storage.blr1.cdn.digitaloceanspaces.com/rhoseatte/about-video/first.mp4",
+      mediaType: "video"
     },
     {
       title: "2. Accord Composition & Formulation",
       description: "Master perfumers blending top, heart, and base notes according to the principles of Brihat Samhita and Gandhayukti.",
-      videoPlaceholder: "Olfactory Accord Blending"
+      videoPlaceholder: "Olfactory Accord Blending",
+      mediaUrl: "https://desirediv-storage.blr1.cdn.digitaloceanspaces.com/rhoseatte/about-video/second.mp4",
+      mediaType: "video"
     },
     {
       title: "3. Maceration & Age Maturation",
       description: "Resting each batch in climate-controlled tanks to allow complex natural notes to meld gracefully.",
-      videoPlaceholder: "Maceration & Maturation Vault"
+      videoPlaceholder: "Maceration & Maturation Vault",
+      mediaUrl: "https://desirediv-storage.blr1.cdn.digitaloceanspaces.com/rhoseatte/about-video/third.jpeg",
+      mediaType: "image"
     },
     {
-      title: "4. Sensory Evaluation & Quality Testing",
-      description: "Rigorous olfactory tests ensuring peak longevity, projection, and formulation purity before bottling.",
-      videoPlaceholder: "Sensory Quality Evaluation"
-    },
-    {
-      title: "5. Artisanal Flacon Bottle Filling",
+      title: "4. Artisanal Flacon Bottle Filling",
       description: "Precision filling each glass flacon under sterile, controlled atelier conditions.",
       videoPlaceholder: "Bottle Filling Process"
     },
     {
-      title: "6. Hand-Finished Packaging & Dispatch",
+      title: "5. Hand-Finished Packaging & Dispatch",
       description: "Hand-wrapping every box with protective seals and custom details, ready for shipment to your doorstep.",
       videoPlaceholder: "Packaging & Dispatch Line"
     }
@@ -139,20 +140,39 @@ export default function AboutPage() {
                   key={idx}
                   className={`flex flex-col ${isEven ? "md:flex-row" : "md:flex-row-reverse"} items-center gap-8 md:gap-14 bg-white p-6 md:p-8 rounded-xl border border-[#F0F0F0] shadow-sm`}
                 >
-                  {/* Video Box */}
-                  <div className="w-full md:w-1/2 aspect-video bg-[#FAF9F6] border border-[#E0E0E0] rounded-lg flex flex-col items-center justify-center p-6 text-center relative overflow-hidden group">
-                    <div className="w-14 h-14 rounded-full bg-[#B8976A]/10 border border-[#B8976A] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                      <IconPlayerPlay className="w-6 h-6 text-[#B8976A] ml-1" />
-                    </div>
-                    <span className="text-xs uppercase tracking-widest text-[#B8976A] font-semibold mb-1">
-                      Video Showcase {idx + 1}
-                    </span>
-                    <p className="text-sm font-medium text-[#222222]">
-                      {step.videoPlaceholder}
-                    </p>
-                    <span className="text-[11px] text-[#888888] mt-2 italic">
-                      Video footage loading soon
-                    </span>
+                  {/* Media Box */}
+                  <div className="w-full md:w-1/2 aspect-video bg-[#FAF9F6] border border-[#E0E0E0] rounded-lg flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                    {step.mediaUrl && step.mediaType === "video" ? (
+                      <video
+                        src={step.mediaUrl}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : step.mediaUrl && step.mediaType === "image" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={step.mediaUrl}
+                        alt={step.videoPlaceholder}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-6">
+                        <div className="w-14 h-14 rounded-full bg-[#B8976A]/10 border border-[#B8976A] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                          <IconPlayerPlay className="w-6 h-6 text-[#B8976A] ml-1" />
+                        </div>
+                        <span className="text-xs uppercase tracking-widest text-[#B8976A] font-semibold mb-1">
+                          Video Showcase {idx + 1}
+                        </span>
+                        <p className="text-sm font-medium text-[#222222]">
+                          {step.videoPlaceholder}
+                        </p>
+                        <span className="text-[11px] text-[#888888] mt-2 italic">
+                          Video footage loading soon
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Text Side */}

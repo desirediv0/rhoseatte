@@ -42,6 +42,9 @@ const getImageUrl = (img) => {
   return `https://desirediv-storage.blr1.digitaloceanspaces.com/${cleanPath}`;
 };
 
+// Toggle to bring reviews back in the future — set to true to show ratings + review section.
+const SHOW_REVIEWS = false;
+
 export default function ProductContent({ slug }) {
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
@@ -238,6 +241,11 @@ export default function ProductContent({ slug }) {
   const handleAddToCart = async () => {
     const v = selectedVariant || product?.variants?.[0];
     if (!v) return;
+    const vStock = v.stock ?? v.quantity ?? null;
+    if (vStock !== null && vStock < quantity) {
+      setCartSuccess(false);
+      return; // out of stock / not enough stock — button is already disabled, guard anyway
+    }
     setIsAddingToCart(true); setCartSuccess(false);
     try {
       const result = await addVariantToCart(v, quantity, product.name);
@@ -361,8 +369,16 @@ export default function ProductContent({ slug }) {
 
   const images = getImages();
   const primary = mainImage && images.some((i) => i.url === mainImage.url) ? mainImage : (images.find((i) => i.isPrimary) || images[0]);
-  const stock = selectedVariant?.stock || selectedVariant?.quantity || product.stock || 15;
-  const outOfStock = stock === 0;
+  // Read the real stock from the selected variant. `?? ` (not `||`) so a genuine 0 is respected
+  // instead of falling through to a hardcoded 15, which used to keep "Add to Bag" enabled for
+  // out-of-stock variants and made the server reject the add with an empty cart as the result.
+  const rawStock =
+    selectedVariant?.stock ??
+    selectedVariant?.quantity ??
+    product?.stock ??
+    null;
+  const stock = rawStock === null ? (selectedVariant ? 0 : 15) : rawStock;
+  const outOfStock = !selectedVariant || stock <= 0;
 
   const bundleItems = [
     { id: product.id, name: product.name, price: parseFloat(effectivePriceInfo?.price || selectedVariant?.salePrice || selectedVariant?.price || product.basePrice || 0), isMain: true, stock, image: primary?.url },
@@ -503,11 +519,13 @@ export default function ProductContent({ slug }) {
               )}
             </div>
 
-            {/* Rating */}
-            <div className="flex items-center gap-2.5 mb-6">
-              <div className="flex gap-0.5">{[1, 2, 3, 4, 5].map(i => <IconStar key={i} className="h-3.5 w-3.5" style={{ color: "#B8976A" }} fill="#B8976A" stroke={0} />)}</div>
-              <span className="text-[11px] tracking-[0.12em] uppercase" style={{ color: "#666666" }}>({product.reviewCount || 0} reviews)</span>
-            </div>
+            {/* Rating — hidden for now, see SHOW_REVIEWS */}
+            {SHOW_REVIEWS && (
+              <div className="flex items-center gap-2.5 mb-6">
+                <div className="flex gap-0.5">{[1, 2, 3, 4, 5].map(i => <IconStar key={i} className="h-3.5 w-3.5" style={{ color: "#B8976A" }} fill="#B8976A" stroke={0} />)}</div>
+                <span className="text-[11px] tracking-[0.12em] uppercase" style={{ color: "#666666" }}>({product.reviewCount || 0} reviews)</span>
+              </div>
+            )}
 
             {/* Product Notes */}
             {product.notes && product.notes.length > 0 && (
@@ -843,10 +861,12 @@ export default function ProductContent({ slug }) {
           )}
         </div>
 
-        {/* Reviews */}
-        <div className="mt-16 max-w-4xl">
-          <ReviewSection product={product} />
-        </div>
+        {/* Reviews — hidden for now, see SHOW_REVIEWS */}
+        {SHOW_REVIEWS && (
+          <div className="mt-16 max-w-4xl">
+            <ReviewSection product={product} />
+          </div>
+        )}
       </div>
 
       {/* Lifestyle Section */}
