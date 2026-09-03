@@ -12,6 +12,7 @@ import {
     createPickupAddress,
     updatePickupAddress,
     deletePickupAddress,
+    syncPickupAddress,
     checkOrderServiceability,
     getCouriersForOrder,
     getOrderWarehouseOptions,
@@ -34,6 +35,7 @@ router.post("/test-connection", isAdmin, testConnection);
 router.get("/pickup-addresses", isAdmin, getPickupAddresses);
 router.post("/pickup-addresses", isAdmin, createPickupAddress);
 router.put("/pickup-addresses/:id", isAdmin, updatePickupAddress);
+router.post("/pickup-addresses/:id/sync", isAdmin, syncPickupAddress);
 router.delete("/pickup-addresses/:id", isAdmin, deletePickupAddress);
 
 // Serviceability check

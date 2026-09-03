@@ -409,7 +409,9 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
           console.log(`Admin cancelled Shiprocket order ${order.shiprocketOrderId}`);
         } catch (error) {
           console.error("Failed to cancel Shiprocket order:", error.message);
-          // Continue with order cancellation even if Shiprocket fails
+          // Continue with order cancellation, but flag that Shiprocket still
+          // needs a manual cancel.
+          orderData.shiprocketStatus = "CANCEL_FAILED";
         }
       }
     }

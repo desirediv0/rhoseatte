@@ -9,6 +9,10 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart-context";
 import { useRouter } from "next/navigation";
+import {
+  toggleGuestWishlist,
+  getGuestWishlistIds,
+} from "@/lib/guest-wishlist-utils";
 
 const getImageUrl = (image) => {
   if (!image) return "/placeholder.jpg";
@@ -43,7 +47,21 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
   const [addedToCart, setAddedToCart] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
+    if (!isAuthenticated) {
+      // Guest: read wishlist state from localStorage.
+      const map = getGuestWishlistIds().reduce((acc, id) => {
+        acc[id] = true;
+        return acc;
+      }, {});
+      setWishlistItems(map);
+      const onChange = () => {
+        const m = getGuestWishlistIds().reduce((a, id) => ((a[id] = true), a), {});
+        setWishlistItems(m);
+      };
+      window.addEventListener("guest-wishlist-changed", onChange);
+      return () => window.removeEventListener("guest-wishlist-changed", onChange);
+    }
     fetchApi("/users/wishlist", { credentials: "include" })
       .then((res) => {
         const map = res.data?.wishlistItems?.reduce((acc, item) => {
@@ -142,7 +160,29 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
 
   const handleAddToWishlist = async (e) => {
     e.preventDefault(); e.stopPropagation();
-    if (!isAuthenticated) { router.push(`/auth?redirect=/products/${product.slug}`); return; }
+
+    // Guest: toggle in localStorage, will sync to the account on login.
+    if (!isAuthenticated) {
+      const { inWishlist: nowIn } = toggleGuestWishlist({
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        image:
+          product.image ||
+          product.images?.find?.((i) => i.isPrimary)?.url ||
+          product.images?.[0]?.url,
+        basePrice: product.basePrice,
+      });
+      setWishlistItems((p) => {
+        const n = { ...p };
+        if (nowIn) n[product.id] = true;
+        else delete n[product.id];
+        return n;
+      });
+      toast.success(nowIn ? "Saved to wishlist" : "Removed from wishlist");
+      return;
+    }
+
     setIsAddingToWishlist((p) => ({ ...p, [product.id]: true }));
     try {
       if (inWishlist) {
@@ -158,8 +198,12 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
           body: JSON.stringify({ productId: product.id }),
         });
         setWishlistItems((p) => ({ ...p, [product.id]: true }));
+        toast.success("Added to wishlist");
       }
-    } catch { toast.error("Failed to update wishlist"); }
+    } catch (err) {
+      console.error("Wishlist error:", err);
+      toast.error(err?.message || "Failed to update wishlist");
+    }
     finally { setIsAddingToWishlist((p) => ({ ...p, [product.id]: false })); }
   };
 
@@ -187,11 +231,31 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
     }
     setIsAddingToCart(true);
     try {
-      await addToCart(variantId, 1);
+      await addToCart(variantId, 1, {
+        id: variantId,
+        price: firstAvailable.price ?? product.basePrice,
+        salePrice: firstAvailable.salePrice,
+        stock: firstAvailable.stock ?? firstAvailable.quantity,
+        quantity: firstAvailable.stock ?? firstAvailable.quantity,
+        isActive: firstAvailable.isActive,
+        sku: firstAvailable.sku,
+        images: firstAvailable.images,
+        productName: product.name,
+        productSlug: product.slug,
+        productId: product.id,
+        image:
+          product.image ||
+          product.images?.find((i) => i.isPrimary)?.url ||
+          product.images?.[0]?.url ||
+          firstAvailable.images?.[0]?.url,
+      });
       setAddedToCart(true);
       toast.success("Added to cart!");
       setTimeout(() => setAddedToCart(false), 2000);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || "Failed to add to cart");
+    }
     finally { setIsAddingToCart(false); }
   };
 

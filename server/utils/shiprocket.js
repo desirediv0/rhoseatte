@@ -381,6 +381,70 @@ export async function addPickupLocation(locationData) {
 }
 
 /**
+ * Register (or re-use) a warehouse row on Shiprocket and store its pickup id.
+ * Safe to call repeatedly — if Shiprocket says the location already exists we
+ * just look it up and save the id. Returns the updated DB row.
+ */
+export async function registerWarehouseOnShiprocket(warehouse) {
+    const payload = {
+        pickup_location: warehouse.nickname,
+        name: warehouse.name,
+        email: warehouse.email,
+        phone: String(warehouse.phone || "").replace(/\D/g, "").slice(-10),
+        address: warehouse.address,
+        address_2: warehouse.address2 || "",
+        city: warehouse.city,
+        state: warehouse.state,
+        country: warehouse.country || "India",
+        pin_code: String(warehouse.pincode || warehouse.pinCode || ""),
+    };
+
+    let pickupId = null;
+    try {
+        const resp = await addPickupLocation(payload);
+        pickupId =
+            resp?.pickup_location_id ||
+            resp?.data?.pickup_location_id ||
+            resp?.id ||
+            resp?.data?.id ||
+            null;
+    } catch (err) {
+        // "already exists" or similar — fall through to the lookup below.
+        console.log(
+            `addpickup for "${warehouse.nickname}" failed (${err.message}); trying lookup`
+        );
+    }
+
+    if (!pickupId) {
+        try {
+            const list = await getPickupLocations();
+            const rows =
+                list?.data?.shipping_address ||
+                list?.shipping_address ||
+                list?.data ||
+                [];
+            const match = rows.find(
+                (r) =>
+                    (r.pickup_location || "").toLowerCase() ===
+                    (warehouse.nickname || "").toLowerCase()
+            );
+            pickupId = match?.id || match?.pickup_location_id || null;
+        } catch (e) {
+            console.log(`getPickupLocations lookup failed: ${e.message}`);
+        }
+    }
+
+    if (pickupId) {
+        return prisma.shiprocketPickupAddress.update({
+            where: { id: warehouse.id },
+            data: { shiprocketPickupId: parseInt(pickupId) },
+        });
+    }
+
+    return warehouse;
+}
+
+/**
  * Get default pickup address from database
  */
 export async function getDefaultPickupAddress() {
@@ -449,54 +513,20 @@ export async function pickWarehouseForOrder(order, warehouseId = null) {
  * Ensure pickup address is synced to Shiprocket
  */
 async function ensurePickupAddressSynced(pickupAddress) {
-    // If already synced, return immediately
+    // Already registered on Shiprocket — nothing to do.
     if (pickupAddress.shiprocketPickupId) {
         return pickupAddress;
     }
-
-    // If no shiprocketPickupId but has nickname, assume it's already in Shiprocket
-    // This avoids the "already exists" error from repeated sync attempts
-    if (pickupAddress.nickname) {
-        console.log(`Using existing pickup location: ${pickupAddress.nickname}`);
+    // Not synced yet: register it now (idempotent — handles "already exists").
+    try {
+        return await registerWarehouseOnShiprocket(pickupAddress);
+    } catch (error) {
+        console.log(
+            `Pickup sync failed for "${pickupAddress.nickname}": ${error.message}. ` +
+            `Falling back to sending the nickname directly.`
+        );
         return pickupAddress;
     }
-
-    // Only try to sync if we have no pickup ID and no nickname
-    try {
-        const locationData = {
-            pickup_location: pickupAddress.nickname || pickupAddress.name,
-            name: pickupAddress.name,
-            email: pickupAddress.email,
-            phone: pickupAddress.phone,
-            address: pickupAddress.address,
-            address_2: pickupAddress.address2 || "",
-            city: pickupAddress.city,
-            state: pickupAddress.state,
-            country: pickupAddress.country || "India",
-            pin_code: pickupAddress.pincode,
-        };
-
-        const response = await addPickupLocation(locationData);
-
-        const pickupId = response.pickup_location_id ||
-            response.data?.pickup_location_id ||
-            response.id ||
-            response.data?.id;
-
-        if (pickupId) {
-            await prisma.shiprocketPickupAddress.update({
-                where: { id: pickupAddress.id },
-                data: { shiprocketPickupId: parseInt(pickupId) },
-            });
-            pickupAddress.shiprocketPickupId = parseInt(pickupId);
-            console.log(`Pickup address synced to Shiprocket with ID: ${pickupId}`);
-        }
-    } catch (error) {
-        // Silently continue - the nickname should work if registered in Shiprocket
-        console.log(`Pickup sync skipped: Using nickname "${pickupAddress.nickname}" directly`);
-    }
-
-    return pickupAddress;
 }
 
 /**

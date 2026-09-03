@@ -32,10 +32,86 @@ export const saveGuestCart = (cart) => {
     }
 };
 
-// Add item to guest cart
-export const addToGuestCart = async (productVariantId, quantity = 1) => {
+// Add item to guest cart.
+// `productVariantId` may be:
+//   - a string variant id  -> we fetch variant details from the API
+//   - an object with variant info (id/name/price/image/stock) -> used directly, no network
+//   - a rich product object (fragrance finder / bundle builder / quick view)
+export const addToGuestCart = async (productVariantId, quantity = 1, variantHint = null) => {
     try {
         let newItem;
+
+        // Fast path: caller already has the variant (product card / PDP). No network,
+        // so it keeps working even if the API is unreachable / CORS-blocked.
+        if (
+            typeof productVariantId === "string" &&
+            variantHint &&
+            typeof variantHint === "object"
+        ) {
+            const v = variantHint;
+            const stock = v.stock ?? v.quantity ?? null;
+            if (v.isActive === false) {
+                throw new Error("This product is currently unavailable");
+            }
+            if (stock !== null && stock < quantity) {
+                throw new Error(
+                    stock <= 0
+                        ? "This product is out of stock"
+                        : `Only ${stock} left in stock`
+                );
+            }
+            const price = parseFloat(v.salePrice ?? v.price ?? 0);
+            newItem = {
+                id: `guest_${Date.now()}_${Math.random()}`,
+                productVariantId: v.id || productVariantId,
+                productId: v.productId || v.product?.id || null,
+                productName: v.productName || v.product?.name || v.name || "Fragrance",
+                productSlug: v.productSlug || v.product?.slug || v.slug || "product",
+                variantName:
+                    v.variantName ||
+                    `${v.flavor?.name || ""} ${v.weight?.display || ""}`.trim() ||
+                    "Standard Bottling",
+                price,
+                quantity,
+                subtotal: (price * quantity).toFixed(2),
+                image:
+                    v.image ||
+                    v.images?.[0]?.url ||
+                    v.images?.[0] ||
+                    v.product?.image ||
+                    "/rhoseatte_lavender_perfume.png",
+                sku: v.sku,
+                flavor: v.flavor,
+                weight: v.weight,
+            };
+
+            const cart = getGuestCart();
+            const idx = cart.items.findIndex(
+                (i) => i.productVariantId === newItem.productVariantId
+            );
+            if (idx !== -1) {
+                cart.items[idx].quantity += quantity;
+                cart.items[idx].subtotal = (
+                    parseFloat(cart.items[idx].price) * cart.items[idx].quantity
+                ).toFixed(2);
+            } else {
+                cart.items.push(newItem);
+            }
+            cart.subtotal = cart.items
+                .reduce(
+                    (s, i) =>
+                        s +
+                        (parseFloat(i.subtotal) ||
+                            parseFloat(i.price || 0) * (i.quantity || 1) ||
+                            0),
+                    0
+                )
+                .toFixed(2);
+            cart.itemCount = cart.items.length;
+            cart.totalQuantity = cart.items.reduce((s, i) => s + i.quantity, 0);
+            saveGuestCart(cart);
+            return cart;
+        }
 
         // Handle product objects (from Fragrance Finder, custom builder, or quick view)
         if (typeof productVariantId === "object" && productVariantId !== null) {

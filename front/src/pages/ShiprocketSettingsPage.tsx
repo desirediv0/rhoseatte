@@ -76,6 +76,7 @@ export default function ShiprocketSettingsPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState<PickupAddress | null>(null);
+    const [syncingId, setSyncingId] = useState<string | null>(null);
 
     // Form states
     const [email, setEmail] = useState("");
@@ -266,11 +267,17 @@ export default function ShiprocketSettingsPage() {
                 const response = await api.put(`/api/admin/shiprocket/pickup-addresses/${editingAddress.id}`, addressForm);
                 if (response.data.success) {
                     toast.success(t("shiprocket_settings.messages.address_updated"));
+                    if (response.data.data?.syncWarning) {
+                        toast.info(response.data.data.syncWarning);
+                    }
                 }
             } else {
                 const response = await api.post("/api/admin/shiprocket/pickup-addresses", addressForm);
                 if (response.data.success) {
                     toast.success(t("shiprocket_settings.messages.address_created"));
+                    if (response.data.data?.syncWarning) {
+                        toast.info(response.data.data.syncWarning);
+                    }
                 }
             }
 
@@ -282,6 +289,21 @@ export default function ShiprocketSettingsPage() {
             toast.error(error.response?.data?.message || t("shiprocket_settings.messages.address_error"));
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSyncAddress = async (id: string) => {
+        try {
+            setSyncingId(id);
+            const response = await api.post(`/api/admin/shiprocket/pickup-addresses/${id}/sync`);
+            if (response.data.success) {
+                toast.success("Warehouse synced to Shiprocket");
+                fetchPickupAddresses();
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to sync warehouse to Shiprocket");
+        } finally {
+            setSyncingId(null);
         }
     };
 
@@ -793,11 +815,20 @@ export default function ShiprocketSettingsPage() {
                                             <MapPin className="h-5 w-5 text-[#6B7280]" />
                                         </div>
                                         <div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="font-medium text-[#1F2937]">{address.nickname}</span>
                                                 {address.isDefault && (
                                                     <span className="text-xs bg-[#ECFDF5] text-[#22C55E] px-2 py-0.5 rounded-full">
                                                         {t("shiprocket_settings.pickup_addresses.default_badge")}
+                                                    </span>
+                                                )}
+                                                {address.shiprocketPickupId ? (
+                                                    <span className="text-xs bg-[#EFF6FF] text-[#3B82F6] px-2 py-0.5 rounded-full">
+                                                        Synced to Shiprocket
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-full">
+                                                        Not synced
                                                     </span>
                                                 )}
                                             </div>
@@ -810,6 +841,16 @@ export default function ShiprocketSettingsPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {!address.shiprocketPickupId && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={syncingId === address.id}
+                                                onClick={() => handleSyncAddress(address.id)}
+                                            >
+                                                {syncingId === address.id ? "Syncing…" : "Sync"}
+                                            </Button>
+                                        )}
                                         <Button
                                             variant="ghost"
                                             size="sm"

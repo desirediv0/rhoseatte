@@ -8,6 +8,10 @@ import { ClientOnly } from "@/components/client-only";
 import { fetchApi } from "@/lib/utils";
 import { ProductCard } from "@/components/products/ProductCard";
 import {
+  getGuestWishlist,
+  removeFromGuestWishlist,
+} from "@/lib/guest-wishlist-utils";
+import {
   IconHeart,
   IconTrash,
   IconShoppingBag,
@@ -22,23 +26,47 @@ export default function WishlistPage() {
   const [loadingItems, setLoadingItems] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!loading && !isAuthenticated) router.push("/auth?redirect=/wishlist");
-  }, [isAuthenticated, loading, router]);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (loading) return;
+
+    if (!isAuthenticated) {
+      // Guest: show the local wishlist instead of forcing login.
+      setIsGuest(true);
+      const items = getGuestWishlist().map((g) => ({
+        id: g.productId,
+        productId: g.productId,
+        name: g.name,
+        slug: g.slug,
+        image: g.image,
+        basePrice: g.price,
+        // ProductCard tolerates a thin product object.
+      }));
+      setWishlistItems(items);
+      setLoadingItems(false);
+      return;
+    }
+
+    setIsGuest(false);
     setLoadingItems(true);
     fetchApi("/users/wishlist", { credentials: "include" })
       .then((res) => setWishlistItems(res.data?.wishlistItems || []))
       .catch(() => setError("Failed to load wishlist. Please try again."))
       .finally(() => setLoadingItems(false));
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loading]);
 
-  const removeFromWishlist = async (wishlistItemId) => {
+  const removeFromWishlist = async (idOrItemId) => {
+    if (isGuest) {
+      removeFromGuestWishlist(idOrItemId);
+      setWishlistItems((cur) =>
+        cur.filter((item) => (item.productId || item.id) !== idOrItemId)
+      );
+      return;
+    }
     try {
-      await fetchApi(`/users/wishlist/${wishlistItemId}`, { method: "DELETE", credentials: "include" });
-      setWishlistItems((cur) => cur.filter((item) => item.id !== wishlistItemId));
+      await fetchApi(`/users/wishlist/${idOrItemId}`, { method: "DELETE", credentials: "include" });
+      setWishlistItems((cur) => cur.filter((item) => item.id !== idOrItemId));
       setError("");
     } catch {
       setError("Failed to remove item. Please try again.");
@@ -85,6 +113,16 @@ export default function WishlistPage() {
           {/* Error */}
           {error && (
             <div className="px-5 py-4 bg-red-50 border border-red-200 text-red-700 text-[13px] font-light mb-8">{error}</div>
+          )}
+
+          {/* Guest notice */}
+          {isGuest && wishlistItems.length > 0 && (
+            <div className="px-5 py-4 bg-ivory border border-line text-stone text-[13px] font-light mb-8 flex items-center justify-between gap-4 flex-wrap">
+              <span>Saved on this device.{" "}
+                <Link href="/auth?redirect=/wishlist" className="text-noir underline underline-offset-2 hover:text-gold">Sign in</Link>{" "}
+                to keep your wishlist across devices — it&apos;ll sync automatically.
+              </span>
+            </div>
           )}
 
           {/* Loading */}

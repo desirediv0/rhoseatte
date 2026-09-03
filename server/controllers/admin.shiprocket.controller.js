@@ -23,6 +23,7 @@ import {
     getPickupLocations,
     addPickupLocation,
     pickWarehouseForOrder,
+    registerWarehouseOnShiprocket,
 } from "../utils/shiprocket.js";
 
 // Get Shiprocket settings
@@ -180,7 +181,7 @@ export const createPickupAddress = asyncHandler(async (req, res) => {
         });
     }
 
-    const pickupAddress = await prisma.shiprocketPickupAddress.create({
+    let pickupAddress = await prisma.shiprocketPickupAddress.create({
         data: {
             nickname: nickname || "Warehouse",
             name,
@@ -196,8 +197,25 @@ export const createPickupAddress = asyncHandler(async (req, res) => {
         },
     });
 
+    // Register this warehouse on Shiprocket right away so it can be used as a
+    // pickup_location on orders. Failure here is non-fatal — admin can retry.
+    let syncWarning = null;
+    try {
+        pickupAddress = await registerWarehouseOnShiprocket(pickupAddress);
+        if (!pickupAddress.shiprocketPickupId) {
+            syncWarning =
+                "Saved, but could not confirm the warehouse on Shiprocket yet. Use 'Sync' to retry.";
+        }
+    } catch (e) {
+        syncWarning = `Saved locally, but Shiprocket sync failed: ${e.message}`;
+    }
+
     res.status(201).json(
-        new ApiResponsive(201, { address: pickupAddress }, "Pickup address created successfully")
+        new ApiResponsive(
+            201,
+            { address: pickupAddress, syncWarning },
+            "Pickup address created successfully"
+        )
     );
 });
 
@@ -222,13 +240,50 @@ export const updatePickupAddress = asyncHandler(async (req, res) => {
         });
     }
 
-    const updated = await prisma.shiprocketPickupAddress.update({
+    // Drop any fields that aren't real columns (e.g. syncWarning echoed back).
+    const { syncWarning: _sw, shiprocketPickupId: _spid, id: _id, createdAt, updatedAt, ...clean } = updateData;
+
+    let updated = await prisma.shiprocketPickupAddress.update({
         where: { id },
-        data: updateData,
+        data: clean,
     });
 
+    // Re-register on Shiprocket if address details changed or it was never synced.
+    let syncWarn = null;
+    try {
+        updated = await registerWarehouseOnShiprocket(updated);
+        if (!updated.shiprocketPickupId) {
+            syncWarn = "Updated, but Shiprocket sync is not confirmed yet. Use 'Sync' to retry.";
+        }
+    } catch (e) {
+        syncWarn = `Updated locally, but Shiprocket sync failed: ${e.message}`;
+    }
+
     res.status(200).json(
-        new ApiResponsive(200, { address: updated }, "Pickup address updated successfully")
+        new ApiResponsive(
+            200,
+            { address: updated, syncWarning: syncWarn },
+            "Pickup address updated successfully"
+        )
+    );
+});
+
+// Force a (re-)sync of one warehouse to Shiprocket
+export const syncPickupAddress = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const existing = await prisma.shiprocketPickupAddress.findUnique({ where: { id } });
+    if (!existing) throw new ApiError(404, "Pickup address not found");
+
+    const updated = await registerWarehouseOnShiprocket(existing);
+    if (!updated.shiprocketPickupId) {
+        throw new ApiError(
+            502,
+            "Shiprocket did not return a pickup location id. Check the warehouse details and Shiprocket account."
+        );
+    }
+
+    res.status(200).json(
+        new ApiResponsive(200, { address: updated }, "Warehouse synced to Shiprocket")
     );
 });
 

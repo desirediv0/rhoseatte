@@ -31,6 +31,11 @@ import { useRouter } from "next/navigation";
 import ReviewSection from "./ReviewSection";
 import { useAddVariantToCart } from "@/lib/cart-utils";
 import { useCart } from "@/lib/cart-context";
+import { toast } from "sonner";
+import {
+  isInGuestWishlist,
+  toggleGuestWishlist,
+} from "@/lib/guest-wishlist-utils";
 import { ProductCard } from "@/components/products/ProductCard";
 
 const getImageUrl = (img) => {
@@ -176,7 +181,11 @@ export default function ProductContent({ slug }) {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated || !product) return;
+    if (!product) return;
+    if (!isAuthenticated) {
+      setIsInWishlist(isInGuestWishlist(product.id));
+      return;
+    }
     fetchApi("/users/wishlist", { credentials: "include" })
       .then((r) => setIsInWishlist(r.data.wishlistItems?.some((i) => i.productId === product.id)))
       .catch(console.error);
@@ -248,7 +257,12 @@ export default function ProductContent({ slug }) {
     }
     setIsAddingToCart(true); setCartSuccess(false);
     try {
-      const result = await addVariantToCart(v, quantity, product.name);
+      const result = await addVariantToCart(v, quantity, product.name, {
+        name: product.name,
+        slug: product.slug || slug,
+        id: product.id,
+        image: primary?.url || product.images?.[0]?.url,
+      });
       if (result.success) { setCartSuccess(true); setTimeout(() => setCartSuccess(false), 3000); }
     } catch (err) { console.error(err); }
     finally { setIsAddingToCart(false); }
@@ -268,7 +282,19 @@ export default function ProductContent({ slug }) {
   };
 
   const handleWishlist = async () => {
-    if (!isAuthenticated) { router.push(`/auth?redirect=/products/${slug}`); return; }
+    // Guest: toggle locally, syncs to the account on login.
+    if (!isAuthenticated) {
+      const { inWishlist: nowIn } = toggleGuestWishlist({
+        id: product.id,
+        name: product.name,
+        slug: product.slug || slug,
+        image: primary?.url || product.images?.[0]?.url,
+        basePrice: product.basePrice,
+      });
+      setIsInWishlist(nowIn);
+      toast.success(nowIn ? "Saved to wishlist" : "Removed from wishlist");
+      return;
+    }
     setIsAddingToWishlist(true);
     try {
       if (isInWishlist) {
@@ -279,7 +305,10 @@ export default function ProductContent({ slug }) {
         await fetchApi("/users/wishlist", { method: "POST", credentials: "include", body: JSON.stringify({ productId: product.id }) });
         setIsInWishlist(true);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || "Failed to update wishlist");
+    }
     finally { setIsAddingToWishlist(false); }
   };
 

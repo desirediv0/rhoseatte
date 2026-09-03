@@ -1476,7 +1476,14 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
       console.log(`User cancelled Shiprocket order ${order.shiprocketOrderId}`);
     } catch (error) {
       console.error("Failed to cancel Shiprocket order:", error.message);
-      // Non-critical - order is already cancelled in our system
+      // Order is cancelled in our system, but flag the Shiprocket side so an
+      // admin can cancel it manually from the dashboard.
+      try {
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { shiprocketStatus: "CANCEL_FAILED" },
+        });
+      } catch { /* ignore */ }
     }
   }
 

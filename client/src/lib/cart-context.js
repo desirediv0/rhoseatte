@@ -14,6 +14,7 @@ import {
     hasGuestCartItems,
     getGuestCartItemCount,
 } from "./guest-cart-utils";
+import { mergeGuestWishlistWithUser } from "./guest-wishlist-utils";
 
 const CartContext = createContext();
 
@@ -98,6 +99,21 @@ export function CartProvider({ children }) {
                         await fetchCart();
                     } else {
                         toast.error(result.message);
+                    }
+
+                    // Also merge any guest wishlist items into the server wishlist.
+                    try {
+                        const wl = await mergeGuestWishlistWithUser(fetchApi);
+                        if (wl.merged > 0) {
+                            toast.success(
+                                `${wl.merged} wishlist ${wl.merged === 1 ? "item" : "items"} synced to your account`
+                            );
+                            if (typeof window !== "undefined") {
+                                window.dispatchEvent(new Event("wishlist-synced"));
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Guest wishlist merge failed:", e);
                     }
                 } catch (error) {
                     console.error("Error merging cart:", error);
@@ -254,8 +270,10 @@ export function CartProvider({ children }) {
         }
     };
 
-    // Universal add to cart function
-    const addToCart = async (productVariantId, quantity = 1) => {
+    // Universal add to cart function.
+    // `variantHint` (optional) is the variant object the caller already has, so the
+    // guest path can add without any network request.
+    const addToCart = async (productVariantId, quantity = 1, variantHint = null) => {
         if (!mounted) return;
 
         setLoading(true);
@@ -273,7 +291,7 @@ export function CartProvider({ children }) {
                 // Clear local guest cart on successful server add so localStorage does not duplicate server cart
                 clearGuestCart();
             } else {
-                await addToGuestCart(productVariantId, quantity);
+                await addToGuestCart(productVariantId, quantity, variantHint);
             }
 
             const updatedCart = await fetchCart();
