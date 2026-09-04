@@ -56,12 +56,16 @@ export default function AboutPage() {
     {
       title: "4. Artisanal Flacon Bottle Filling",
       description: "Precision filling each glass flacon under sterile, controlled atelier conditions.",
-      videoPlaceholder: "Bottle Filling Process"
+      videoPlaceholder: "Bottle Filling Process",
+      mediaUrl: "https://desirediv-storage.blr1.cdn.digitaloceanspaces.com/rhoseatte/about-video/fourth.mp4",
+      mediaType: "video"
     },
     {
       title: "5. Hand-Finished Packaging & Dispatch",
       description: "Hand-wrapping every box with protective seals and custom details, ready for shipment to your doorstep.",
-      videoPlaceholder: "Packaging & Dispatch Line"
+      videoPlaceholder: "Packaging & Dispatch Line",
+      mediaUrl: "https://desirediv-storage.blr1.cdn.digitaloceanspaces.com/rhoseatte/about-video/Fifth.mp4",
+      mediaType: "video"
     }
   ];
 
