@@ -305,6 +305,7 @@ export default function ProductContent({ slug }) {
         await fetchApi("/users/wishlist", { method: "POST", credentials: "include", body: JSON.stringify({ productId: product.id }) });
         setIsInWishlist(true);
       }
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("wishlist-changed"));
     } catch (err) {
       console.error(err);
       if (err?.statusCode === 401) {

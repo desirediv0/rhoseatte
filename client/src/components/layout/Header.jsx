@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
 import { useCart } from "@/lib/cart-context";
+import { useWishlistCount } from "@/lib/use-wishlist-count";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { fetchApi, cn, sortCategories } from "@/lib/utils";
@@ -70,6 +71,7 @@ function AvatarCircle({ name, size = "sm" }) {
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const { getCartItemCount } = useCart();
+  const wishlistCount = useWishlistCount();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -294,9 +296,16 @@ export function Navbar() {
                   </ClientOnly>
                 </div>
 
-                <Link href="/wishlist" className={iconBtn} aria-label="Wishlist">
-                  <IconHeart className="h-6 w-6" stroke={1.5} />
-                </Link>
+                <ClientOnly>
+                  <Link href="/wishlist" className={iconBtn} aria-label="Wishlist">
+                    <IconHeart className="h-6 w-6" stroke={1.5} />
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center bg-gold px-1">
+                        {wishlistCount}
+                      </span>
+                    )}
+                  </Link>
+                </ClientOnly>
 
                 <ClientOnly>
                   <Link href="/cart" className={iconBtn} aria-label="Cart">

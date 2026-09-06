@@ -191,6 +191,7 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
         if (item) {
           await fetchApi(`/users/wishlist/${item.id}`, { method: "DELETE", credentials: "include" });
           setWishlistItems((p) => { const n = { ...p }; delete n[product.id]; return n; });
+          window.dispatchEvent(new Event("wishlist-changed"));
         }
       } else {
         await fetchApi("/users/wishlist", {
@@ -198,6 +199,7 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
           body: JSON.stringify({ productId: product.id }),
         });
         setWishlistItems((p) => ({ ...p, [product.id]: true }));
+        window.dispatchEvent(new Event("wishlist-changed"));
         toast.success("Added to wishlist");
       }
     } catch (err) {

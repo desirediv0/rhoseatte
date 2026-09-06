@@ -62,12 +62,14 @@ export default function WishlistPage() {
       setWishlistItems((cur) =>
         cur.filter((item) => (item.productId || item.id) !== idOrItemId)
       );
+      // getGuestWishlist util already fires "guest-wishlist-changed"
       return;
     }
     try {
       await fetchApi(`/users/wishlist/${idOrItemId}`, { method: "DELETE", credentials: "include" });
       setWishlistItems((cur) => cur.filter((item) => item.id !== idOrItemId));
       setError("");
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("wishlist-changed"));
     } catch {
       setError("Failed to remove item. Please try again.");
     }
