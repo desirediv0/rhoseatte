@@ -442,7 +442,7 @@ export default function CartPage() {
     const bundleCount = cart.items?.filter(i => i.cartItemType === "BUNDLE").length || 0;
     const normalCount = itemCount - bundleCount;
 
-    if (loading && (!cart.items || cart.items.length === 0)) {
+    if ((loading || authLoading) && (!cart.items || cart.items.length === 0)) {
         return (
             <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
                 <div className="w-8 h-8 border border-black/10 border-t-black rounded-full animate-spin" />

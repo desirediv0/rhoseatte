@@ -36,44 +36,45 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Clear every client-visible auth cookie. Used when a session cookie is
+    // present but the API rejects it (expired / cross-origin cookie mismatch) —
+    // otherwise the server middleware and the React state disagree about whether
+    // the user is logged in, which causes redirect loops on /cart and /checkout.
+    const clearStaleAuthCookies = () => {
+        if (typeof document === "undefined") return;
+        const past = "Thu, 01 Jan 1970 00:00:00 UTC";
+        const host =
+            typeof window !== "undefined" ? window.location.hostname : "";
+        // Root domain so a cookie set on ".rhoseatte.com" is also cleared.
+        const rootDomain = host.split(".").slice(-2).join(".");
+        for (const name of ["accessToken", "refreshToken", "user_session"]) {
+            document.cookie = `${name}=; expires=${past}; path=/;`;
+            if (rootDomain && rootDomain !== "localhost") {
+                document.cookie = `${name}=; expires=${past}; path=/; domain=.${rootDomain};`;
+            }
+        }
+    };
+
     // Check if user is logged in on first load
     useEffect(() => {
         const checkAuth = async () => {
+            const hasSessionCookie = document.cookie
+                .split("; ")
+                .some((row) => row.startsWith("user_session="));
+
             try {
-                // First try to read from cookies to avoid unnecessary API calls
-                const userSessionCookie = document.cookie
-                    .split("; ")
-                    .find((row) => row.startsWith("user_session="));
-
-                if (userSessionCookie) {
-                    try {
-                        // If we have a cookie, we're at least temporarily authenticated
-                        // and can avoid a loading flash
-                        const sessionData = JSON.parse(
-                            decodeURIComponent(userSessionCookie.split("=")[1])
-                        );
-                        if (sessionData.isAuthenticated) {
-                            // Make the API call to get full user data
-                            const res = await fetchApi("/users/me", {
-                                credentials: "include",
-                            });
-                            setUser(res.data.user);
-                            setLoading(false);
-                            return;
-                        }
-                    } catch (e) {
-                        // If cookie parsing failed, continue to API call
-                        console.error("Failed to parse user session cookie", e);
-                    }
-                }
-
-                // No valid cookie found, attempt API call with credentials
+                // One call is enough — the cookie is just a hint. Always verify
+                // against the API.
                 const res = await fetchApi("/users/me", {
                     credentials: "include",
                 });
                 setUser(res.data.user);
             } catch (err) {
-                // API call failed, user is not authenticated
+                // API says we're not authenticated. If a stale session cookie is
+                // lying around, wipe it so middleware agrees with us.
+                if (hasSessionCookie && err?.statusCode === 401) {
+                    clearStaleAuthCookies();
+                }
                 setUser(null);
             } finally {
                 setLoading(false);

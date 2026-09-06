@@ -25,7 +25,9 @@ export function RouteGuard({ children }) {
     useEffect(() => {
         // Authentication check
         const authCheck = () => {
-            // Skip verification for verification endpoints and public pages
+            // Skip verification for verification endpoints and public pages.
+            // /cart and /wishlist are public — guests get a local cart/wishlist
+            // that merges to their account on login.
             if (
                 pathname.startsWith("/verify-email") ||
                 pathname === "/" ||
@@ -34,7 +36,9 @@ export function RouteGuard({ children }) {
                 pathname.startsWith("/blog") ||
                 pathname.startsWith("/about") ||
                 pathname.startsWith("/contact") ||
-                pathname.startsWith("/faqs")
+                pathname.startsWith("/faqs") ||
+                pathname.startsWith("/cart") ||
+                pathname.startsWith("/wishlist")
             ) {
                 setAuthorized(true);
                 return;
