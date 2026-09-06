@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
-// Define private routes that require authentication
-const privateRoutes = ["/profile", "/checkout", "/wishlist", "/orders"];
+// Define private routes that require authentication.
+// NOTE: /wishlist and /cart are intentionally NOT here — guests get a
+// localStorage cart/wishlist that syncs to their account on login.
+const privateRoutes = ["/profile", "/checkout", "/orders", "/account"];
 
 // Define auth routes that should redirect to dashboard if already logged in
 const authRoutes = [
@@ -33,9 +35,23 @@ export function middleware(request) {
         return NextResponse.redirect(new URL("/auth", request.url));
     }
 
-    // If accessing an auth route while already authenticated, redirect to account dashboard
+    // If accessing an auth route while already authenticated, honour a
+    // returnUrl/redirect param (so a bounced checkout link still lands on
+    // /checkout), otherwise send them to their account.
     if (isAuthRoute && isAuthenticated && !pathname.includes("verify-email")) {
-        return NextResponse.redirect(new URL("/profile", request.url));
+        const rt =
+            request.nextUrl.searchParams.get("returnUrl") ||
+            request.nextUrl.searchParams.get("redirect");
+        let target = "/profile";
+        if (rt) {
+            try {
+                const decoded = decodeURIComponent(rt);
+                if (decoded.startsWith("/")) target = decoded;
+            } catch {
+                /* ignore malformed param */
+            }
+        }
+        return NextResponse.redirect(new URL(target, request.url));
     }
 
     return NextResponse.next();

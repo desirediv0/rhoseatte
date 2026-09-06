@@ -333,6 +333,7 @@ export default function CartPage() {
         couponLoading,
         getCartTotals,
         isAuthenticated,
+        authLoading,
         mergeProgress,
         hidePricesForGuests,
     } = useCart();
@@ -417,6 +418,10 @@ export default function CartPage() {
     const totals = useMemo(() => getCartTotals(), [getCartTotals]);
 
     const handleCheckout = useCallback(() => {
+        // Auth state might still be resolving — don't misfire the "please log in"
+        // path for a user who is actually signed in.
+        if (authLoading) return;
+
         const calculatedAmount = totals.subtotal - totals.discount;
         if (calculatedAmount < 1) {
             toast.info("Minimum order amount is ₹1");
@@ -426,12 +431,12 @@ export default function CartPage() {
             if (typeof openAuthModal === "function") {
                 openAuthModal();
             } else {
-                router.push("/auth?redirect=checkout");
+                router.push("/auth?returnUrl=/checkout");
             }
         } else {
             router.push("/checkout");
         }
-    }, [isAuthenticated, router, totals, openAuthModal]);
+    }, [authLoading, isAuthenticated, router, totals, openAuthModal]);
 
     const itemCount = cart.items?.length || 0;
     const bundleCount = cart.items?.filter(i => i.cartItemType === "BUNDLE").length || 0;

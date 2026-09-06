@@ -307,7 +307,22 @@ export default function ProductContent({ slug }) {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err?.message || "Failed to update wishlist");
+      if (err?.statusCode === 401) {
+        // Session not accepted — fall back to the local wishlist.
+        const { inWishlist: nowIn } = toggleGuestWishlist({
+          id: product.id,
+          name: product.name,
+          slug: product.slug || slug,
+          image: primary?.url || product.images?.[0]?.url,
+          basePrice: product.basePrice,
+        });
+        setIsInWishlist(nowIn);
+        toast.message(nowIn ? "Saved to wishlist" : "Removed from wishlist", {
+          description: "Saved on this device — sign in again to sync it.",
+        });
+      } else {
+        toast.error(err?.message || "Failed to update wishlist");
+      }
     }
     finally { setIsAddingToWishlist(false); }
   };

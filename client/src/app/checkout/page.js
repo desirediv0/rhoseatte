@@ -35,7 +35,7 @@ const getImageUrl = (image) => {
 };
 
 export default function CheckoutPage() {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, user, loading: authLoading } = useAuth();
     const router = useRouter();
     const { cart, coupon, getCartTotals, clearCart } = useCart();
     const [addresses, setAddresses] = useState([]);
@@ -62,16 +62,21 @@ export default function CheckoutPage() {
     const totals = getCartTotals();
 
     useEffect(() => {
+        // Wait until auth state is resolved — otherwise the very first render
+        // (loading === true, isAuthenticated === false) bounces a logged-in user
+        // to /auth, which then redirects back to home.
+        if (authLoading) return;
         if (!isAuthenticated) {
-            router.push("/auth?redirect=checkout");
+            router.push("/auth?returnUrl=/checkout");
         }
-    }, [isAuthenticated, router]);
+    }, [authLoading, isAuthenticated, router]);
 
     useEffect(() => {
+        if (authLoading) return;
         if (isAuthenticated && cart.items?.length === 0 && !orderCreated) {
             router.push("/cart");
         }
-    }, [isAuthenticated, cart, router, orderCreated]);
+    }, [authLoading, isAuthenticated, cart, router, orderCreated]);
 
     useEffect(() => {
         const fetchPaymentSettings = async () => {
@@ -338,7 +343,7 @@ export default function CheckoutPage() {
         }
     };
 
-    if (!isAuthenticated || loadingAddresses) {
+    if (authLoading || !isAuthenticated || loadingAddresses) {
         return (
             <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
                 <div className="w-8 h-8 border border-black/10 border-t-black rounded-full animate-spin" />

@@ -40,13 +40,18 @@ function AuthForm() {
   const { isAuthenticated } = useAuth();
 
   const tabFromUrl = searchParams.get("tab") || "login";
-  const redirect = searchParams.get("redirect");
+  // Accept both param names used across the app.
+  const redirect = searchParams.get("returnUrl") || searchParams.get("redirect");
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
   useEffect(() => { setActiveTab(tabFromUrl); }, [tabFromUrl]);
   useEffect(() => {
     if (isAuthenticated) {
-      router.push(redirect ? decodeURIComponent(redirect) : "/");
+      let target = redirect ? decodeURIComponent(redirect) : "/";
+      // Normalise "checkout" -> "/checkout" so an already-logged-in user landing
+      // here (e.g. bounced by a stale check) goes to the page they wanted, not home.
+      if (target && !target.startsWith("/")) target = `/${target}`;
+      router.replace(target);
     }
   }, [isAuthenticated, router, redirect]);
 
@@ -195,8 +200,12 @@ function LoginForm({ onSwitch, redirect }) {
       await login(email, password);
       sessionStorage.setItem("justLoggedIn", "true");
       toast.success("Welcome back!");
-      const returnUrl = searchParams.get("returnUrl") || searchParams.get("redirect");
-      setTimeout(() => router.push(returnUrl ? decodeURIComponent(returnUrl) : "/"), 300);
+      let returnUrl = searchParams.get("returnUrl") || searchParams.get("redirect");
+      if (returnUrl) {
+        returnUrl = decodeURIComponent(returnUrl);
+        if (!returnUrl.startsWith("/")) returnUrl = `/${returnUrl}`;
+      }
+      setTimeout(() => router.push(returnUrl || "/"), 300);
     } catch (error) {
       const msg = error.message || "Login failed.";
       setErrorMsg(msg);

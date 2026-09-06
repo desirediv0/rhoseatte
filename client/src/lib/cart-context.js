@@ -19,7 +19,7 @@ import { mergeGuestWishlistWithUser } from "./guest-wishlist-utils";
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-    const { isAuthenticated, openAuthModal } = useAuth();
+    const { isAuthenticated, openAuthModal, loading: authLoading } = useAuth();
     const [cart, setCart] = useState({
         items: [],
         subtotal: 0,
@@ -280,16 +280,28 @@ export function CartProvider({ children }) {
         try {
             if (isAuthenticated && typeof productVariantId !== "object") {
                 // Authenticated: the server cart is the source of truth.
-                // If the server rejects the add (out of stock, MOQ, inactive variant, etc.)
-                // we must surface that error instead of silently writing to the guest cart,
-                // which would never be shown for a logged-in user and makes the cart look empty.
-                await fetchApi("/cart/add", {
-                    method: "POST",
-                    credentials: "include",
-                    body: JSON.stringify({ productVariantId, quantity }),
-                });
-                // Clear local guest cart on successful server add so localStorage does not duplicate server cart
-                clearGuestCart();
+                try {
+                    await fetchApi("/cart/add", {
+                        method: "POST",
+                        credentials: "include",
+                        body: JSON.stringify({ productVariantId, quantity }),
+                    });
+                    // Clear local guest cart so localStorage does not duplicate the server cart
+                    clearGuestCart();
+                } catch (err) {
+                    // If the session is not accepted by the API (cross-origin cookie
+                    // issue, expired token), fall back to the local cart so the item
+                    // isn't lost — it will merge to the account on next login.
+                    if (err?.statusCode === 401 && variantHint) {
+                        await addToGuestCart(productVariantId, quantity, variantHint);
+                        toast.message("Added to your bag", {
+                            description: "Saved on this device — sign in again to sync it to your account.",
+                        });
+                    } else {
+                        // Real rejection (out of stock, MOQ, inactive variant) — surface it.
+                        throw err;
+                    }
+                }
             } else {
                 await addToGuestCart(productVariantId, quantity, variantHint);
             }
@@ -617,6 +629,7 @@ export function CartProvider({ children }) {
         couponLoading,
         mergeProgress,
         isAuthenticated,
+        authLoading,
         fetchCart,
         addToCart,
         addBundleToCart,

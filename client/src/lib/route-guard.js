@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "./auth-context";
 
-// Define private routes that require authentication
-const privateRoutes = ["/account", "/checkout", "/wishlist", "/orders"];
+// Define private routes that require authentication.
+// /wishlist and /cart stay public — guests use a local wishlist/cart that
+// merges into their account on login.
+const privateRoutes = ["/account", "/checkout", "/orders"];
 
 // Define auth routes that should redirect to dashboard if already logged in
 const authRoutes = ["/auth", "/auth", "/forgot-password", "/reset-password"];
@@ -15,6 +17,7 @@ export function RouteGuard({ children }) {
     const { isAuthenticated, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [authorized, setAuthorized] = useState(false);
     // useRef to track initial mount without causing re-renders
     const firstRunRef = useRef(true);
@@ -73,7 +76,17 @@ export function RouteGuard({ children }) {
                     sessionStorage.removeItem("justLoggedIn");
                 }
 
-                router.push("/");
+                // Honour a returnUrl/redirect param so a logged-in user who lands
+                // on /auth (e.g. via a stale checkout redirect) ends up where they
+                // were headed, not on the home page.
+                let target = "/";
+                const rt =
+                    searchParams?.get("returnUrl") || searchParams?.get("redirect");
+                if (rt) {
+                    target = decodeURIComponent(rt);
+                    if (!target.startsWith("/")) target = `/${target}`;
+                }
+                router.push(target);
             } else {
                 setAuthorized(true);
             }
@@ -91,7 +104,7 @@ export function RouteGuard({ children }) {
             // While loading, consider the user authorized to avoid flashing screens
             setAuthorized(true);
         }
-    }, [isAuthenticated, loading, pathname, router]);
+    }, [isAuthenticated, loading, pathname, router, searchParams]);
 
     // Always render children - no more loading or unauthorized screens
     return children;

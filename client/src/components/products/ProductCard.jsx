@@ -202,7 +202,31 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
       }
     } catch (err) {
       console.error("Wishlist error:", err);
-      toast.error(err?.message || "Failed to update wishlist");
+      // Session not accepted by the API — fall back to the local wishlist so the
+      // save isn't lost; it merges to the account on next login.
+      if (err?.statusCode === 401) {
+        const { inWishlist: nowIn } = toggleGuestWishlist({
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          image:
+            product.image ||
+            product.images?.find?.((i) => i.isPrimary)?.url ||
+            product.images?.[0]?.url,
+          basePrice: product.basePrice,
+        });
+        setWishlistItems((p) => {
+          const n = { ...p };
+          if (nowIn) n[product.id] = true;
+          else delete n[product.id];
+          return n;
+        });
+        toast.message(nowIn ? "Saved to wishlist" : "Removed from wishlist", {
+          description: "Saved on this device — sign in again to sync it.",
+        });
+      } else {
+        toast.error(err?.message || "Failed to update wishlist");
+      }
     }
     finally { setIsAddingToWishlist((p) => ({ ...p, [product.id]: false })); }
   };
