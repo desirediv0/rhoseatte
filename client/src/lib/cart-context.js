@@ -274,8 +274,8 @@ export function CartProvider({ children }) {
     // `variantHint` (optional) is the variant object the caller already has, so the
     // guest path can add without any network request.
     const addToCart = async (productVariantId, quantity = 1, variantHint = null) => {
-        if (!mounted) return;
-
+        // Don't silently no-op if a user clicks before `mounted` flips — the guest
+        // path only needs localStorage, which is available immediately.
         setLoading(true);
         try {
             if (isAuthenticated && typeof productVariantId !== "object") {

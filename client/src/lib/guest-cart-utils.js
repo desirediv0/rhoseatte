@@ -49,16 +49,23 @@ export const addToGuestCart = async (productVariantId, quantity = 1, variantHint
             typeof variantHint === "object"
         ) {
             const v = variantHint;
-            const stock = v.stock ?? v.quantity ?? null;
+            // Only block when we have a *confident* out-of-stock signal. A missing
+            // stock field (undefined) means the list endpoint didn't include it —
+            // don't block on that; the server re-validates at checkout.
             if (v.isActive === false) {
                 throw new Error("This product is currently unavailable");
             }
+            const stock =
+                typeof v.stock === "number"
+                    ? v.stock
+                    : typeof v.quantity === "number"
+                        ? v.quantity
+                        : null;
+            if (stock !== null && stock <= 0) {
+                throw new Error("This product is out of stock");
+            }
             if (stock !== null && stock < quantity) {
-                throw new Error(
-                    stock <= 0
-                        ? "This product is out of stock"
-                        : `Only ${stock} left in stock`
-                );
+                throw new Error(`Only ${stock} left in stock`);
             }
             const price = parseFloat(v.salePrice ?? v.price ?? 0);
             newItem = {

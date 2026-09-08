@@ -54,6 +54,7 @@ interface ReelProduct {
   id: string;
   productId: string;
   position: number;
+  name?: string;
   product: ProductItem;
 }
 
@@ -162,11 +163,31 @@ function VideoReelForm({
     return () => clearTimeout(timer);
   }, [productSearchQuery, selectedProductIds]);
 
-  const addProduct = (product: ProductItem) => {
-    if (!selectedProductIds.includes(product.id)) {
-      setSelectedProductIds((prev) => [...prev, product.id]);
-      setAllProducts((prev) => [...prev, product]);
+  const MAX_REELS_PER_PRODUCT = 5;
+
+  const addProduct = async (product: ProductItem) => {
+    if (selectedProductIds.includes(product.id)) return;
+
+    // Warn if this product already has the max number of videos (excluding the
+    // reel currently being edited).
+    try {
+      const res = await videoReels.getReelsByProductId(product.id);
+      const existing = res.data?.data?.reels || res.data?.data || [];
+      const otherCount = existing.filter(
+        (r: { id: string }) => r.id !== reelId
+      ).length;
+      if (otherCount >= MAX_REELS_PER_PRODUCT) {
+        toast.error(
+          `"${product.name}" already has ${MAX_REELS_PER_PRODUCT} videos. Remove one first.`
+        );
+        return;
+      }
+    } catch {
+      // If the check fails, let the server enforce the limit on save.
     }
+
+    setSelectedProductIds((prev) => [...prev, product.id]);
+    setAllProducts((prev) => [...prev, product]);
     setProductSearchQuery("");
     setSearchResults([]);
     setShowProductDropdown(false);
@@ -768,10 +789,22 @@ function VideoReelsList() {
                 <h3 className="font-semibold text-[#1F2937] mb-1 truncate">
                   {reel.title}
                 </h3>
-                <p className="text-xs text-[#9CA3AF] mb-3">
+                <p className="text-xs text-[#9CA3AF] mb-2">
                   Position: {reel.position} | {reel.products?.length || 0}{" "}
-                  products
+                  {reel.products?.length === 1 ? "product" : "products"}
                 </p>
+                {reel.products && reel.products.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {reel.products.map((rp) => (
+                      <span
+                        key={rp.id || rp.productId}
+                        className="inline-block text-[10px] bg-[#F3F4F6] text-[#4B5563] px-2 py-0.5 rounded"
+                      >
+                        {rp.name || rp.product?.name || "Product"}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"

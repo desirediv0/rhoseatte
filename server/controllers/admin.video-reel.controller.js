@@ -116,6 +116,33 @@ export const getVideoReelById = asyncHandler(async (req, res, next) => {
 });
 
 // Create video reel (admin) - position is ALWAYS auto-assigned
+// A single product may appear in at most this many video reels.
+const MAX_REELS_PER_PRODUCT = 5;
+
+// Throws if adding this reel to any of `productIds` would push that product
+// past MAX_REELS_PER_PRODUCT. `excludeReelId` skips the reel being edited.
+async function assertProductReelLimit(productIds, excludeReelId = null) {
+  if (!productIds || productIds.length === 0) return;
+  for (const productId of productIds) {
+    const count = await prisma.videoReelProduct.count({
+      where: {
+        productId,
+        ...(excludeReelId ? { videoReelId: { not: excludeReelId } } : {}),
+      },
+    });
+    if (count >= MAX_REELS_PER_PRODUCT) {
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        select: { name: true },
+      });
+      throw new ApiError(
+        400,
+        `"${product?.name || "This product"}" already has ${MAX_REELS_PER_PRODUCT} videos. Remove one before adding another.`
+      );
+    }
+  }
+}
+
 export const createVideoReel = asyncHandler(async (req, res, next) => {
   const { title, isActive, productIds } = req.body;
 
@@ -148,6 +175,8 @@ export const createVideoReel = asyncHandler(async (req, res, next) => {
       ? JSON.parse(productIds)
       : productIds
     : [];
+
+  await assertProductReelLimit(parsedProductIds);
 
   const reel = await prisma.videoReel.create({
     data: {
@@ -255,6 +284,15 @@ export const updateVideoReel = asyncHandler(async (req, res, next) => {
   if (productIds !== undefined) {
     const parsedProductIds =
       typeof productIds === "string" ? JSON.parse(productIds) : productIds;
+
+    // Only newly-added products can push a product over the limit.
+    const existing = await prisma.videoReelProduct.findMany({
+      where: { videoReelId: reelId },
+      select: { productId: true },
+    });
+    const existingIds = new Set(existing.map((e) => e.productId));
+    const newlyAdded = parsedProductIds.filter((pid) => !existingIds.has(pid));
+    await assertProductReelLimit(newlyAdded, reelId);
 
     await prisma.videoReelProduct.deleteMany({
       where: { videoReelId: reelId },
