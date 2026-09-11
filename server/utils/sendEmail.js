@@ -69,10 +69,21 @@ const sendEmail = async (options) => {
     const fromEmail = getFromEmail();
     const fromAddress = `${fromName} <${fromEmail}>`;
 
+    // While testing, EMAIL_OVERRIDE_TO redirects every outgoing email (order
+    // confirmations, shipping updates, admin alerts, everything) to one inbox
+    // so real customer addresses never receive test traffic. Remove the env
+    // var once you're ready for emails to go to their real recipients.
+    const overrideTo = process.env.EMAIL_OVERRIDE_TO;
+    const actualTo = overrideTo || options.email;
+    const subject =
+      overrideTo && overrideTo !== options.email
+        ? `[to: ${options.email}] ${options.subject}`
+        : options.subject;
+
     const mailOptions = {
       from: fromAddress,
-      to: options.email,
-      subject: options.subject,
+      to: actualTo,
+      subject,
       html: options.html,
       attachments: options.attachments || [],
     };
