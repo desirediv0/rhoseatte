@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { calculateCouponDiscount } from "../utils/couponDiscount.js";
+import { calculateSlabPrice } from "../utils/slabPrice.js";
 
 // Create coupon (admin)
 export const createCoupon = asyncHandler(async (req, res) => {
@@ -451,7 +452,7 @@ export const applyCoupon = asyncHandler(async (req, res) => {
       productId: prod.id,
       brandId: prod.brandId || null,
       categoryIds: (prod.categories || []).map((pc) => pc.categoryId),
-      price: parseFloat(pv.salePrice || pv.price),
+      price: calculateSlabPrice(pv, item.quantity),
       quantity: item.quantity,
     };
   });
