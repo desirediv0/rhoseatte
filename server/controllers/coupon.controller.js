@@ -417,7 +417,14 @@ export const applyCoupon = asyncHandler(async (req, res) => {
     include: {
       productVariant: {
         include: {
-          product: { include: { categories: { include: { category: true } }, brand: true } },
+          product: {
+            include: {
+              categories: { include: { category: true } },
+              brand: true,
+              pricingSlabs: true,
+            },
+          },
+          pricingSlabs: true,
         },
       },
     },
@@ -427,11 +434,11 @@ export const applyCoupon = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Your cart is empty");
   }
 
-  // Calculate cart total
+  // Calculate cart total — same slab-pricing lookup used at checkout, so this
+  // preview always matches what the customer would actually be charged.
   let cartTotal = 0;
   for (const item of cartItems) {
-    const pv = item.productVariant;
-    const price = parseFloat(pv.salePrice || pv.price);
+    const price = calculateSlabPrice(item.productVariant, item.quantity);
     cartTotal += price * item.quantity;
   }
 

@@ -11,6 +11,7 @@ import { processReferralReward } from "./referral.controller.js";
 import { decrypt } from "../utils/encryption.js";
 import { processOrderForShipping } from "../utils/shiprocket.js";
 import { calculateCouponDiscount, cartItemsToDiscountInput } from "../utils/couponDiscount.js";
+import { calculateSlabPrice } from "../utils/slabPrice.js";
 
 
 async function getPaymentGatewayConfig(userId = null, gateway = "RAZORPAY") {
@@ -199,7 +200,10 @@ export const checkout = asyncHandler(async (req, res) => {
       where: { userId },
       include: {
         productVariant: {
-          include: { product: { include: { categories: true } } },
+          include: {
+            product: { include: { categories: true, pricingSlabs: true } },
+            pricingSlabs: true,
+          },
         },
         bundleCampaign: {
           include: { pricingSlabs: { orderBy: { itemCount: "asc" } } },
@@ -220,7 +224,10 @@ export const checkout = asyncHandler(async (req, res) => {
 
     let subTotal = 0;
 
-    // Validate and recalculate normal items
+    // Validate and recalculate normal items — must use the same slab-pricing
+    // lookup as the cart display and payment-verify path, or a variant with
+    // quantity-based bulk pricing configured would be charged a different
+    // amount than what the cart/checkout page showed the customer.
     for (const item of normalItems) {
       const product = item.productVariant?.product;
       if (!product) throw new ApiError(400, "A product in your cart no longer exists");
@@ -229,7 +236,7 @@ export const checkout = asyncHandler(async (req, res) => {
       if (item.productVariant.quantity < item.quantity) {
         throw new ApiError(400, `Not enough stock for "${product.name}"`);
       }
-      const price = parseFloat(item.productVariant.salePrice || item.productVariant.price);
+      const price = calculateSlabPrice(item.productVariant, item.quantity);
       subTotal += price * item.quantity;
     }
 
@@ -286,7 +293,7 @@ export const checkout = asyncHandler(async (req, res) => {
       }
 
       const discountInput = [
-        ...cartItemsToDiscountInput(normalItems),
+        ...cartItemsToDiscountInput(normalItems, calculateSlabPrice),
         // Bundles aren't product/category/brand-targetable the same way —
         // treat their price as always-applicable-subtotal, matching the
         // pre-existing checkout behaviour for bundles.
@@ -676,7 +683,7 @@ export const paymentVerification = asyncHandler(async (req, res) => {
       couponId = userCoupon.coupon.id;
 
       const discountInput = [
-        ...cartItemsToDiscountInput(normalCartItems),
+        ...cartItemsToDiscountInput(normalCartItems, calculateSlabPrice),
         ...bundleCartItems.map((item) => ({
           productId: null,
           brandId: null,
@@ -2319,7 +2326,7 @@ export const createCashOrder = asyncHandler(async (req, res) => {
 
       // Same item-matched calculation as /coupons/verify (see calculateCouponDiscount).
       const discountInput = [
-        ...cartItemsToDiscountInput(normalCartItems),
+        ...cartItemsToDiscountInput(normalCartItems, calculateSlabPrice),
         ...bundleCartItems.map((item) => ({
           productId: null,
           brandId: null,

@@ -80,12 +80,19 @@ export function calculateCouponDiscount(coupon, items) {
 /**
  * Build the flat item list (productId/brandId/categoryIds/price/quantity) this
  * helper expects, from Prisma cart items with product/variant included.
+ *
+ * `priceFn(variant, quantity)` computes the effective unit price — pass
+ * `calculateSlabPrice` from utils/slabPrice.js when the variant/product's
+ * pricingSlabs are loaded, so a coupon's applicable-subtotal is based on the
+ * same price actually charged, not the flat sale/regular price.
  */
-export function cartItemsToDiscountInput(cartItems) {
+export function cartItemsToDiscountInput(cartItems, priceFn = null) {
   return cartItems.map((item) => {
     const variant = item.productVariant;
     const product = variant?.product;
-    const price = parseFloat(variant?.salePrice || variant?.price || 0);
+    const price = priceFn
+      ? priceFn(variant, item.quantity)
+      : parseFloat(variant?.salePrice || variant?.price || 0);
     return {
       productId: product?.id || null,
       brandId: product?.brandId || null,
