@@ -658,8 +658,12 @@ export async function buildShiprocketOrderPayload(order, warehouseId = null) {
         order_items: orderItems,
 
         // Payment
+        // sub_total must be the items total ONLY — Shiprocket adds
+        // shipping_charges on top of it when computing the invoice total.
+        // Including shipping in both fields double-counts it (e.g. a ₹399
+        // item + ₹70 shipping was showing as ₹539 = 399 + 70 + 70).
         payment_method: order.paymentMethod === "CASH" ? "COD" : "Prepaid",
-        sub_total: parseFloat(order.subTotal) + shippingFee,
+        sub_total: parseFloat(order.subTotal),
         shipping_charges: shippingFee,
         total_discount: parseFloat(order.discount) || 0,
 

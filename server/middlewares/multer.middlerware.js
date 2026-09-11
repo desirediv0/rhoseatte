@@ -38,10 +38,25 @@ export const processAndUploadImage = async (file, subfolder = "images") => {
 
     console.log(`🔧 Target filename: ${filename}`);
 
-    // No compression requested: Use the original buffer
-    const processedBuffer = buffer;
+    // Auto-orient using the image's EXIF rotation tag, then strip metadata.
+    // Phone photos are often stored sideways/upside-down with an EXIF tag
+    // telling viewers how to rotate them on display — some viewers respect
+    // it, others (including plain <img> in some browsers, or when metadata
+    // is stripped downstream) don't, so the photo can appear rotated. Calling
+    // .rotate() with no arguments bakes the EXIF orientation into the actual
+    // pixels once, so every viewer shows it the same, correct way.
+    let processedBuffer = buffer;
+    try {
+      processedBuffer = await sharp(buffer).rotate().toBuffer();
+    } catch (rotateError) {
+      console.warn(
+        `⚠️ Could not auto-orient image (${originalname}), uploading original:`,
+        rotateError.message
+      );
+      processedBuffer = buffer;
+    }
     console.log(
-      `🔧 Using original image buffer. Size: ${processedBuffer.length} bytes`
+      `🔧 Using auto-oriented image buffer. Size: ${processedBuffer.length} bytes`
     );
 
     // Upload to S3 with proper content type

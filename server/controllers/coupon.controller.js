@@ -2,6 +2,7 @@ import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { calculateCouponDiscount } from "../utils/couponDiscount.js";
 
 // Create coupon (admin)
 export const createCoupon = asyncHandler(async (req, res) => {
@@ -324,51 +325,18 @@ export const verifyCoupon = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Invalid coupon code");
   }
 
-  // Compute applicable subtotal: if cartItems present, compute per-item matches; else fall back to cartTotal
-  let applicableSubtotal = parseFloat(cartTotal || 0);
-  let matchedItemCount = 0;
-  if (Array.isArray(cartItems) && cartItems.length) {
-    // cartItems: [{ productId, productVariantId, price, quantity }]
-    let subtotal = 0;
-    for (const item of cartItems) {
-      subtotal += parseFloat(item.price) * (item.quantity || 1);
-    }
-    applicableSubtotal = subtotal;
+  // Compute applicable subtotal and discount via the shared helper — the exact
+  // same function the payment controller uses when actually charging the
+  // customer, so the amount shown here always matches what gets charged.
+  const hasCartItems = Array.isArray(cartItems) && cartItems.length > 0;
+  const { applicableSubtotal, matchedItemCount, hasTargets, discountAmount } =
+    calculateCouponDiscount(
+      coupon,
+      hasCartItems ? cartItems : [{ price: cartTotal || 0, quantity: 1 }]
+    );
 
-    // If coupon has targets, compute only matching items subtotal
-    const hasTargets =
-      (coupon.categories && coupon.categories.length) ||
-      (coupon.products && coupon.products.length) ||
-      (coupon.brands && coupon.brands.length);
-
-    if (hasTargets) {
-      const categorySet = new Set((coupon.categories || []).map((c) => c.categoryId));
-      const productSet = new Set((coupon.products || []).map((p) => p.productId));
-      const brandSet = new Set((coupon.brands || []).map((b) => b.brandId));
-
-      let matchedSubtotal = 0;
-      for (const item of cartItems) {
-        // item must include productId and brandId and categoryIds if possible
-        const pid = item.productId;
-        const bid = item.brandId;
-        const cats = item.categoryIds || [];
-        const price = parseFloat(item.price) * (item.quantity || 1);
-
-        const productMatch = productSet.has(pid);
-        const brandMatch = bid && brandSet.has(bid);
-        const categoryMatch = cats.some((c) => categorySet.has(c));
-
-        if (productMatch || brandMatch || categoryMatch) {
-          matchedItemCount++;
-          matchedSubtotal += price;
-        }
-      }
-
-      applicableSubtotal = matchedSubtotal;
-      if (hasTargets && matchedItemCount === 0) {
-        throw new ApiError(400, "This coupon does not apply to the products in your cart");
-      }
-    }
+  if (hasCartItems && hasTargets && matchedItemCount === 0) {
+    throw new ApiError(400, "This coupon does not apply to the products in your cart");
   }
 
   // Check minimum order amount
@@ -380,20 +348,6 @@ export const verifyCoupon = asyncHandler(async (req, res) => {
   if (coupon.maxUses && (coupon.usedCount || 0) >= coupon.maxUses) {
     throw new ApiError(400, "Coupon usage limit exceeded");
   }
-
-  // Calculate discount based on applicableSubtotal
-  let discountAmount = 0;
-  if (coupon.discountType === "PERCENTAGE") {
-    // Cap percentage discount at 95%
-    const cappedDiscountValue = Math.min(parseFloat(coupon.discountValue), 95);
-    discountAmount = (applicableSubtotal * cappedDiscountValue) / 100;
-  } else {
-    discountAmount = parseFloat(coupon.discountValue);
-  }
-
-  // Never let a coupon discount more than 95% of the applicable subtotal
-  const maxDiscountAllowed = applicableSubtotal * 0.95; // Maximum 95% discount
-  discountAmount = Math.min(discountAmount, maxDiscountAllowed);
 
   return res.status(200).json(
     new ApiResponsive(
@@ -481,59 +435,31 @@ export const applyCoupon = asyncHandler(async (req, res) => {
     cartTotal += price * item.quantity;
   }
 
-  // Compute applicable subtotal based on coupon targets
-  let applicableSubtotal = cartTotal;
-  const hasTargets =
-    (coupon.categories && coupon.categories.length) ||
-    (coupon.products && coupon.products.length) ||
-    (coupon.brands && coupon.brands.length);
+  // Compute applicable subtotal and discount via the shared helper — the same
+  // function the payment controller uses when actually charging the customer.
+  const discountInput = cartItems.map((item) => {
+    const pv = item.productVariant;
+    const prod = pv.product;
+    return {
+      productId: prod.id,
+      brandId: prod.brandId || null,
+      categoryIds: (prod.categories || []).map((pc) => pc.categoryId),
+      price: parseFloat(pv.salePrice || pv.price),
+      quantity: item.quantity,
+    };
+  });
 
-  let matchedItemCount = 0;
-  if (hasTargets) {
-    const categorySet = new Set((coupon.categories || []).map((c) => c.categoryId));
-    const productSet = new Set((coupon.products || []).map((p) => p.productId));
-    const brandSet = new Set((coupon.brands || []).map((b) => b.brandId));
+  const { applicableSubtotal, matchedItemCount, hasTargets, discountAmount } =
+    calculateCouponDiscount(coupon, discountInput);
 
-    let matchedSubtotal = 0;
-    for (const item of cartItems) {
-      const pv = item.productVariant;
-      const prod = pv.product;
-      const price = parseFloat(pv.salePrice || pv.price) * item.quantity;
-
-      const productMatch = productSet.has(prod.id);
-      const brandMatch = prod.brandId && brandSet.has(prod.brandId);
-      const categoryIds = (prod.categories || []).map((pc) => pc.categoryId);
-      const categoryMatch = categoryIds.some((c) => categorySet.has(c));
-
-      if (productMatch || brandMatch || categoryMatch) {
-        matchedItemCount++;
-        matchedSubtotal += price;
-      }
-    }
-
-    applicableSubtotal = matchedSubtotal;
-    if (matchedItemCount === 0) {
-      throw new ApiError(400, "This coupon does not apply to the products in your cart");
-    }
+  if (hasTargets && matchedItemCount === 0) {
+    throw new ApiError(400, "This coupon does not apply to the products in your cart");
   }
 
   // Check minimum order amount based on applicable subtotal
   if (coupon.minOrderAmount && applicableSubtotal < parseFloat(coupon.minOrderAmount)) {
     throw new ApiError(400, `Minimum order amount of ₹${coupon.minOrderAmount} required`);
   }
-
-  // Calculate discount based on applicable subtotal
-  let discountAmount = 0;
-  if (coupon.discountType === "PERCENTAGE") {
-    const cappedDiscountValue = Math.min(parseFloat(coupon.discountValue), 95);
-    discountAmount = (applicableSubtotal * cappedDiscountValue) / 100;
-  } else {
-    discountAmount = parseFloat(coupon.discountValue);
-  }
-
-  // Never let a coupon discount more than 95% of the applicable subtotal
-  const maxDiscountAllowed = applicableSubtotal * 0.95;
-  discountAmount = Math.min(discountAmount, maxDiscountAllowed);
 
   return res.status(200).json(
     new ApiResponsive(

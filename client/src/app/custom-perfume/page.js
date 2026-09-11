@@ -83,6 +83,7 @@ export default function CustomPerfumePage() {
   const [selectedHeart, setSelectedHeart] = useState([]);
   const [selectedTop, setSelectedTop] = useState([]);
   const [selectedBottle, setSelectedBottle] = useState(null);
+  const [zoomedBottle, setZoomedBottle] = useState(null);
   const [engraving, setEngraving] = useState("");
 
   // Direct Checkout & Razorpay Payment Modal State
@@ -719,8 +720,17 @@ export default function CustomPerfumePage() {
                               : "border-[#E8DAFA] bg-white/90 hover:border-[#B8976A]/50"
                           }`}
                         >
-                          <div className="w-20 h-24 relative rounded-2xl overflow-hidden bg-[#FAF5FF] border border-[#E8DAFA] shrink-0">
+                          <div
+                            className="w-20 h-24 relative rounded-2xl overflow-hidden bg-[#FAF5FF] border border-[#E8DAFA] shrink-0 group/thumb cursor-zoom-in"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setZoomedBottle(bottle);
+                            }}
+                          >
                             <img src={bottle.image} alt={bottle.name} className="w-full h-full object-cover" loading="lazy" />
+                            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover/thumb:opacity-100">
+                              <IconEye className="w-5 h-5 text-white" stroke={1.5} />
+                            </div>
                           </div>
                           <div className="space-y-1">
                             <h4 className="font-serif text-lg text-[#240E42] font-semibold">{bottle.name}</h4>
@@ -1097,6 +1107,48 @@ export default function CustomPerfumePage() {
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Bottle zoom lightbox */}
+      {zoomedBottle && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8 animate-fadeIn"
+          onClick={() => setZoomedBottle(null)}
+        >
+          <button
+            onClick={() => setZoomedBottle(null)}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            aria-label="Close"
+          >
+            <IconX className="w-5 h-5" />
+          </button>
+          <div
+            className="relative w-full max-w-md aspect-[4/5] rounded-2xl overflow-hidden bg-[#FAF5FF]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={zoomedBottle.image}
+              alt={zoomedBottle.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="mt-5 text-center max-w-md">
+            <h4 className="font-serif text-xl sm:text-2xl text-white font-semibold">{zoomedBottle.name}</h4>
+            <p className="text-sm text-white/60 font-light mt-1">{zoomedBottle.description}</p>
+            <p className="text-base font-bold text-[#EAD5AB] mt-2">₹{zoomedBottle.price?.toLocaleString()}</p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedBottle(zoomedBottle);
+                setZoomedBottle(null);
+              }}
+              className="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-[#4A2478] hover:bg-[#38195E] text-white text-xs font-bold uppercase tracking-widest rounded-full transition-colors"
+            >
+              <IconCheck className="w-4 h-4" />
+              Select This Bottle
+            </button>
           </div>
         </div>
       )}

@@ -109,10 +109,15 @@ const CartItem = React.memo(
                     {/* Details */}
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                         <div>
-                            <Link href={productSlug} className="group">
+                            <Link href={productSlug} className="group flex items-center gap-2">
                                 <h3 className="text-sm sm:text-[15px] font-medium text-black leading-snug group-hover:text-black/70 transition-colors line-clamp-1">
                                     {productName}
                                 </h3>
+                                {!isBundle && item.quantity > 1 && (
+                                    <span className="flex-shrink-0 text-[10px] font-semibold text-black/50 bg-black/5 rounded-full px-1.5 py-0.5 sm:hidden">
+                                        ×{item.quantity}
+                                    </span>
+                                )}
                             </Link>
 
                             {/* Custom Bespoke Perfume Details */}
@@ -194,7 +199,12 @@ const CartItem = React.memo(
                                     </div>
                                 ) : (
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-sm font-semibold text-black">{formatCurrency(item.price)}</span>
+                                        <span className="text-sm font-semibold text-black">
+                                            {formatCurrency(item.price)}
+                                            {item.quantity > 1 && (
+                                                <span className="text-black/40 font-normal"> × {item.quantity}</span>
+                                            )}
+                                        </span>
                                         {item.originalPrice && item.originalPrice !== item.price && (
                                             <span className="text-[10px] text-black/30 line-through">{formatCurrency(item.originalPrice)}</span>
                                         )}
@@ -438,7 +448,12 @@ export default function CartPage() {
         }
     }, [authLoading, isAuthenticated, router, totals, openAuthModal]);
 
-    const itemCount = cart.items?.length || 0;
+    // Total units in the bag (sums quantity per line), not just the number of
+    // distinct line items — so "2x Flamingo" counts as 2, not 1.
+    const itemCount =
+        cart.totalQuantity ??
+        cart.items?.reduce((sum, i) => sum + (i.quantity || 1), 0) ??
+        0;
     const bundleCount = cart.items?.filter(i => i.cartItemType === "BUNDLE").length || 0;
     const normalCount = itemCount - bundleCount;
 

@@ -10,6 +10,7 @@ import { getFileUrl } from "../utils/deleteFromS3.js";
 import { processReferralReward } from "./referral.controller.js";
 import { decrypt } from "../utils/encryption.js";
 import { processOrderForShipping } from "../utils/shiprocket.js";
+import { calculateCouponDiscount, cartItemsToDiscountInput } from "../utils/couponDiscount.js";
 
 
 async function getPaymentGatewayConfig(userId = null, gateway = "RAZORPAY") {
@@ -198,7 +199,7 @@ export const checkout = asyncHandler(async (req, res) => {
       where: { userId },
       include: {
         productVariant: {
-          include: { product: true },
+          include: { product: { include: { categories: true } } },
         },
         bundleCampaign: {
           include: { pricingSlabs: { orderBy: { itemCount: "asc" } } },
@@ -271,20 +272,44 @@ export const checkout = asyncHandler(async (req, res) => {
       }
     }
 
-    // Validate coupon
+    // Validate coupon — must use the SAME item-matched calculation as
+    // /coupons/verify (what the customer sees at checkout), or the amount
+    // charged by Razorpay can end up wildly different from the displayed total.
     let discountAmount = 0;
     if (couponId) {
-      const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
+      const coupon = await prisma.coupon.findUnique({
+        where: { id: couponId },
+        include: { categories: true, products: true, brands: true },
+      });
       if (!coupon || coupon.isDeleted || !coupon.isActive) {
         throw new ApiError(400, "The applied coupon is no longer valid");
       }
-      if (coupon.discountType === "PERCENTAGE") {
-        let pct = parseFloat(coupon.discountValue);
-        if (pct > 90 || coupon.isDiscountCapped) pct = Math.min(pct, 90);
-        discountAmount = (subTotal * pct) / 100;
-      } else {
-        discountAmount = Math.min(parseFloat(coupon.discountValue), subTotal);
+
+      const discountInput = [
+        ...cartItemsToDiscountInput(normalItems),
+        // Bundles aren't product/category/brand-targetable the same way —
+        // treat their price as always-applicable-subtotal, matching the
+        // pre-existing checkout behaviour for bundles.
+        ...bundleItems.map((item) => ({
+          productId: null,
+          brandId: null,
+          categoryIds: [],
+          price:
+            item.bundleData?.bundlePrice ??
+            item.bundleCampaign?.bundlePrice ??
+            0,
+          quantity: 1,
+        })),
+      ];
+
+      const result = calculateCouponDiscount(coupon, discountInput);
+      if (result.hasTargets && result.matchedItemCount === 0) {
+        throw new ApiError(400, "This coupon does not apply to the products in your cart");
       }
+      if (coupon.minOrderAmount && result.applicableSubtotal < parseFloat(coupon.minOrderAmount)) {
+        throw new ApiError(400, `Minimum order amount of ₹${coupon.minOrderAmount} required`);
+      }
+      discountAmount = result.discountAmount;
     }
 
     // Calculate shipping cost (same logic as paymentVerification)
@@ -466,7 +491,8 @@ export const paymentVerification = asyncHandler(async (req, res) => {
                 },
                 pricingSlabs: {
                   orderBy: { minQty: 'desc' }
-                }
+                },
+                categories: true,
               },
             },
             attributes: {
@@ -512,7 +538,7 @@ export const paymentVerification = asyncHandler(async (req, res) => {
         isActive: true,
       },
       include: {
-        coupon: true,
+        coupon: { include: { categories: true, products: true, brands: true } },
       },
     });
 
@@ -642,28 +668,32 @@ export const paymentVerification = asyncHandler(async (req, res) => {
       }
     }
 
-    // Apply coupon discount if available
+    // Apply coupon discount if available — uses the same item-matched
+    // calculation as /coupons/verify so the amount charged always matches
+    // what checkout displayed to the customer.
     if (userCoupon && userCoupon.coupon) {
       couponCode = userCoupon.coupon.code;
       couponId = userCoupon.coupon.id;
 
-      // Calculate discount based on coupon type
-      if (userCoupon.coupon.discountType === "PERCENTAGE") {
-        // Calculate percentage discount with cap if needed
-        let discountPercentage = parseFloat(userCoupon.coupon.discountValue);
+      const discountInput = [
+        ...cartItemsToDiscountInput(normalCartItems),
+        ...bundleCartItems.map((item) => ({
+          productId: null,
+          brandId: null,
+          categoryIds: [],
+          price:
+            item.bundleData?.bundlePrice ??
+            item.bundleCampaign?.bundlePrice ??
+            0,
+          quantity: 1,
+        })),
+      ];
 
-        if (discountPercentage > 90 || userCoupon.coupon.isDiscountCapped) {
-          discountPercentage = Math.min(discountPercentage, 90);
-        }
-
-        discount = (subTotal * discountPercentage) / 100;
-      } else {
-        // Fixed amount discount, not exceeding subtotal
-        discount = Math.min(
-          parseFloat(userCoupon.coupon.discountValue),
-          subTotal
-        );
+      const result = calculateCouponDiscount(userCoupon.coupon, discountInput);
+      if (result.hasTargets && result.matchedItemCount === 0) {
+        throw new ApiError(400, "This coupon does not apply to the products in your cart");
       }
+      discount = result.discountAmount;
 
       // After successful order, deactivate the coupon for this user
       // We'll do this in the transaction to ensure it only happens if order is created
@@ -2024,7 +2054,8 @@ export const createCashOrder = asyncHandler(async (req, res) => {
                 },
                 pricingSlabs: {
                   orderBy: { minQty: 'desc' }
-                }
+                },
+                categories: true,
               },
             },
             attributes: {
@@ -2070,7 +2101,7 @@ export const createCashOrder = asyncHandler(async (req, res) => {
         isActive: true,
       },
       include: {
-        coupon: true,
+        coupon: { include: { categories: true, products: true, brands: true } },
       },
     });
 
@@ -2286,18 +2317,25 @@ export const createCashOrder = asyncHandler(async (req, res) => {
       couponCode = userCoupon.coupon.code;
       couponId = userCoupon.coupon.id;
 
-      if (userCoupon.coupon.discountType === "PERCENTAGE") {
-        let discountPercentage = parseFloat(userCoupon.coupon.discountValue);
-        if (discountPercentage > 90 || userCoupon.coupon.isDiscountCapped) {
-          discountPercentage = Math.min(discountPercentage, 90);
-        }
-        discount = (subTotal * discountPercentage) / 100;
-      } else {
-        discount = Math.min(
-          parseFloat(userCoupon.coupon.discountValue),
-          subTotal
-        );
+      // Same item-matched calculation as /coupons/verify (see calculateCouponDiscount).
+      const discountInput = [
+        ...cartItemsToDiscountInput(normalCartItems),
+        ...bundleCartItems.map((item) => ({
+          productId: null,
+          brandId: null,
+          categoryIds: [],
+          price:
+            item.bundleData?.bundlePrice ??
+            item.bundleCampaign?.bundlePrice ??
+            0,
+          quantity: 1,
+        })),
+      ];
+      const result = calculateCouponDiscount(userCoupon.coupon, discountInput);
+      if (result.hasTargets && result.matchedItemCount === 0) {
+        throw new ApiError(400, "This coupon does not apply to the products in your cart");
       }
+      discount = result.discountAmount;
     } else if (requestCouponCode || requestCouponId || requestDiscount) {
       if (requestCouponCode) couponCode = requestCouponCode;
       if (requestCouponId) couponId = requestCouponId;
