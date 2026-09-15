@@ -10,6 +10,7 @@ import {
   Wallet,
   AlertCircle,
   CheckCircle2,
+  Percent,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/api/api";
@@ -22,6 +23,7 @@ export default function PaymentSettingsPage() {
   const [cashEnabled, setCashEnabled] = useState(true);
   const [razorpayEnabled, setRazorpayEnabled] = useState(false);
   const [codCharge, setCodCharge] = useState<number>(0);
+  const [prepaidDiscountPercent, setPrepaidDiscountPercent] = useState<number>(0);
   const [hasRazorpayKeys, setHasRazorpayKeys] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,6 +52,7 @@ export default function PaymentSettingsPage() {
         setCashEnabled(response.data.data.cashEnabled ?? true);
         setRazorpayEnabled(response.data.data.razorpayEnabled ?? false);
         setCodCharge(response.data.data.codCharge ?? 0);
+        setPrepaidDiscountPercent(response.data.data.prepaidDiscountPercent ?? 0);
       }
     } catch (error: any) {
       console.error("Error fetching payment settings:", error);
@@ -97,6 +100,7 @@ export default function PaymentSettingsPage() {
         cashEnabled,
         razorpayEnabled,
         codCharge: parseFloat(codCharge.toString()) || 0,
+        prepaidDiscountPercent: parseFloat(prepaidDiscountPercent.toString()) || 0,
       });
 
       if (response.data.success) {
@@ -284,6 +288,48 @@ export default function PaymentSettingsPage() {
               />
             </div>
 
+            {/* Prepaid (Online Payment) Discount — only meaningful, and only
+                shown, when the customer actually has a choice between COD
+                and paying online. */}
+            {cashEnabled && razorpayEnabled && (
+              <div className="flex items-start justify-between p-5 border border-[#E5E7EB] rounded-xl">
+                <div className="flex items-start gap-4 flex-1">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#FFF7ED] border border-[#FED7AA] flex-shrink-0">
+                    <Percent className="h-6 w-6 text-[#F59E0B]" />
+                  </div>
+                  <div className="flex-1">
+                    <Label
+                      htmlFor="prepaidDiscount"
+                      className="text-base font-semibold text-[#1F2937] mb-1 block"
+                    >
+                      Online Payment Discount
+                    </Label>
+                    <p className="text-sm text-[#9CA3AF] mb-3">
+                      Give customers an extra % off when they pay online instead of Cash on Delivery — an incentive to prefer prepaid orders. Set to 0 to disable.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="prepaidDiscount"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={prepaidDiscountPercent}
+                        onChange={(e) =>
+                          setPrepaidDiscountPercent(
+                            Math.min(100, Math.max(0, parseFloat(e.target.value) || 0))
+                          )
+                        }
+                        className="w-28"
+                        disabled={isSaving}
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-[#6B7280]">% off order subtotal, applied at checkout</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Info Alert */}

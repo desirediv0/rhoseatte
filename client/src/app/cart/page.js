@@ -427,6 +427,15 @@ export default function CartPage() {
 
     const totals = useMemo(() => getCartTotals(), [getCartTotals]);
 
+    // Total units in the bag (sums quantity per line), not just the number of
+    // distinct line items — so "2x Flamingo" counts as 2, not 1.
+    // Declared before handleCheckout since it's referenced in that callback's
+    // dependency array.
+    const itemCount =
+        cart.totalQuantity ??
+        cart.items?.reduce((sum, i) => sum + (i.quantity || 1), 0) ??
+        0;
+
     const handleCheckout = useCallback(() => {
         // Auth state might still be resolving — don't misfire the "please log in"
         // path for a user who is actually signed in.
@@ -444,16 +453,17 @@ export default function CartPage() {
                 router.push("/auth?returnUrl=/checkout");
             }
         } else {
+            if (typeof window !== "undefined" && typeof window.fbq === "function") {
+                window.fbq("track", "InitiateCheckout", {
+                    currency: "INR",
+                    value: totals.total,
+                    num_items: itemCount,
+                });
+            }
             router.push("/checkout");
         }
-    }, [authLoading, isAuthenticated, router, totals, openAuthModal]);
+    }, [authLoading, isAuthenticated, router, totals, openAuthModal, itemCount]);
 
-    // Total units in the bag (sums quantity per line), not just the number of
-    // distinct line items — so "2x Flamingo" counts as 2, not 1.
-    const itemCount =
-        cart.totalQuantity ??
-        cart.items?.reduce((sum, i) => sum + (i.quantity || 1), 0) ??
-        0;
     const bundleCount = cart.items?.filter(i => i.cartItemType === "BUNDLE").length || 0;
     const normalCount = itemCount - bundleCount;
 

@@ -27,6 +27,7 @@ import Link from "next/link";
 import AddressForm from "@/components/AddressForm";
 import Image from "next/image";
 import CheckoutRecommendations from "@/components/sections/CheckoutRecommendations";
+import PurchaseTracking from "@/components/PurchaseTracking";
 
 const getImageUrl = (image) => {
     if (!image) return "/rhoseatte_lavender_perfume.png";
@@ -55,11 +56,26 @@ export default function CheckoutPage() {
     const [error, setError] = useState("");
     const [showAddressForm, setShowAddressForm] = useState(false);
     const [orderNumber, setOrderNumber] = useState("");
+    const [purchaseAmount, setPurchaseAmount] = useState(null);
     const [successAnimation, setSuccessAnimation] = useState(false);
     const [redirectCountdown, setRedirectCountdown] = useState(2);
     const [confettiCannon, setConfettiCannon] = useState(false);
 
     const totals = getCartTotals();
+
+    // Prepaid (online payment) discount — only present when both COD and
+    // Razorpay are enabled (server already gates this: it comes back as 0
+    // otherwise). Purely a display/decision aid here; the server independently
+    // recalculates and enforces the real charged amount at order-create time.
+    const prepaidDiscountPercent = paymentSettings.prepaidDiscountPercent || 0;
+    const prepaidDiscountAmount =
+        prepaidDiscountPercent > 0
+            ? Math.round(totals.subtotal * (prepaidDiscountPercent / 100) * 100) / 100
+            : 0;
+    const payableTotal =
+        paymentMethod === "RAZORPAY" && prepaidDiscountAmount > 0
+            ? Math.max(totals.total - prepaidDiscountAmount, 1)
+            : totals.total;
 
     useEffect(() => {
         // Wait until auth state is resolved — otherwise the very first render
@@ -83,13 +99,19 @@ export default function CheckoutPage() {
             try {
                 const response = await fetchApi("/payment/settings", { credentials: "include" });
                 if (response.success) {
+                    const razorpayOn = response.data.razorpayEnabled ?? true;
+                    const cashOn = response.data.cashEnabled ?? false;
                     setPaymentSettings({
-                        cashEnabled: false,
-                        razorpayEnabled: response.data.razorpayEnabled ?? true,
+                        cashEnabled: cashOn,
+                        razorpayEnabled: razorpayOn,
                         codCharge: response.data.codCharge ?? 0,
+                        prepaidDiscountPercent: response.data.prepaidDiscountPercent ?? 0,
                     });
-                    if (response.data.razorpayEnabled ?? true) {
+                    // Default to whichever method is actually available.
+                    if (razorpayOn) {
                         setPaymentMethod("RAZORPAY");
+                    } else if (cashOn) {
+                        setPaymentMethod("CASH");
                     }
                 }
             } catch (error) {
@@ -168,6 +190,13 @@ export default function CheckoutPage() {
     const handleSuccessfulPayment = (paymentResponse = null, orderData = null) => {
         if (paymentResponse?.razorpay_payment_id) setPaymentId(paymentResponse.razorpay_payment_id);
         if (orderData?.orderNumber) setOrderNumber(orderData.orderNumber);
+        // Prefer the server-confirmed amount actually charged; fall back to the
+        // displayed checkout total if the API response didn't include it.
+        setPurchaseAmount(
+            orderData?.finalAmount !== undefined && orderData?.finalAmount !== null
+                ? Number(orderData.finalAmount)
+                : payableTotal
+        );
         setSuccessAnimation(true);
         playSuccessSound();
         clearCart();
@@ -190,7 +219,7 @@ export default function CheckoutPage() {
         setError("");
 
         try {
-            const calculatedAmount = totals.total;
+            const calculatedAmount = payableTotal;
             const amount = Math.max(parseFloat(calculatedAmount.toFixed(2)), 1);
 
             if (calculatedAmount < 1) {
@@ -216,6 +245,7 @@ export default function CheckoutPage() {
                     orderNumber: orderResponse.data.orderNumber,
                     orderId: orderResponse.data.orderId,
                     paymentMethod: orderResponse.data.paymentMethod || "CASH",
+                    finalAmount: orderResponse.data.finalAmount,
                 };
                 setOrderNumber(orderResponse.data.orderNumber);
                 setOrderId(orderResponse.data.orderId || "");
@@ -355,6 +385,7 @@ export default function CheckoutPage() {
     if (orderCreated) {
         return (
             <div className="min-h-screen bg-white flex items-center justify-center py-20 px-4">
+                <PurchaseTracking order={{ orderNumber, finalAmount: purchaseAmount }} />
                 <div className="max-w-lg w-full text-center">
                     <div className="w-20 h-20 mx-auto mb-8 border border-green-100 rounded-full flex items-center justify-center bg-green-50/50">
                         <PartyPopper className="h-10 w-10 text-green-600" strokeWidth={1} />
@@ -643,13 +674,25 @@ export default function CheckoutPage() {
                                 {totals.shipping === 0 && cart.freeShippingThreshold > 0 && (
                                     <p className="text-[9px] text-green-600 text-right">🎉 Free shipping applied!</p>
                                 )}
+                                {paymentMethod === "RAZORPAY" && prepaidDiscountAmount > 0 && (
+                                    <div className="flex justify-between text-green-600">
+                                        <span className="uppercase tracking-wider">Online Payment Discount ({prepaidDiscountPercent}%)</span>
+                                        <span className="font-medium">-{formatCurrency(prepaidDiscountAmount)}</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Total */}
                             <div className="flex justify-between items-baseline mb-5">
                                 <span className="text-[11px] uppercase tracking-[0.15em] text-black/50 font-medium">Total</span>
-                                <span className="text-xl font-light text-black">{formatCurrency(totals.total)}</span>
+                                <span className="text-xl font-light text-black">{formatCurrency(payableTotal)}</span>
                             </div>
+
+                            {paymentMethod === "CASH" && prepaidDiscountPercent > 0 && (
+                                <p className="text-[10px] text-[#B8976A] text-center mb-4 -mt-2">
+                                    Pay online instead and save {prepaidDiscountPercent}% ({formatCurrency(prepaidDiscountAmount)})
+                                </p>
+                            )}
 
                             {/* Pay Button */}
                             <button
@@ -657,7 +700,7 @@ export default function CheckoutPage() {
                                 disabled={processing || !selectedAddressId}
                                 className="w-full bg-black text-white text-[10px] uppercase tracking-[0.2em] font-medium py-3.5 rounded-md hover:bg-black/80 transition-all duration-300 disabled:opacity-30 active:scale-[0.99]"
                             >
-                                {processing ? "Processing…" : `Pay ${formatCurrency(totals.total)}`}
+                                {processing ? "Processing…" : `Pay ${formatCurrency(payableTotal)}`}
                             </button>
 
                             <p className="text-[9px] text-black/20 text-center mt-3">

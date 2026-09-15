@@ -1081,6 +1081,11 @@ model PaymentSettings {
   cashEnabled     Boolean  @default(true)
   razorpayEnabled Boolean  @default(false)
   codCharge       Decimal  @default(0) @db.Decimal(10, 2)
+  // Percentage discount applied when a customer pays online (Razorpay) instead
+  // of Cash on Delivery. Only meaningful — and only shown/applied — while both
+  // cashEnabled and razorpayEnabled are true; with COD off there's no
+  // "prepaid vs COD" choice to incentivize.
+  prepaidDiscountPercent Decimal  @default(0) @db.Decimal(5, 2)
   updatedAt       DateTime @updatedAt
   updatedBy       String?
 

@@ -306,6 +306,24 @@ export function CartProvider({ children }) {
                 await addToGuestCart(productVariantId, quantity, variantHint);
             }
 
+            // Meta Pixel: fire once the add actually succeeded (not on a
+            // rejected/out-of-stock attempt). One choke point here covers
+            // every add-to-cart entry point (PDP, product cards, bundles,
+            // guest and logged-in) without duplicating the call per caller.
+            if (typeof window !== "undefined" && typeof window.fbq === "function") {
+                const unitPrice = Number(
+                    variantHint?.salePrice ?? variantHint?.price ?? 0
+                );
+                window.fbq("track", "AddToCart", {
+                    content_ids: [
+                        typeof productVariantId === "string" ? productVariantId : variantHint?.id,
+                    ].filter(Boolean),
+                    content_type: "product",
+                    currency: "INR",
+                    value: unitPrice > 0 ? unitPrice * quantity : undefined,
+                });
+            }
+
             const updatedCart = await fetchCart();
             return updatedCart;
         } catch (err) {

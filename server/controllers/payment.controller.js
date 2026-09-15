@@ -143,14 +143,25 @@ export const getPaymentSettings = asyncHandler(async (req, res) => {
     },
   });
 
+  const razorpayIsUsable = paymentSettings.razorpayEnabled && !!razorpaySettings;
+
+  // The prepaid discount only makes sense as an incentive between two real
+  // choices — if COD is off there's nothing to discount "instead of", so we
+  // don't expose it at all in that case (checkout then has nothing to apply).
+  const prepaidDiscountPercent =
+    paymentSettings.cashEnabled && razorpayIsUsable
+      ? parseFloat(paymentSettings.prepaidDiscountPercent) || 0
+      : 0;
+
   res.status(200).json(
     new ApiResponsive(
       200,
       {
         cashEnabled: paymentSettings.cashEnabled,
-        razorpayEnabled: paymentSettings.razorpayEnabled && !!razorpaySettings,
+        razorpayEnabled: razorpayIsUsable,
         phonepeEnabled: !!phonepeSettings,
         codCharge: parseFloat(paymentSettings.codCharge) || 0,
+        prepaidDiscountPercent,
       },
       "Payment settings fetched successfully"
     )
@@ -332,7 +343,25 @@ export const checkout = asyncHandler(async (req, res) => {
       }
     }
 
-    const finalAmount = Math.max(subTotal + shippingCost - discountAmount, 1);
+    // Prepaid (online payment) discount — an admin-configured incentive to
+    // pay online instead of COD. Only applies when both payment methods are
+    // actually enabled; with COD off there's nothing to be "instead of", so
+    // no discount is given (it would just be a silent price cut).
+    let prepaidDiscount = 0;
+    const paymentSettingsRow = await prisma.paymentSettings.findFirst();
+    if (
+      paymentSettingsRow?.cashEnabled &&
+      paymentSettingsRow?.razorpayEnabled &&
+      paymentSettingsRow?.prepaidDiscountPercent > 0
+    ) {
+      const pct = Math.min(parseFloat(paymentSettingsRow.prepaidDiscountPercent), 100);
+      prepaidDiscount = (subTotal * pct) / 100;
+    }
+
+    const finalAmount = Math.max(
+      subTotal + shippingCost - discountAmount - prepaidDiscount,
+      1
+    );
 
     // Generate receipt
     const shortUserId = userId.slice(-4);
@@ -348,6 +377,7 @@ export const checkout = asyncHandler(async (req, res) => {
     notes.paymentOwnerId = paymentConfig.paymentSettings.userId;
     notes.shippingCost = shippingCost; // Store so verify can use exact same value
     notes.subTotal = subTotal; // Store recalculated subtotal for reference
+    if (prepaidDiscount > 0) notes.prepaidDiscount = prepaidDiscount; // Store so verify applies the same prepaid discount
 
     const amountInPaise = Math.round(parseFloat(finalAmount.toFixed(2)) * 100);
 
@@ -751,6 +781,14 @@ export const paymentVerification = asyncHandler(async (req, res) => {
             if (razorpayOrderDetails.notes.shippingCost !== undefined) {
               shippingCost = parseFloat(razorpayOrderDetails.notes.shippingCost || 0);
               console.log(`[Payment Verify] Using shippingCost from Razorpay notes: ₹${shippingCost}`);
+            }
+
+            // Fold the prepaid (online-payment) discount into the same
+            // `discount` total that gets subtracted below — this function only
+            // ever runs for the Razorpay/prepaid path, so it's always eligible
+            // once checkout() decided to grant it.
+            if (razorpayOrderDetails.notes.prepaidDiscount !== undefined) {
+              discount += parseFloat(razorpayOrderDetails.notes.prepaidDiscount || 0);
             }
           }
         }
@@ -1163,6 +1201,7 @@ export const paymentVerification = asyncHandler(async (req, res) => {
           orderId: result.order.id,
           orderNumber: result.order.orderNumber,
           paymentId: result.payment.id,
+          finalAmount: parseFloat(result.order.total),
         },
         "Payment verified and order created successfully"
       )
@@ -2652,6 +2691,7 @@ export const createCashOrder = asyncHandler(async (req, res) => {
           orderId: result.order.id,
           orderNumber: result.order.orderNumber,
           paymentMethod: "CASH",
+          finalAmount: parseFloat(result.order.total),
         },
         "Cash on Delivery order created successfully"
       )
