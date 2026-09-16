@@ -55,32 +55,39 @@ export function AuthProvider({ children }) {
         }
     };
 
+    // Re-checks the session against the API and updates `user`. Exposed as
+    // `refreshUser` so a flow that logs the browser in outside the normal
+    // login/register forms — e.g. guest checkout auto-creating/reusing an
+    // account — can make the rest of the app (isAuthenticated, etc.) catch up
+    // immediately instead of waiting for a full page reload.
+    const checkAuth = async () => {
+        const hasSessionCookie = document.cookie
+            .split("; ")
+            .some((row) => row.startsWith("user_session="));
+
+        try {
+            // One call is enough — the cookie is just a hint. Always verify
+            // against the API.
+            const res = await fetchApi("/users/me", {
+                credentials: "include",
+            });
+            setUser(res.data.user);
+            return res.data.user;
+        } catch (err) {
+            // API says we're not authenticated. If a stale session cookie is
+            // lying around, wipe it so middleware agrees with us.
+            if (hasSessionCookie && err?.statusCode === 401) {
+                clearStaleAuthCookies();
+            }
+            setUser(null);
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Check if user is logged in on first load
     useEffect(() => {
-        const checkAuth = async () => {
-            const hasSessionCookie = document.cookie
-                .split("; ")
-                .some((row) => row.startsWith("user_session="));
-
-            try {
-                // One call is enough — the cookie is just a hint. Always verify
-                // against the API.
-                const res = await fetchApi("/users/me", {
-                    credentials: "include",
-                });
-                setUser(res.data.user);
-            } catch (err) {
-                // API says we're not authenticated. If a stale session cookie is
-                // lying around, wipe it so middleware agrees with us.
-                if (hasSessionCookie && err?.statusCode === 401) {
-                    clearStaleAuthCookies();
-                }
-                setUser(null);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         checkAuth();
     }, []);
 
@@ -409,6 +416,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        refreshUser: checkAuth,
         verifyEmail,
         verifyOtp,
         resendVerification,

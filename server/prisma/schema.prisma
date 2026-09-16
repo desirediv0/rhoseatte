@@ -22,6 +22,12 @@ model User {
   otp                    String?
   otpVerified            Boolean                 @default(false)
   otpVerifiedExpiry      DateTime?
+  // Separate OTP slot used only to re-authenticate an existing account
+  // during guest checkout (see guestCheckoutVerifyOtp). Kept independent of
+  // `otp`/`otpVerifiedExpiry` above (the original-signup verification OTP)
+  // so the two flows never race or invalidate each other.
+  checkoutLoginOtp       String?
+  checkoutLoginOtpExpiry DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   razorpayCustomerId     String?

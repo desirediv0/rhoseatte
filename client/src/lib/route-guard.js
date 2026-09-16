@@ -7,8 +7,10 @@ import { useAuth } from "./auth-context";
 
 // Define private routes that require authentication.
 // /wishlist and /cart stay public — guests use a local wishlist/cart that
-// merges into their account on login.
-const privateRoutes = ["/account", "/checkout", "/orders"];
+// merges into their account on login. /checkout also stays public — an
+// unauthenticated visitor gets a guest details form there instead of a
+// redirect (Shopify-style checkout).
+const privateRoutes = ["/account", "/orders"];
 
 // Define auth routes that should redirect to dashboard if already logged in
 const authRoutes = ["/auth", "/auth", "/forgot-password", "/reset-password"];

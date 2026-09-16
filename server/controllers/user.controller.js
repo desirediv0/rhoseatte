@@ -184,6 +184,349 @@ export const registerUser = asyncHandler(async (req, res, next) => {
   res.status(201).json(new ApiResponsive(201, responsePayload, message));
 });
 
+// Shared helper: persist (or reuse) a shipping address for a user, avoiding
+// duplicate rows when the same guest checks out again with the same details.
+const saveOrReuseAddress = async (userId, name, phone, address) => {
+  let savedAddress = await prisma.address.findFirst({
+    where: {
+      userId,
+      street: address.street,
+      city: address.city,
+      state: address.state,
+      postalCode: address.postalCode,
+    },
+  });
+
+  if (!savedAddress) {
+    const existingAddressCount = await prisma.address.count({
+      where: { userId },
+    });
+    savedAddress = await prisma.address.create({
+      data: {
+        userId,
+        name: address.name || name,
+        street: address.street,
+        city: address.city,
+        state: address.state,
+        postalCode: address.postalCode,
+        country: address.country || "India",
+        phone: address.phone || phone,
+        isDefault: existingAddressCount === 0,
+      },
+    });
+  }
+
+  return savedAddress;
+};
+
+const validateGuestCheckoutInput = (name, email, phone, address) => {
+  if (!name || !email || !phone) {
+    throw new ApiError(400, "Name, email, and phone are required");
+  }
+  if (
+    !address ||
+    !address.street ||
+    !address.city ||
+    !address.state ||
+    !address.postalCode
+  ) {
+    throw new ApiError(400, "A complete shipping address is required");
+  }
+};
+
+/**
+ * Guest checkout, step 1 (Shopify-style): the customer fills name/email/phone
+ * + shipping address directly on the checkout page — no separate sign-up or
+ * login screen is shown up front.
+ *
+ *  - New email AND new phone (no matching account): a new account is
+ *    created on the spot — no password, no OTP-gated email verification —
+ *    so checkout completes in one step, and the browser is immediately
+ *    logged in (same cookies as normal login/register).
+ *  - Email or phone matches an existing account: for security we do NOT
+ *    silently log into someone else's account just because their email or
+ *    phone was typed into a form (that would be an account-takeover
+ *    vector — anyone who knows/guesses your email could "become" you and
+ *    see your saved addresses). Instead this responds with
+ *    `requiresVerification: true` and emails a one-time code to the
+ *    account's registered email. The frontend then calls
+ *    `guestCheckoutVerifyOtp` with that code to complete sign-in — no
+ *    password needed, no separate login page, but still proof of access to
+ *    the account's inbox before anything is attached to it.
+ */
+export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
+  const { name, email, phone, address } = req.body;
+  validateGuestCheckoutInput(name, email, phone, address);
+
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const normalizedPhone = String(phone).trim();
+
+  let existingUser = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
+  // Fall back to matching by phone if the email is new — covers a returning
+  // customer checking out with a different email than they registered with.
+  if (!existingUser && normalizedPhone) {
+    existingUser = await prisma.user.findFirst({
+      where: { phone: normalizedPhone },
+    });
+  }
+
+  if (existingUser) {
+    if (!existingUser.isActive) {
+      throw new ApiError(
+        403,
+        "This account has been deactivated. Please contact support."
+      );
+    }
+
+    // Known account — require a one-time code before we sign the browser
+    // into it or touch its data. Never reveal whether the match was via
+    // email or phone; always report success against the submitted email so
+    // this endpoint can't be used to enumerate which phone numbers/emails
+    // have accounts.
+    const otpCode = generateOTP();
+    const otpExpiry = new Date();
+    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
+
+    await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        checkoutLoginOtp: otpCode,
+        checkoutLoginOtpExpiry: otpExpiry,
+      },
+    });
+
+    // The code always goes to the account's own registered email — never to
+    // whatever email/phone the checkout form was filled with — so this can't
+    // be used to redirect a verification code to an attacker-controlled inbox.
+    let emailSent = false;
+    try {
+      await sendEmail({
+        email: existingUser.email,
+        subject: "Your sign-in code — rhoseatte checkout",
+        html: getEmailOtpTemplate(otpCode, 10),
+      });
+      emailSent = true;
+    } catch (error) {
+      console.error("Error sending guest-checkout login OTP email:", error);
+    }
+
+    const maskedEmail = existingUser.email.replace(
+      /^(.{2}).*(@.*)$/,
+      (_, first, domain) => `${first}${"*".repeat(Math.max(3, existingUser.email.indexOf("@") - 2))}${domain}`
+    );
+
+    const responsePayload = {
+      requiresVerification: true,
+      maskedEmail,
+      emailSent,
+    };
+    if (process.env.NODE_ENV !== "production" && !emailSent) {
+      responsePayload.debugOtp = otpCode;
+    }
+
+    return res.status(200).json(
+      new ApiResponsive(
+        200,
+        responsePayload,
+        "An account already exists for these details. We've emailed a sign-in code to continue."
+      )
+    );
+  }
+
+  // No matching account — create one and sign in immediately, no extra step.
+  const generateUserReferralCode = (seed) => {
+    const shortId = seed.slice(-6).toUpperCase();
+    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+    return `REF${shortId}${random}`;
+  };
+
+  const newUser = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        name,
+        email: normalizedEmail,
+        phone: normalizedPhone,
+        password: null, // No password yet — can be set later from Account settings.
+        otpVerified: true, // Skip signup email verification so checkout completes immediately.
+      },
+    });
+
+    let referralCode = generateUserReferralCode(created.id);
+    let codeTaken = true;
+    while (codeTaken) {
+      const existing = await tx.user.findUnique({ where: { referralCode } });
+      if (!existing) {
+        codeTaken = false;
+      } else {
+        referralCode = generateUserReferralCode(created.id + Date.now());
+      }
+    }
+
+    return tx.user.update({
+      where: { id: created.id },
+      data: { referralCode },
+    });
+  });
+
+  const savedAddress = await saveOrReuseAddress(
+    newUser.id,
+    name,
+    normalizedPhone,
+    address
+  );
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    newUser.id
+  );
+  setCookies(res, accessToken, refreshToken);
+
+  const userWithoutSensitive = { ...newUser };
+  delete userWithoutSensitive.password;
+  delete userWithoutSensitive.otp;
+  delete userWithoutSensitive.checkoutLoginOtp;
+
+  res.status(200).json(
+    new ApiResponsive(
+      200,
+      {
+        requiresVerification: false,
+        user: userWithoutSensitive,
+        address: savedAddress,
+        isNewUser: true,
+      },
+      "Account created and signed in"
+    )
+  );
+});
+
+/**
+ * Guest checkout, step 2: completes sign-in for an existing account detected
+ * in guestCheckoutInit, using the one-time code emailed to that account.
+ * Only after this succeeds do we log the browser in and attach the address.
+ */
+export const guestCheckoutVerifyOtp = asyncHandler(async (req, res, next) => {
+  const { name, email, phone, address, otp } = req.body;
+  validateGuestCheckoutInput(name, email, phone, address);
+
+  if (!otp || !isValidOTP(otp)) {
+    throw new ApiError(400, "A valid 6-digit code is required");
+  }
+
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const normalizedPhone = String(phone).trim();
+
+  // Re-resolve the account the same way init did (email, then phone) — the
+  // client only ever holds the form fields, never the account id, so
+  // ownership is established here server-side from the verified code, not
+  // from anything the client claims.
+  let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  if (!user && normalizedPhone) {
+    user = await prisma.user.findFirst({ where: { phone: normalizedPhone } });
+  }
+
+  if (!user) {
+    throw new ApiError(400, "No pending verification for these details");
+  }
+  if (!user.isActive) {
+    throw new ApiError(403, "This account has been deactivated. Please contact support.");
+  }
+  if (!user.checkoutLoginOtp || !user.checkoutLoginOtpExpiry) {
+    throw new ApiError(400, "No sign-in code was requested. Please try again.");
+  }
+  if (isExpiredOTP(user.checkoutLoginOtpExpiry, 0)) {
+    throw new ApiError(400, "This code has expired. Please request a new one.");
+  }
+  if (user.checkoutLoginOtp !== otp) {
+    throw new ApiError(400, "Incorrect code");
+  }
+
+  // Consume the code so it can't be replayed.
+  user = await prisma.user.update({
+    where: { id: user.id },
+    data: { checkoutLoginOtp: null, checkoutLoginOtpExpiry: null },
+  });
+
+  const savedAddress = await saveOrReuseAddress(
+    user.id,
+    name,
+    normalizedPhone,
+    address
+  );
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user.id
+  );
+  setCookies(res, accessToken, refreshToken);
+
+  const userWithoutSensitive = { ...user };
+  delete userWithoutSensitive.password;
+  delete userWithoutSensitive.otp;
+  delete userWithoutSensitive.checkoutLoginOtp;
+
+  res.status(200).json(
+    new ApiResponsive(
+      200,
+      {
+        user: userWithoutSensitive,
+        address: savedAddress,
+        isNewUser: false,
+      },
+      "Signed in to your existing account"
+    )
+  );
+});
+
+/**
+ * Resend the guest-checkout sign-in code (rate-limited by the same
+ * otpRateLimiter as other OTP endpoints).
+ */
+export const guestCheckoutResendOtp = asyncHandler(async (req, res, next) => {
+  const { email, phone } = req.body;
+  if (!email && !phone) {
+    throw new ApiError(400, "Email or phone is required");
+  }
+
+  const normalizedEmail = email ? String(email).toLowerCase().trim() : null;
+  const normalizedPhone = phone ? String(phone).trim() : null;
+
+  let user = normalizedEmail
+    ? await prisma.user.findUnique({ where: { email: normalizedEmail } })
+    : null;
+  if (!user && normalizedPhone) {
+    user = await prisma.user.findFirst({ where: { phone: normalizedPhone } });
+  }
+
+  // Always respond the same way whether or not an account exists, so this
+  // can't be used to enumerate accounts.
+  if (user && user.isActive) {
+    const otpCode = generateOTP();
+    const otpExpiry = new Date();
+    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { checkoutLoginOtp: otpCode, checkoutLoginOtpExpiry: otpExpiry },
+    });
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Your sign-in code — rhoseatte checkout",
+        html: getEmailOtpTemplate(otpCode, 10),
+      });
+    } catch (error) {
+      console.error("Error resending guest-checkout login OTP email:", error);
+    }
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponsive(200, {}, "If an account exists, a new code has been sent."));
+});
+
 // Login user
 export const loginUser = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;

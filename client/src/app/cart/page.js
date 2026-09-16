@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
-import { useAuth } from "@/lib/auth-context";
 import CheckoutRecommendations from "@/components/sections/CheckoutRecommendations";
 
 import {
@@ -351,8 +350,6 @@ export default function CartPage() {
     const [couponError, setCouponError] = useState("");
     const router = useRouter();
 
-    const { openAuthModal } = useAuth();
-
     const handleQuantityChange = useCallback(
         async (cartItemId, currentQuantity, change) => {
             const newQuantity = currentQuantity + change;
@@ -437,8 +434,7 @@ export default function CartPage() {
         0;
 
     const handleCheckout = useCallback(() => {
-        // Auth state might still be resolving — don't misfire the "please log in"
-        // path for a user who is actually signed in.
+        // Auth state might still be resolving — don't misfire while it settles.
         if (authLoading) return;
 
         const calculatedAmount = totals.subtotal - totals.discount;
@@ -446,23 +442,18 @@ export default function CartPage() {
             toast.info("Minimum order amount is ₹1");
             return;
         }
-        if (!isAuthenticated) {
-            if (typeof openAuthModal === "function") {
-                openAuthModal();
-            } else {
-                router.push("/auth?returnUrl=/checkout");
-            }
-        } else {
-            if (typeof window !== "undefined" && typeof window.fbq === "function") {
-                window.fbq("track", "InitiateCheckout", {
-                    currency: "INR",
-                    value: totals.total,
-                    num_items: itemCount,
-                });
-            }
-            router.push("/checkout");
+
+        if (typeof window !== "undefined" && typeof window.fbq === "function") {
+            window.fbq("track", "InitiateCheckout", {
+                currency: "INR",
+                value: totals.total,
+                num_items: itemCount,
+            });
         }
-    }, [authLoading, isAuthenticated, router, totals, openAuthModal, itemCount]);
+        // Guests go straight to /checkout too — it collects their details
+        // (name/email/phone/address) and signs them in right there, Shopify-style.
+        router.push("/checkout");
+    }, [authLoading, router, totals, itemCount]);
 
     const bundleCount = cart.items?.filter(i => i.cartItemType === "BUNDLE").length || 0;
     const normalCount = itemCount - bundleCount;

@@ -10,13 +10,9 @@ import {
   IconArrowUpRight,
   IconPackage,
   IconSparkles,
-  IconLoader2,
 } from "@tabler/icons-react";
 
-const fadeIn = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } },
-};
+
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -29,11 +25,9 @@ const cardVariant = {
 };
 
 /* ─── Bundle Card ──────────────────────────────────────── */
-function BundleCard({ bundle, index }) {
+function BundleCard({ bundle }) {
   const lowestSlab = Array.isArray(bundle.pricingSlabs) ? bundle.pricingSlabs[0] : undefined;
-  const highestSlab = Array.isArray(bundle.pricingSlabs) && bundle.pricingSlabs.length > 0
-    ? bundle.pricingSlabs[bundle.pricingSlabs.length - 1]
-    : undefined;
+
 
   return (
     <motion.div variants={cardVariant}>

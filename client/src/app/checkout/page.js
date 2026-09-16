@@ -36,12 +36,34 @@ const getImageUrl = (image) => {
 };
 
 export default function CheckoutPage() {
-    const { isAuthenticated, user, loading: authLoading } = useAuth();
+    const { isAuthenticated, user, loading: authLoading, refreshUser } = useAuth();
     const router = useRouter();
     const { cart, coupon, getCartTotals, clearCart } = useCart();
     const [addresses, setAddresses] = useState([]);
     const [selectedAddressId, setSelectedAddressId] = useState("");
     const [loadingAddresses, setLoadingAddresses] = useState(true);
+    // Shopify-style guest checkout: name/email/phone/address filled right on
+    // this page. Submitting it creates or reuses an account and logs the
+    // browser in, after which the rest of this page behaves exactly like an
+    // already-authenticated checkout.
+    const [guestForm, setGuestForm] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        street: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "India",
+    });
+    const [guestSubmitting, setGuestSubmitting] = useState(false);
+    const [guestError, setGuestError] = useState("");
+    // Set once the server tells us these details belong to an existing
+    // account — switches the form to "enter the code we emailed you" instead
+    // of silently signing into someone else's account.
+    const [guestVerification, setGuestVerification] = useState(null); // { maskedEmail } | null
+    const [guestOtp, setGuestOtp] = useState("");
+    const [guestResending, setGuestResending] = useState(false);
     const [paymentSettings, setPaymentSettings] = useState({
         cashEnabled: false,
         razorpayEnabled: true,
@@ -77,15 +99,8 @@ export default function CheckoutPage() {
             ? Math.max(totals.total - prepaidDiscountAmount, 1)
             : totals.total;
 
-    useEffect(() => {
-        // Wait until auth state is resolved — otherwise the very first render
-        // (loading === true, isAuthenticated === false) bounces a logged-in user
-        // to /auth, which then redirects back to home.
-        if (authLoading) return;
-        if (!isAuthenticated) {
-            router.push("/auth?returnUrl=/checkout");
-        }
-    }, [authLoading, isAuthenticated, router]);
+    // No more bouncing an unauthenticated visitor to /auth — a guest fills the
+    // details form rendered further down instead (Shopify-style checkout).
 
     useEffect(() => {
         if (authLoading) return;
@@ -165,6 +180,164 @@ export default function CheckoutPage() {
     const handleAddressFormSuccess = () => {
         setShowAddressForm(false);
         fetchAddresses();
+    };
+
+    const handleGuestFormChange = (field, value) => {
+        setGuestForm((prev) => ({ ...prev, [field]: value }));
+    };
+
+    // Client-side validation mirroring what the server enforces — catches
+    // obvious mistakes immediately instead of round-tripping to the API.
+    const validateGuestForm = () => {
+        const { name, email, phone, street, city, state, postalCode } = guestForm;
+        if (!name.trim()) return "Please enter your full name.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+            return "Please enter a valid email address.";
+        }
+        const digitsOnly = phone.replace(/\D/g, "");
+        if (digitsOnly.length < 10) {
+            return "Please enter a valid phone number (at least 10 digits).";
+        }
+        if (!street.trim() || !city.trim() || !state.trim()) {
+            return "Please fill in your complete shipping address.";
+        }
+        if (!/^\d{4,10}$/.test(postalCode.trim())) {
+            return "Please enter a valid postal/pincode.";
+        }
+        return null;
+    };
+
+    const buildGuestPayload = () => {
+        const { name, email, phone, street, city, state, postalCode, country } = guestForm;
+        return {
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            phone: phone.trim(),
+            address: {
+                name: name.trim(),
+                street: street.trim(),
+                city: city.trim(),
+                state: state.trim(),
+                postalCode: postalCode.trim(),
+                country: country.trim() || "India",
+                phone: phone.trim(),
+            },
+        };
+    };
+
+    const handleGuestCheckoutSubmit = async (e) => {
+        e.preventDefault();
+        setGuestError("");
+
+        const validationError = validateGuestForm();
+        if (validationError) {
+            setGuestError(validationError);
+            return;
+        }
+
+        setGuestSubmitting(true);
+        try {
+            const response = await fetchApi("/users/guest-checkout/init", {
+                method: "POST",
+                credentials: "include",
+                body: JSON.stringify(buildGuestPayload()),
+            });
+
+            if (!response.success) {
+                throw new Error(response.message || "Could not continue to checkout");
+            }
+
+            if (response.data?.requiresVerification) {
+                // An account already exists for this email/phone — don't sign
+                // into it yet. Show the "enter the code we emailed you" step.
+                setGuestVerification({ maskedEmail: response.data.maskedEmail });
+                toast.info(response.message || "We've emailed you a sign-in code.");
+                if (response.data?.debugOtp) {
+                    // Dev-only convenience when SMTP isn't configured locally.
+                    console.info("[dev] Checkout sign-in code:", response.data.debugOtp);
+                }
+                return;
+            }
+
+            toast.success("Account created — continuing to payment");
+
+            // Bring the rest of the app's auth state up to date immediately
+            // (isAuthenticated etc.), so this page's own effects (address
+            // fetch, Razorpay key fetch) fire without a full page reload.
+            await refreshUser();
+
+            if (response.data?.address?.id) {
+                setSelectedAddressId(response.data.address.id);
+            }
+        } catch (err) {
+            console.error("Guest checkout error:", err);
+            setGuestError(err.message || "Something went wrong. Please try again.");
+        } finally {
+            setGuestSubmitting(false);
+        }
+    };
+
+    const handleGuestOtpSubmit = async (e) => {
+        e.preventDefault();
+        setGuestError("");
+
+        if (!/^\d{6}$/.test(guestOtp.trim())) {
+            setGuestError("Please enter the 6-digit code from your email.");
+            return;
+        }
+
+        setGuestSubmitting(true);
+        try {
+            const response = await fetchApi("/users/guest-checkout/verify", {
+                method: "POST",
+                credentials: "include",
+                body: JSON.stringify({ ...buildGuestPayload(), otp: guestOtp.trim() }),
+            });
+
+            if (!response.success) {
+                throw new Error(response.message || "Verification failed");
+            }
+
+            toast.success("Welcome back — continuing to payment");
+            await refreshUser();
+
+            if (response.data?.address?.id) {
+                setSelectedAddressId(response.data.address.id);
+            }
+        } catch (err) {
+            console.error("Guest checkout OTP verify error:", err);
+            setGuestError(err.message || "Incorrect or expired code. Please try again.");
+        } finally {
+            setGuestSubmitting(false);
+        }
+    };
+
+    const handleGuestResendOtp = async () => {
+        setGuestResending(true);
+        setGuestError("");
+        try {
+            const response = await fetchApi("/users/guest-checkout/resend-otp", {
+                method: "POST",
+                credentials: "include",
+                body: JSON.stringify({ email: guestForm.email.trim(), phone: guestForm.phone.trim() }),
+            });
+            if (response.success) {
+                toast.success("A new code has been sent.");
+            }
+        } catch (err) {
+            console.error("Resend OTP error:", err);
+            toast.error(err.message || "Could not resend the code. Please try again.");
+        } finally {
+            setGuestResending(false);
+        }
+    };
+
+    const handleGuestEditDetails = () => {
+        // Let them go back and correct the email/phone rather than being
+        // stuck waiting on a code for an address that was a typo.
+        setGuestVerification(null);
+        setGuestOtp("");
+        setGuestError("");
     };
 
     useEffect(() => {
@@ -373,7 +546,233 @@ export default function CheckoutPage() {
         }
     };
 
-    if (authLoading || !isAuthenticated || loadingAddresses) {
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
+                <div className="w-8 h-8 border border-black/10 border-t-black rounded-full animate-spin" />
+                <p className="text-[10px] text-black/30 uppercase tracking-[0.2em] font-medium">Loading Checkout</p>
+            </div>
+        );
+    }
+
+    // Guest (not signed in): collect name/email/phone/address right here.
+    // Submitting creates or reuses an account behind the scenes and signs the
+    // browser in, after which this same page continues as normal checkout.
+    if (!isAuthenticated) {
+        return (
+            <div className="min-h-screen bg-white py-10 sm:py-16 px-4">
+                <div className="max-w-lg mx-auto">
+                    <Link href="/cart" className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-black/30 hover:text-black transition-colors mb-6">
+                        <ArrowLeft className="h-3 w-3" strokeWidth={1.5} />
+                        Back to Cart
+                    </Link>
+                    <h1 className="text-2xl sm:text-3xl font-light text-black tracking-tight mb-1">Checkout</h1>
+                    <p className="text-[11px] text-black/30 mb-8 uppercase tracking-widest">
+                        {guestVerification ? "Verify it's you" : "Enter your details to continue"}
+                    </p>
+
+                    {guestError && (
+                        <div className="mb-6 p-4 bg-red-50/50 border border-red-100 rounded-lg flex items-start gap-3 text-xs text-red-600">
+                            <AlertCircle className="flex-shrink-0 mt-0.5 h-4 w-4" />
+                            <p>{guestError}</p>
+                        </div>
+                    )}
+
+                    {guestVerification ? (
+                        // Existing account detected — require the emailed code before
+                        // signing in, instead of trusting the email/phone alone.
+                        <form onSubmit={handleGuestOtpSubmit} className="space-y-5">
+                            <div className="bg-white border border-black/5 rounded-lg p-5 sm:p-6 space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-black/[0.03] border border-black/5 flex items-center justify-center flex-shrink-0">
+                                        <CheckCircle className="h-4 w-4 text-black/40" strokeWidth={1.5} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-sm text-black font-medium">An account already exists</h2>
+                                        <p className="text-[11px] text-black/40 leading-relaxed mt-1">
+                                            We&apos;ve sent a 6-digit code to{" "}
+                                            <span className="text-black/70 font-medium">{guestVerification.maskedEmail}</span>.
+                                            Enter it below to continue as this account — your saved address and order history stay with it.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Verification Code</label>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={6}
+                                        required
+                                        autoFocus
+                                        value={guestOtp}
+                                        onChange={(e) => setGuestOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-lg tracking-[0.3em] text-center font-medium focus:outline-none focus:border-black/30"
+                                        placeholder="••••••"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px]">
+                                    <button
+                                        type="button"
+                                        onClick={handleGuestEditDetails}
+                                        className="text-black/40 hover:text-black transition-colors underline underline-offset-2"
+                                    >
+                                        Edit details
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleGuestResendOtp}
+                                        disabled={guestResending}
+                                        className="text-black/40 hover:text-black transition-colors underline underline-offset-2 disabled:opacity-40"
+                                    >
+                                        {guestResending ? "Sending…" : "Resend code"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={guestSubmitting || guestOtp.length !== 6}
+                                className="w-full bg-black text-white text-[10px] uppercase tracking-[0.2em] font-medium py-3.5 rounded-md hover:bg-black/80 transition-all duration-300 disabled:opacity-40 active:scale-[0.99] flex items-center justify-center gap-2"
+                            >
+                                {guestSubmitting ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Verifying…
+                                    </>
+                                ) : (
+                                    "Verify & Continue"
+                                )}
+                            </button>
+                        </form>
+                    ) : (
+                    <form onSubmit={handleGuestCheckoutSubmit} className="space-y-5">
+                        <div className="bg-white border border-black/5 rounded-lg p-5 sm:p-6 space-y-4">
+                            <h2 className="text-sm uppercase tracking-[0.15em] text-black font-medium pb-3 border-b border-black/5">
+                                Contact Details
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="sm:col-span-2">
+                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Full Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={guestForm.name}
+                                        onChange={(e) => handleGuestFormChange("name", e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-sm focus:outline-none focus:border-black/30"
+                                        placeholder="Your full name"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Email</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={guestForm.email}
+                                        onChange={(e) => handleGuestFormChange("email", e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-sm focus:outline-none focus:border-black/30"
+                                        placeholder="you@example.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Phone</label>
+                                    <input
+                                        type="tel"
+                                        required
+                                        value={guestForm.phone}
+                                        onChange={(e) => handleGuestFormChange("phone", e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-sm focus:outline-none focus:border-black/30"
+                                        placeholder="10-digit mobile number"
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-black/30 leading-relaxed">
+                                Already have an account with this email or phone? We&apos;ll sign you in automatically — no password needed here.
+                            </p>
+                        </div>
+
+                        <div className="bg-white border border-black/5 rounded-lg p-5 sm:p-6 space-y-4">
+                            <h2 className="text-sm uppercase tracking-[0.15em] text-black font-medium pb-3 border-b border-black/5 flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-black/40" strokeWidth={1.5} />
+                                Shipping Address
+                            </h2>
+                            <div>
+                                <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Street Address</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={guestForm.street}
+                                    onChange={(e) => handleGuestFormChange("street", e.target.value)}
+                                    className="w-full px-3 py-2.5 border border-black/10 rounded-md text-sm focus:outline-none focus:border-black/30"
+                                    placeholder="House no., street, area"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">City</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={guestForm.city}
+                                        onChange={(e) => handleGuestFormChange("city", e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-sm focus:outline-none focus:border-black/30"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">State</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={guestForm.state}
+                                        onChange={(e) => handleGuestFormChange("state", e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-sm focus:outline-none focus:border-black/30"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Pincode</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={guestForm.postalCode}
+                                        onChange={(e) => handleGuestFormChange("postalCode", e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-sm focus:outline-none focus:border-black/30"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Country</label>
+                                    <input
+                                        type="text"
+                                        value={guestForm.country}
+                                        onChange={(e) => handleGuestFormChange("country", e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-sm focus:outline-none focus:border-black/30"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={guestSubmitting}
+                            className="w-full bg-black text-white text-[10px] uppercase tracking-[0.2em] font-medium py-3.5 rounded-md hover:bg-black/80 transition-all duration-300 disabled:opacity-40 active:scale-[0.99] flex items-center justify-center gap-2"
+                        >
+                            {guestSubmitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Continuing…
+                                </>
+                            ) : (
+                                "Continue to Payment"
+                            )}
+                        </button>
+                    </form>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    if (loadingAddresses) {
         return (
             <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
                 <div className="w-8 h-8 border border-black/10 border-t-black rounded-full animate-spin" />

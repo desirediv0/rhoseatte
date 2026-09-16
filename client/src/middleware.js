@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 // Define private routes that require authentication.
 // NOTE: /wishlist and /cart are intentionally NOT here — guests get a
 // localStorage cart/wishlist that syncs to their account on login.
-const privateRoutes = ["/profile", "/checkout", "/orders", "/account"];
+// /checkout is also NOT here — an unauthenticated visitor sees a guest
+// details form there (Shopify-style) instead of being bounced to /auth.
+const privateRoutes = ["/profile", "/orders", "/account"];
 
 // Define auth routes that should redirect to dashboard if already logged in
 const authRoutes = [
