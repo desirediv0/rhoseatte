@@ -47,7 +47,10 @@ function AuthForm() {
   useEffect(() => { setActiveTab(tabFromUrl); }, [tabFromUrl]);
   useEffect(() => {
     if (isAuthenticated) {
-      let target = redirect ? decodeURIComponent(redirect) : "/";
+      // No callback (plain /auth visit, or /login → /auth with nothing to
+      // return to) should land on the account page — same destination the
+      // navbar's own Account link uses — not the homepage.
+      let target = redirect ? decodeURIComponent(redirect) : "/account";
       // Normalise "checkout" -> "/checkout" so an already-logged-in user landing
       // here (e.g. bounced by a stale check) goes to the page they wanted, not home.
       if (target && !target.startsWith("/")) target = `/${target}`;
