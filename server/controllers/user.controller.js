@@ -273,8 +273,8 @@ export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (existingUser) {
-    if (!existingUser.isActive) {
+  const sendCheckoutLoginOtp = async (account) => {
+    if (!account.isActive) {
       throw new ApiError(
         403,
         "This account has been deactivated. Please contact support."
@@ -291,7 +291,7 @@ export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
     otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
 
     await prisma.user.update({
-      where: { id: existingUser.id },
+      where: { id: account.id },
       data: {
         checkoutLoginOtp: otpCode,
         checkoutLoginOtpExpiry: otpExpiry,
@@ -304,7 +304,7 @@ export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
     let emailSent = false;
     try {
       await sendEmail({
-        email: existingUser.email,
+        email: account.email,
         subject: "Your sign-in code — rhoseatte checkout",
         html: getEmailOtpTemplate(otpCode, 10),
       });
@@ -313,9 +313,9 @@ export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
       console.error("Error sending guest-checkout login OTP email:", error);
     }
 
-    const maskedEmail = existingUser.email.replace(
+    const maskedEmail = account.email.replace(
       /^(.{2}).*(@.*)$/,
-      (_, first, domain) => `${first}${"*".repeat(Math.max(3, existingUser.email.indexOf("@") - 2))}${domain}`
+      (_, first, domain) => `${first}${"*".repeat(Math.max(3, account.email.indexOf("@") - 2))}${domain}`
     );
 
     const responsePayload = {
@@ -327,6 +327,11 @@ export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
       responsePayload.debugOtp = otpCode;
     }
 
+    return responsePayload;
+  };
+
+  if (existingUser) {
+    const responsePayload = await sendCheckoutLoginOtp(existingUser);
     return res.status(200).json(
       new ApiResponsive(
         200,
@@ -343,33 +348,56 @@ export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
     return `REF${shortId}${random}`;
   };
 
-  const newUser = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        name,
-        email: normalizedEmail,
-        phone: normalizedPhone,
-        password: null, // No password yet — can be set later from Account settings.
-        otpVerified: true, // Skip signup email verification so checkout completes immediately.
-      },
-    });
+  let newUser;
+  try {
+    newUser = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name,
+          email: normalizedEmail,
+          phone: normalizedPhone,
+          password: null, // No password yet — can be set later from Account settings.
+          otpVerified: true, // Skip signup email verification so checkout completes immediately.
+        },
+      });
 
-    let referralCode = generateUserReferralCode(created.id);
-    let codeTaken = true;
-    while (codeTaken) {
-      const existing = await tx.user.findUnique({ where: { referralCode } });
-      if (!existing) {
-        codeTaken = false;
-      } else {
-        referralCode = generateUserReferralCode(created.id + Date.now());
+      let referralCode = generateUserReferralCode(created.id);
+      let codeTaken = true;
+      while (codeTaken) {
+        const existing = await tx.user.findUnique({ where: { referralCode } });
+        if (!existing) {
+          codeTaken = false;
+        } else {
+          referralCode = generateUserReferralCode(created.id + Date.now());
+        }
+      }
+
+      return tx.user.update({
+        where: { id: created.id },
+        data: { referralCode },
+      });
+    });
+  } catch (error) {
+    // Double-submit race: another concurrent request created this exact
+    // account a moment ago. Fall back to the existing-account OTP flow
+    // instead of surfacing a raw 500 — the account now genuinely exists.
+    if (error.code === "P2002") {
+      const raceWinner = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (raceWinner) {
+        const responsePayload = await sendCheckoutLoginOtp(raceWinner);
+        return res.status(200).json(
+          new ApiResponsive(
+            200,
+            responsePayload,
+            "An account already exists for these details. We've emailed a sign-in code to continue."
+          )
+        );
       }
     }
-
-    return tx.user.update({
-      where: { id: created.id },
-      data: { referralCode },
-    });
-  });
+    throw error;
+  }
 
   const savedAddress = await saveOrReuseAddress(
     newUser.id,
