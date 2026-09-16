@@ -43,7 +43,7 @@ function VerifyOtpContent() {
     try {
       await verifyOtp(email, otp);
       toast.success("Verified! Logging you in...");
-      setTimeout(() => router.push("/"), 500);
+      setTimeout(() => router.push("/account"), 500);
     } catch (err) {
       toast.error(err.message || "Failed to verify OTP");
     } finally {

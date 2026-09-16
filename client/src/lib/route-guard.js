@@ -84,8 +84,9 @@ export function RouteGuard({ children }) {
 
                 // Honour a returnUrl/redirect param so a logged-in user who lands
                 // on /auth (e.g. via a stale checkout redirect) ends up where they
-                // were headed, not on the home page.
-                let target = "/";
+                // were headed. With no callback, send them to their account (same
+                // destination the navbar's own Account link uses) rather than home.
+                let target = "/account";
                 const rt =
                     searchParams?.get("returnUrl") || searchParams?.get("redirect");
                 if (rt) {

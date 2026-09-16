@@ -205,7 +205,10 @@ function LoginForm({ onSwitch, redirect }) {
         returnUrl = decodeURIComponent(returnUrl);
         if (!returnUrl.startsWith("/")) returnUrl = `/${returnUrl}`;
       }
-      setTimeout(() => router.push(returnUrl || "/"), 300);
+      // A plain /login with no callback (i.e. not a bounce from a protected
+      // page or checkout) should land the user on their account, not the
+      // homepage — that's where the navbar's own "Account" link goes.
+      setTimeout(() => router.push(returnUrl || "/account"), 300);
     } catch (error) {
       const msg = error.message || "Login failed.";
       setErrorMsg(msg);

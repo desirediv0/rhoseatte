@@ -39,12 +39,14 @@ export function middleware(request) {
 
     // If accessing an auth route while already authenticated, honour a
     // returnUrl/redirect param (so a bounced checkout link still lands on
-    // /checkout), otherwise send them to their account.
+    // /checkout), otherwise send them to their account. /account is the
+    // canonical account page (what the navbar's Account link points to) —
+    // keep this in sync with route-guard.js and app/auth/page.js.
     if (isAuthRoute && isAuthenticated && !pathname.includes("verify-email")) {
         const rt =
             request.nextUrl.searchParams.get("returnUrl") ||
             request.nextUrl.searchParams.get("redirect");
-        let target = "/profile";
+        let target = "/account";
         if (rt) {
             try {
                 const decoded = decodeURIComponent(rt);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { DynamicIcon } from "./dynamic-icon";
 
@@ -10,12 +10,13 @@ import { DynamicIcon } from "./dynamic-icon";
 export function ProtectedRoute({ children }) {
     const { isAuthenticated, loading } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         if (!loading && !isAuthenticated) {
-            router.replace("/auth");
+            router.replace(`/auth?returnUrl=${encodeURIComponent(pathname)}`);
         }
-    }, [isAuthenticated, loading, router]);
+    }, [isAuthenticated, loading, router, pathname]);
 
     // Show loading screen while checking authentication
     if (loading) {
