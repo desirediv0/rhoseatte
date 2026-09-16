@@ -9,7 +9,7 @@ import Link from "next/link";
 import { formatPrice } from "@/lib/products";
 
 function ProfileContent() {
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, loading, logout } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
@@ -28,10 +28,21 @@ function ProfileContent() {
         router.push(`/profile?tab=${tabId}`, { scroll: false });
     };
 
-    if (!isAuthenticated) {
-        if (typeof window !== "undefined") {
-            router.push("/auth");
+    // Don't redirect while the initial session check is still in flight —
+    // isAuthenticated is false during that window even for a logged-in user
+    // (it's `!loading && !!user`), so redirecting on it alone bounced
+    // genuinely authenticated visitors straight to /auth on first render.
+    useEffect(() => {
+        if (!loading && !isAuthenticated) {
+            router.replace("/auth?returnUrl=%2Fprofile");
         }
+    }, [loading, isAuthenticated, router]);
+
+    if (loading) {
+        return null;
+    }
+
+    if (!isAuthenticated) {
         return null;
     }
 
