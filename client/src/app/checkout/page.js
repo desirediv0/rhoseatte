@@ -38,7 +38,7 @@ const getImageUrl = (image) => {
 export default function CheckoutPage() {
     const { isAuthenticated, user, loading: authLoading, refreshUser } = useAuth();
     const router = useRouter();
-    const { cart, coupon, getCartTotals, clearCart } = useCart();
+    const { cart, coupon, getCartTotals, clearCart, loading: cartLoading, mergeProgress } = useCart();
     const [addresses, setAddresses] = useState([]);
     const [selectedAddressId, setSelectedAddressId] = useState("");
     const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -107,10 +107,17 @@ export default function CheckoutPage() {
 
     useEffect(() => {
         if (authLoading) return;
+        // Right after guest checkout signs the browser in, the cart context
+        // still has to fetch the server cart and merge the guest cart into
+        // it (see cart-context.js) — cart.items is briefly [] during that
+        // window. Wait for it to settle (cartLoading false, no merge in
+        // progress) before treating the cart as genuinely empty, otherwise
+        // this bounces a guest who just signed in straight back to /cart.
+        if (cartLoading || mergeProgress) return;
         if (isAuthenticated && cart.items?.length === 0 && !orderCreated) {
             router.push("/cart");
         }
-    }, [authLoading, isAuthenticated, cart, router, orderCreated]);
+    }, [authLoading, isAuthenticated, cart, router, orderCreated, cartLoading, mergeProgress]);
 
     useEffect(() => {
         const fetchPaymentSettings = async () => {
