@@ -58,6 +58,12 @@ export default function CheckoutPage() {
     });
     const [guestSubmitting, setGuestSubmitting] = useState(false);
     const [guestError, setGuestError] = useState("");
+    // Step 1 only asks for name/email/phone. If the server reports this is a
+    // brand-new account (no saved addresses to reuse), we reveal the address
+    // fields on the same form for step 2 instead of forcing an address up
+    // front — an existing account signs straight in and picks/adds from its
+    // real saved addresses further down the page instead.
+    const [guestNeedsAddress, setGuestNeedsAddress] = useState(false);
     // Set once the server tells us these details belong to an existing
     // account — switches the form to "enter the code we emailed you" instead
     // of silently signing into someone else's account.
@@ -185,6 +191,8 @@ export default function CheckoutPage() {
 
     // Client-side validation mirroring what the server enforces — catches
     // obvious mistakes immediately instead of round-tripping to the API.
+    // Address fields only matter once we know this is a brand-new account
+    // (guestNeedsAddress) — an existing account never needs them here.
     const validateGuestForm = () => {
         const { name, email, phone, street, city, state, postalCode } = guestForm;
         if (!name.trim()) return "Please enter your full name.";
@@ -195,22 +203,26 @@ export default function CheckoutPage() {
         if (digitsOnly.length < 10) {
             return "Please enter a valid phone number (at least 10 digits).";
         }
-        if (!street.trim() || !city.trim() || !state.trim()) {
-            return "Please fill in your complete shipping address.";
-        }
-        if (!/^\d{4,10}$/.test(postalCode.trim())) {
-            return "Please enter a valid postal/pincode.";
+        if (guestNeedsAddress) {
+            if (!street.trim() || !city.trim() || !state.trim()) {
+                return "Please fill in your complete shipping address.";
+            }
+            if (!/^\d{4,10}$/.test(postalCode.trim())) {
+                return "Please enter a valid postal/pincode.";
+            }
         }
         return null;
     };
 
     const buildGuestPayload = () => {
         const { name, email, phone, street, city, state, postalCode, country } = guestForm;
-        return {
+        const payload = {
             name: name.trim(),
             email: email.trim().toLowerCase(),
             phone: phone.trim(),
-            address: {
+        };
+        if (guestNeedsAddress) {
+            payload.address = {
                 name: name.trim(),
                 street: street.trim(),
                 city: city.trim(),
@@ -218,8 +230,9 @@ export default function CheckoutPage() {
                 postalCode: postalCode.trim(),
                 country: country.trim() || "India",
                 phone: phone.trim(),
-            },
-        };
+            };
+        }
+        return payload;
     };
 
     const handleGuestCheckoutSubmit = async (e) => {
@@ -260,6 +273,14 @@ export default function CheckoutPage() {
             }
         } catch (err) {
             console.error("Guest checkout error:", err);
+            // "A complete shipping address is required" is the server telling
+            // us this email is a brand-new account with nothing saved yet —
+            // reveal the address fields on this same form instead of a
+            // dead-end error.
+            if (!guestNeedsAddress && /shipping address is required/i.test(err.message || "")) {
+                setGuestNeedsAddress(true);
+                return;
+            }
             setGuestError(err.message || "Something went wrong. Please try again.");
         } finally {
             setGuestSubmitting(false);
@@ -545,15 +566,19 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
                             <p className="text-[10px] text-black/30 leading-relaxed">
-                                Already have an account with this email or phone? We&apos;ll sign you in automatically — no password needed here.
+                                Already have an account with this email? We&apos;ll sign you in automatically and show your saved addresses — no password needed here.
                             </p>
                         </div>
 
+                        {guestNeedsAddress && (
                         <div className="bg-white border border-black/5 rounded-lg p-5 sm:p-6 space-y-4">
                             <h2 className="text-sm uppercase tracking-[0.15em] text-black font-medium pb-3 border-b border-black/5 flex items-center gap-2">
                                 <MapPin className="h-4 w-4 text-black/40" strokeWidth={1.5} />
                                 Shipping Address
                             </h2>
+                            <p className="text-[10px] text-black/30 leading-relaxed -mt-1">
+                                First time checking out with this email — add your shipping address.
+                            </p>
                             <div>
                                 <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Street Address</label>
                                 <input
@@ -607,6 +632,7 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         <button
                             type="submit"
@@ -616,10 +642,12 @@ export default function CheckoutPage() {
                             {guestSubmitting ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Continuing…
+                                    {guestNeedsAddress ? "Continuing…" : "Checking…"}
                                 </>
-                            ) : (
+                            ) : guestNeedsAddress ? (
                                 "Continue to Payment"
+                            ) : (
+                                "Continue"
                             )}
                         </button>
                     </form>

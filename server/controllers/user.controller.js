@@ -219,16 +219,17 @@ const saveOrReuseAddress = async (userId, name, phone, address) => {
   return savedAddress;
 };
 
-const validateGuestCheckoutInput = (name, email, phone, address) => {
+const validateGuestCheckoutInput = (name, email, phone, address, { requireAddress } = {}) => {
   if (!name || !email || !phone) {
     throw new ApiError(400, "Name, email, and phone are required");
   }
   if (
-    !address ||
-    !address.street ||
-    !address.city ||
-    !address.state ||
-    !address.postalCode
+    requireAddress &&
+    (!address ||
+      !address.street ||
+      !address.city ||
+      !address.state ||
+      !address.postalCode)
   ) {
     throw new ApiError(400, "A complete shipping address is required");
   }
@@ -236,42 +237,42 @@ const validateGuestCheckoutInput = (name, email, phone, address) => {
 
 /**
  * Guest checkout, step 1 (Shopify-style): the customer fills name/email/phone
- * + shipping address directly on the checkout page — no separate sign-up or
- * login screen is shown up front.
+ * directly on the checkout page — no separate sign-up or login screen is
+ * shown up front.
  *
  *  - New email (no matching account): a new account is created on the spot —
  *    no password, no OTP-gated email verification — so checkout completes in
  *    one step, and the browser is immediately logged in (same cookies as
- *    normal login/register).
+ *    normal login/register). A shipping address is required in this case
+ *    since the new account has nothing saved yet.
  *  - Email matches an existing account: signed straight into that account
- *    with the same cookies, no OTP step.
+ *    with the same cookies, no OTP step, and no address required — the
+ *    client instead shows that account's saved addresses to pick from (or
+ *    add a new one), exactly like a normal authenticated checkout. This
+ *    avoids creating duplicate/near-duplicate addresses every time the same
+ *    person checks out as a "guest".
  */
 export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
   const { name, email, phone, address } = req.body;
-  validateGuestCheckoutInput(name, email, phone, address);
 
-  const normalizedEmail = String(email).toLowerCase().trim();
-  const normalizedPhone = String(phone).trim();
+  const normalizedEmail = String(email || "").toLowerCase().trim();
+  const normalizedPhone = String(phone || "").trim();
 
   const existingUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
   });
 
-  // Known account for this email — sign straight in, no OTP step.
+  // Known account for this email — sign straight in, no OTP step, no address
+  // required. The client fetches this account's saved addresses afterward.
   if (existingUser) {
+    validateGuestCheckoutInput(name, email, phone, address, { requireAddress: false });
+
     if (!existingUser.isActive) {
       throw new ApiError(
         403,
         "This account has been deactivated. Please contact support."
       );
     }
-
-    const savedAddress = await saveOrReuseAddress(
-      existingUser.id,
-      name,
-      normalizedPhone,
-      address
-    );
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
       existingUser.id
@@ -289,13 +290,15 @@ export const guestCheckoutInit = asyncHandler(async (req, res, next) => {
         {
           requiresVerification: false,
           user: userWithoutSensitive,
-          address: savedAddress,
           isNewUser: false,
+          hasExistingAccount: true,
         },
         "Signed in to your existing account"
       )
     );
   }
+
+  validateGuestCheckoutInput(name, email, phone, address, { requireAddress: true });
 
   // No matching account — create one and sign in immediately, no extra step.
   const generateUserReferralCode = (seed) => {
