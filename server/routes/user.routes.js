@@ -3,8 +3,6 @@ import {
   registerUser,
   loginUser,
   guestCheckoutInit,
-  guestCheckoutVerifyOtp,
-  guestCheckoutResendOtp,
   logoutUser,
   refreshAccessToken,
   verifyEmail,
@@ -44,15 +42,10 @@ const router = express.Router();
 router.post("/register", otpRateLimiter, registerUser);
 router.post("/login", loginUser);
 // Guest checkout: creates/logs into an account from the checkout form itself,
-// no separate register/login screen. New details -> account created and
-// signed in immediately. Details matching an existing account -> a one-time
-// code is emailed to that account and must be verified before sign-in
-// (guestCheckoutVerifyOtp) — this endpoint alone never logs into an existing
-// account. All rate-limited like registration/OTP since they can create
-// accounts or send emails.
+// no separate register/login screen and no OTP step. New email -> account
+// created and signed in immediately. Email matching an existing account ->
+// signed straight into it. Rate-limited since it can create accounts.
 router.post("/guest-checkout/init", otpRateLimiter, guestCheckoutInit);
-router.post("/guest-checkout/verify", otpRateLimiter, guestCheckoutVerifyOtp);
-router.post("/guest-checkout/resend-otp", otpRateLimiter, guestCheckoutResendOtp);
 router.post("/logout", logoutUser);
 router.post("/refresh-token", refreshAccessToken);
 router.get("/verify-email/:token", verifyEmail); // legacy link-based, kept for backward compatibility

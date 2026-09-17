@@ -61,9 +61,6 @@ export default function CheckoutPage() {
     // Set once the server tells us these details belong to an existing
     // account — switches the form to "enter the code we emailed you" instead
     // of silently signing into someone else's account.
-    const [guestVerification, setGuestVerification] = useState(null); // { maskedEmail } | null
-    const [guestOtp, setGuestOtp] = useState("");
-    const [guestResending, setGuestResending] = useState(false);
     const [paymentSettings, setPaymentSettings] = useState({
         cashEnabled: false,
         razorpayEnabled: true,
@@ -247,19 +244,11 @@ export default function CheckoutPage() {
                 throw new Error(response.message || "Could not continue to checkout");
             }
 
-            if (response.data?.requiresVerification) {
-                // An account already exists for this email/phone — don't sign
-                // into it yet. Show the "enter the code we emailed you" step.
-                setGuestVerification({ maskedEmail: response.data.maskedEmail });
-                toast.info(response.message || "We've emailed you a sign-in code.");
-                if (response.data?.debugOtp) {
-                    // Dev-only convenience when SMTP isn't configured locally.
-                    console.info("[dev] Checkout sign-in code:", response.data.debugOtp);
-                }
-                return;
-            }
-
-            toast.success("Account created — continuing to payment");
+            toast.success(
+                response.data?.isNewUser
+                    ? "Account created — continuing to payment"
+                    : "Signed in — continuing to payment"
+            );
 
             // Bring the rest of the app's auth state up to date immediately
             // (isAuthenticated etc.), so this page's own effects (address
@@ -275,69 +264,6 @@ export default function CheckoutPage() {
         } finally {
             setGuestSubmitting(false);
         }
-    };
-
-    const handleGuestOtpSubmit = async (e) => {
-        e.preventDefault();
-        setGuestError("");
-
-        if (!/^\d{6}$/.test(guestOtp.trim())) {
-            setGuestError("Please enter the 6-digit code from your email.");
-            return;
-        }
-
-        setGuestSubmitting(true);
-        try {
-            const response = await fetchApi("/users/guest-checkout/verify", {
-                method: "POST",
-                credentials: "include",
-                body: JSON.stringify({ ...buildGuestPayload(), otp: guestOtp.trim() }),
-            });
-
-            if (!response.success) {
-                throw new Error(response.message || "Verification failed");
-            }
-
-            toast.success("Welcome back — continuing to payment");
-            await refreshUser();
-
-            if (response.data?.address?.id) {
-                setSelectedAddressId(response.data.address.id);
-            }
-        } catch (err) {
-            console.error("Guest checkout OTP verify error:", err);
-            setGuestError(err.message || "Incorrect or expired code. Please try again.");
-        } finally {
-            setGuestSubmitting(false);
-        }
-    };
-
-    const handleGuestResendOtp = async () => {
-        setGuestResending(true);
-        setGuestError("");
-        try {
-            const response = await fetchApi("/users/guest-checkout/resend-otp", {
-                method: "POST",
-                credentials: "include",
-                body: JSON.stringify({ email: guestForm.email.trim(), phone: guestForm.phone.trim() }),
-            });
-            if (response.success) {
-                toast.success("A new code has been sent.");
-            }
-        } catch (err) {
-            console.error("Resend OTP error:", err);
-            toast.error(err.message || "Could not resend the code. Please try again.");
-        } finally {
-            setGuestResending(false);
-        }
-    };
-
-    const handleGuestEditDetails = () => {
-        // Let them go back and correct the email/phone rather than being
-        // stuck waiting on a code for an address that was a typo.
-        setGuestVerification(null);
-        setGuestOtp("");
-        setGuestError("");
     };
 
     useEffect(() => {
@@ -568,7 +494,7 @@ export default function CheckoutPage() {
                     </Link>
                     <h1 className="text-2xl sm:text-3xl font-light text-black tracking-tight mb-1">Checkout</h1>
                     <p className="text-[11px] text-black/30 mb-8 uppercase tracking-widest">
-                        {guestVerification ? "Verify it's you" : "Enter your details to continue"}
+                        Enter your details to continue
                     </p>
 
                     {guestError && (
@@ -578,75 +504,6 @@ export default function CheckoutPage() {
                         </div>
                     )}
 
-                    {guestVerification ? (
-                        // Existing account detected — require the emailed code before
-                        // signing in, instead of trusting the email/phone alone.
-                        <form onSubmit={handleGuestOtpSubmit} className="space-y-5">
-                            <div className="bg-white border border-black/5 rounded-lg p-5 sm:p-6 space-y-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-black/[0.03] border border-black/5 flex items-center justify-center flex-shrink-0">
-                                        <CheckCircle className="h-4 w-4 text-black/40" strokeWidth={1.5} />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-sm text-black font-medium">An account already exists</h2>
-                                        <p className="text-[11px] text-black/40 leading-relaxed mt-1">
-                                            We&apos;ve sent a 6-digit code to{" "}
-                                            <span className="text-black/70 font-medium">{guestVerification.maskedEmail}</span>.
-                                            Enter it below to continue as this account — your saved address and order history stay with it.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] uppercase tracking-wider text-black/40 mb-1.5">Verification Code</label>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        maxLength={6}
-                                        required
-                                        autoFocus
-                                        value={guestOtp}
-                                        onChange={(e) => setGuestOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                                        className="w-full px-3 py-2.5 border border-black/10 rounded-md text-lg tracking-[0.3em] text-center font-medium focus:outline-none focus:border-black/30"
-                                        placeholder="••••••"
-                                    />
-                                </div>
-
-                                <div className="flex items-center justify-between text-[11px]">
-                                    <button
-                                        type="button"
-                                        onClick={handleGuestEditDetails}
-                                        className="text-black/40 hover:text-black transition-colors underline underline-offset-2"
-                                    >
-                                        Edit details
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleGuestResendOtp}
-                                        disabled={guestResending}
-                                        className="text-black/40 hover:text-black transition-colors underline underline-offset-2 disabled:opacity-40"
-                                    >
-                                        {guestResending ? "Sending…" : "Resend code"}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={guestSubmitting || guestOtp.length !== 6}
-                                className="w-full bg-black text-white text-[10px] uppercase tracking-[0.2em] font-medium py-3.5 rounded-md hover:bg-black/80 transition-all duration-300 disabled:opacity-40 active:scale-[0.99] flex items-center justify-center gap-2"
-                            >
-                                {guestSubmitting ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Verifying…
-                                    </>
-                                ) : (
-                                    "Verify & Continue"
-                                )}
-                            </button>
-                        </form>
-                    ) : (
                     <form onSubmit={handleGuestCheckoutSubmit} className="space-y-5">
                         <div className="bg-white border border-black/5 rounded-lg p-5 sm:p-6 space-y-4">
                             <h2 className="text-sm uppercase tracking-[0.15em] text-black font-medium pb-3 border-b border-black/5">
@@ -766,7 +623,6 @@ export default function CheckoutPage() {
                             )}
                         </button>
                     </form>
-                    )}
                 </div>
             </div>
         );
