@@ -853,6 +853,9 @@
     "filters": {
       "search_placeholder": "按订单号或客户搜索...",
       "all_status": "所有状态",
+      "all_payments": "所有支付方式",
+      "cod": "货到付款",
+      "prepaid": "预付",
       "clear": "清除筛选"
     },
     "status": {

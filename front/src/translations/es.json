@@ -868,6 +868,9 @@
     "filters": {
       "search_placeholder": "Buscar por número de pedido o cliente...",
       "all_status": "Todos los estados",
+      "all_payments": "Todos los pagos",
+      "cod": "Contra reembolso",
+      "prepaid": "Prepago",
       "clear": "Borrar filtros"
     },
     "status": {

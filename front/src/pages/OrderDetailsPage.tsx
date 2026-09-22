@@ -637,7 +637,8 @@ export default function OrderDetailsPage() {
               orderDetails.status !== "CANCELLED" &&
               orderDetails.status !== "REFUNDED" && (
                 <div className="flex flex-wrap gap-2">
-                  {orderDetails.status === "PENDING" && (
+                  {(orderDetails.status === "PENDING" ||
+                    orderDetails.status === "PAID") && (
                     <Button
                       size="sm"
                       variant="outline"

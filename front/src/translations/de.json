@@ -853,6 +853,9 @@
     "filters": {
       "search_placeholder": "Nach Bestellnummer oder Kunden suchen...",
       "all_status": "Alle Status",
+      "all_payments": "Alle Zahlungen",
+      "cod": "Nachnahme",
+      "prepaid": "Vorausbezahlt",
       "clear": "Filter löschen"
     },
     "status": {

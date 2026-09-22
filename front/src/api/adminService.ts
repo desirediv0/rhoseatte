@@ -503,6 +503,7 @@ export const orders = {
       page?: number;
       limit?: number;
       status?: string;
+      paymentMethod?: string;
       search?: string;
       sortBy?: string;
       order?: "asc" | "desc";

@@ -789,6 +789,9 @@
     "filters": {
       "search_placeholder": "注文番号または顧客で検索...",
       "all_status": "すべてのステータス",
+      "all_payments": "すべての支払い",
+      "cod": "代金引換",
+      "prepaid": "前払い",
       "clear": "フィルターをクリア"
     },
     "status": {

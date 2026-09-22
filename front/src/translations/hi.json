@@ -876,6 +876,9 @@
     "filters": {
       "search_placeholder": "ऑर्डर नंबर या ग्राहक द्वारा खोजें...",
       "all_status": "सभी स्थितियां",
+      "all_payments": "सभी भुगतान",
+      "cod": "COD",
+      "prepaid": "प्रीपेड",
       "clear": "फ़िल्टर साफ़ करें"
     },
     "status": {

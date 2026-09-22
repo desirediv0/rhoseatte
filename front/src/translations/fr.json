@@ -868,6 +868,9 @@
     "filters": {
       "search_placeholder": "Rechercher par numéro de commande ou client...",
       "all_status": "Tous les statuts",
+      "all_payments": "Tous les paiements",
+      "cod": "Paiement à la livraison",
+      "prepaid": "Prépayé",
       "clear": "Effacer les filtres"
     },
     "status": {

@@ -31,6 +31,7 @@ export default function OrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedPayment, setSelectedPayment] = useState("");
 
   // Fetch orders
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function OrdersPage() {
           limit: 10,
           ...(searchQuery && { search: searchQuery }),
           ...(selectedStatus && { status: selectedStatus }),
+          ...(selectedPayment && { paymentMethod: selectedPayment }),
         };
 
         const response = await orders.getOrders(params);
@@ -61,7 +63,7 @@ export default function OrdersPage() {
     };
 
     fetchOrders();
-  }, [currentPage, searchQuery, selectedStatus, t]);
+  }, [currentPage, searchQuery, selectedStatus, selectedPayment, t]);
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
@@ -225,12 +227,25 @@ export default function OrdersPage() {
               <option value="RETURN_APPROVED">{t('orders.status.return_approved') || "Return Approved"}</option>
               <option value="RETURN_COMPLETED">{t('orders.status.return_completed') || "Return Completed"}</option>
             </select>
-            {(searchQuery || selectedStatus) && (
+            <select
+              value={selectedPayment}
+              onChange={(e) => {
+                setSelectedPayment(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-4 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
+            >
+              <option value="">{t('orders.filters.all_payments')}</option>
+              <option value="COD">{t('orders.filters.cod')}</option>
+              <option value="PREPAID">{t('orders.filters.prepaid')}</option>
+            </select>
+            {(searchQuery || selectedStatus || selectedPayment) && (
               <Button
                 variant="ghost"
                 onClick={() => {
                   setSearchQuery("");
                   setSelectedStatus("");
+                  setSelectedPayment("");
                   setCurrentPage(1);
                 }}
                 className="text-[#4B5563] hover:text-[#1F2937]"
@@ -286,12 +301,13 @@ export default function OrdersPage() {
                   ? t('orders.list.try_adjusting')
                   : t('orders.list.empty_desc')}
             </p>
-            {(selectedStatus || searchQuery) && (
+            {(selectedStatus || searchQuery || selectedPayment) && (
               <Button
                 variant="outline"
                 className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
                 onClick={() => {
                   setSelectedStatus("");
+                  setSelectedPayment("");
                   setSearchQuery("");
                   setCurrentPage(1);
                 }}

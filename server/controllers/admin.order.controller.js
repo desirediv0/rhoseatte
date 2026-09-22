@@ -14,6 +14,7 @@ export const getOrders = asyncHandler(async (req, res, next) => {
     limit = 10,
     search = "",
     status,
+    paymentMethod,
     sort = "createdAt",
     order = "desc",
     startDate,
@@ -38,6 +39,10 @@ export const getOrders = asyncHandler(async (req, res, next) => {
       ],
     }),
     ...(status && { status }),
+    ...(paymentMethod === "COD" && { paymentMethod: "CASH" }),
+    ...(paymentMethod === "PREPAID" && {
+      paymentMethod: { in: ["RAZORPAY", "PHONEPE"] },
+    }),
     ...(startDate &&
       endDate && {
       createdAt: {
