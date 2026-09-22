@@ -280,6 +280,28 @@ export default function OrdersPage() {
                 {label} ({count})
               </Button>
             ))}
+            <div className="w-px h-9 bg-[#E5E7EB] mx-1" />
+            {[
+              { value: "COD", label: t('orders.filters.cod') },
+              { value: "PREPAID", label: t('orders.filters.prepaid') },
+            ].map(({ value, label }) => (
+              <Button
+                key={value}
+                variant={selectedPayment === value ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "h-9 text-xs",
+                  selectedPayment === value
+                    ? ""
+                    : "border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                )}
+                onClick={() =>
+                  setSelectedPayment(selectedPayment === value ? "" : value)
+                }
+              >
+                {label}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -349,6 +371,18 @@ export default function OrdersPage() {
                         )}
                       >
                         {getStatusLabel(order.status)}
+                      </Badge>
+                      <Badge
+                        className={cn(
+                          "text-xs font-medium border",
+                          order.paymentMethod === "CASH"
+                            ? "bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]"
+                            : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
+                        )}
+                      >
+                        {order.paymentMethod === "CASH"
+                          ? t('orders.filters.cod')
+                          : t('orders.filters.prepaid')}
                       </Badge>
                     </div>
 
