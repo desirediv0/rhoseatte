@@ -214,15 +214,51 @@ export async function schedulePickup(shipmentId) {
 /**
  * Generate shipping label
  */
+/**
+ * Generate shipping label
+ * Shiprocket is picky: tries several body shapes (Postman uses string array).
+ */
 export async function generateLabel(shipmentId) {
     const id = Number(shipmentId);
-    if (!Number.isFinite(id)) {
+    if (!Number.isFinite(id) || id <= 0) {
         throw new Error(`Invalid shipment id for label: ${shipmentId}`);
     }
-    // Shiprocket expects shipment_id as string array (numeric ids return "No valid shipment ids")
-    return shiprocketRequest("/courier/generate/label", "POST", {
-        shipment_id: [String(id)],
-    });
+
+    const attempts = [
+        { shipment_id: [String(id)] },
+        { shipment_id: [id] },
+        { shipment_id: id },
+        { shipment_id: String(id) },
+    ];
+
+    let lastData = null;
+    let lastError = null;
+    for (const body of attempts) {
+        try {
+            const data = await shiprocketRequest("/courier/generate/label", "POST", body);
+            const labelUrl =
+                data?.label_url ||
+                data?.label?.label_url ||
+                data?.response?.data?.label_url ||
+                data?.response?.label_url ||
+                data?.data?.label_url;
+            console.log("Shiprocket generateLabel body:", JSON.stringify(body), "labelUrl:", labelUrl || "none", "response:", JSON.stringify(data).slice(0, 500));
+            if (labelUrl) return data;
+            lastData = data;
+            // Format accepted but no URL — don't hammer other shapes for same rejection
+            if (data?.message && /no valid shipment/i.test(String(data.message))) {
+                return data;
+            }
+        } catch (err) {
+            console.error("Shiprocket generateLabel attempt failed:", JSON.stringify(body), err?.message);
+            lastError = err;
+            if (err?.message && /no valid shipment/i.test(err.message)) {
+                return { message: err.message };
+            }
+        }
+    }
+    if (!lastData && lastError) throw lastError;
+    return lastData;
 }
 
 /**
@@ -250,6 +286,13 @@ export async function printInvoice(orderId) {
     return shiprocketRequest("/orders/print/invoice", "POST", {
         ids: [String(orderId)],
     });
+}
+
+/**
+ * Get Shiprocket order shipment details (verify shipment exists, find label_url if already generated)
+ */
+export async function getShiprocketOrderShipments(shiprocketOrderId) {
+    return shiprocketRequest(`/orders/${shiprocketOrderId}/shipment`, "GET");
 }
 
 /**
@@ -768,12 +811,19 @@ export async function processOrderForShipping(orderId, courierId = null, isManua
 
         const chosen = order.__chosenWarehouse;
 
+        // shipment_id may be number or array depending on Shiprocket response shape
+        const rawShipmentId = shiprocketResponse.shipment_id;
+        const shipmentId = Array.isArray(rawShipmentId)
+            ? rawShipmentId[0]
+            : rawShipmentId;
+        const srOrderId = shiprocketResponse.order_id;
+
         // Update order with Shiprocket details + the warehouse it shipped from
         await prisma.order.update({
             where: { id: orderId },
             data: {
-                shiprocketOrderId: shiprocketResponse.order_id,
-                shiprocketShipmentId: shiprocketResponse.shipment_id,
+                shiprocketOrderId: srOrderId,
+                shiprocketShipmentId: Number(shipmentId),
                 shiprocketStatus: "CREATED",
                 ...(chosen
                     ? {
@@ -787,7 +837,7 @@ export async function processOrderForShipping(orderId, courierId = null, isManua
 
         // Try to assign AWB (with specific courierId if provided by admin)
         try {
-            const awbResponse = await assignAWB(shiprocketResponse.shipment_id, courierId);
+            const awbResponse = await assignAWB(shipmentId, courierId);
 
             const awbCode =
                 awbResponse.response?.data?.awb_code ||

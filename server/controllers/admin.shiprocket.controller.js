@@ -23,6 +23,7 @@ import {
     addPickupLocation,
     pickWarehouseForOrder,
     registerWarehouseOnShiprocket,
+    getShiprocketOrderShipments,
 } from "../utils/shiprocket.js";
 
 // Get Shiprocket settings
@@ -663,6 +664,7 @@ export const getShippingLabel = asyncHandler(async (req, res) => {
         result?.label_url ||
         result?.label?.label_url ||
         result?.response?.data?.label_url ||
+        result?.response?.label_url ||
         result?.data?.label_url ||
         null;
 
@@ -673,6 +675,7 @@ export const getShippingLabel = asyncHandler(async (req, res) => {
             (Array.isArray(result?.not_created) && result.not_created.length
                 ? `Label not created for shipment(s): ${result.not_created.join(", ")}`
                 : null);
+        console.error("Shiprocket label failed for shipment", order.shiprocketShipmentId, "raw:", JSON.stringify(result));
         throw new ApiError(
             400,
             detail || "Shiprocket did not return a label URL"
@@ -702,6 +705,7 @@ export const downloadShippingLabel = asyncHandler(async (req, res) => {
         where: { id: orderId },
         select: {
             shiprocketShipmentId: true,
+            shiprocketOrderId: true,
             awbCode: true,
             orderNumber: true,
         },
@@ -714,7 +718,6 @@ export const downloadShippingLabel = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Order not synced to Shiprocket");
     }
 
-    // Reuse label generation logic by calling getShippingLabel-shaped flow
     let labelUrl = null;
     if (!order.awbCode) {
         try {
@@ -738,26 +741,59 @@ export const downloadShippingLabel = asyncHandler(async (req, res) => {
         }
     }
 
-    try {
-        const result = await generateLabel(order.shiprocketShipmentId);
-        labelUrl =
-            result?.label_url ||
-            result?.label?.label_url ||
-            result?.response?.data?.label_url ||
-            result?.data?.label_url ||
-            null;
-        if (!labelUrl) {
-            const detail =
-                (typeof result?.response === "string" && result.response) ||
-                result?.message ||
-                (Array.isArray(result?.not_created) && result.not_created.length
-                    ? `Label not created for shipment(s): ${result.not_created.join(", ")}`
-                    : null);
-            throw new ApiError(400, detail || "Shiprocket did not return a label URL");
+    // Pre-check: verify shipment on Shiprocket + reuse existing label if present
+    if (order.shiprocketOrderId) {
+        try {
+            const shipments = await getShiprocketOrderShipments(order.shiprocketOrderId);
+            const list = Array.isArray(shipments) ? shipments : (shipments?.data || shipments?.shipments || []);
+            console.log("Shiprocket order shipments for", order.shiprocketOrderId, ":", JSON.stringify(list).slice(0, 800));
+            const match = Array.isArray(list)
+                ? list.find((s) => Number(s.id || s.shipment_id) === Number(order.shiprocketShipmentId))
+                : null;
+            const existing =
+                match?.label_url ||
+                match?.label?.label_url ||
+                match?.label_url_path ||
+                null;
+            if (existing) {
+                labelUrl = existing;
+            }
+            if (match && match.status && /cancel/i.test(String(match.status))) {
+                throw new ApiError(400, `Shipment cancelled on Shiprocket (status: ${match.status}). Re-sync to create a new shipment.`);
+            }
+        } catch (preErr) {
+            if (preErr instanceof ApiError) throw preErr;
+            console.warn("Shiprocket shipment pre-check failed:", preErr?.message);
         }
-    } catch (error) {
-        if (error instanceof ApiError) throw error;
-        throw new ApiError(400, `Failed to generate label: ${error?.message}`);
+    }
+
+    if (!labelUrl) {
+        try {
+            const result = await generateLabel(order.shiprocketShipmentId);
+            labelUrl =
+                result?.label_url ||
+                result?.label?.label_url ||
+                result?.response?.data?.label_url ||
+                result?.response?.label_url ||
+                result?.data?.label_url ||
+                null;
+            if (!labelUrl) {
+                const detail =
+                    (typeof result?.response === "string" && result.response) ||
+                    result?.message ||
+                    (Array.isArray(result?.not_created) && result.not_created.length
+                        ? `Label not created for shipment(s): ${result.not_created.join(", ")}`
+                        : null);
+                console.error("Shiprocket label failed for shipment", order.shiprocketShipmentId, "raw:", JSON.stringify(result));
+                throw new ApiError(
+                    400,
+                    `${detail || "Shiprocket did not return a label URL"} (shipment ${order.shiprocketShipmentId})`
+                );
+            }
+        } catch (error) {
+            if (error instanceof ApiError) throw error;
+            throw new ApiError(400, `Failed to generate label: ${error?.message}`);
+        }
     }
 
     const pdfRes = await fetch(labelUrl);
