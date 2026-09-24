@@ -747,11 +747,13 @@ export const downloadShippingLabel = asyncHandler(async (req, res) => {
             result?.data?.label_url ||
             null;
         if (!labelUrl) {
-            throw new ApiError(
-                400,
+            const detail =
                 (typeof result?.response === "string" && result.response) ||
-                    "Shiprocket did not return a label URL"
-            );
+                result?.message ||
+                (Array.isArray(result?.not_created) && result.not_created.length
+                    ? `Label not created for shipment(s): ${result.not_created.join(", ")}`
+                    : null);
+            throw new ApiError(400, detail || "Shiprocket did not return a label URL");
         }
     } catch (error) {
         if (error instanceof ApiError) throw error;

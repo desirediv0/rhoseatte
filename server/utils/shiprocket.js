@@ -207,7 +207,7 @@ export async function assignAWB(shipmentId, courierId = null) {
  */
 export async function schedulePickup(shipmentId) {
     return shiprocketRequest("/courier/generate/pickup", "POST", {
-        shipment_id: [shipmentId],
+        shipment_id: [String(shipmentId)],
     });
 }
 
@@ -219,8 +219,9 @@ export async function generateLabel(shipmentId) {
     if (!Number.isFinite(id)) {
         throw new Error(`Invalid shipment id for label: ${shipmentId}`);
     }
+    // Shiprocket expects shipment_id as string array (numeric ids return "No valid shipment ids")
     return shiprocketRequest("/courier/generate/label", "POST", {
-        shipment_id: [id],
+        shipment_id: [String(id)],
     });
 }
 
@@ -229,7 +230,7 @@ export async function generateLabel(shipmentId) {
  */
 export async function generateManifest(shipmentId) {
     return shiprocketRequest("/manifests/generate", "POST", {
-        shipment_id: [shipmentId],
+        shipment_id: [String(shipmentId)],
     });
 }
 
@@ -238,7 +239,7 @@ export async function generateManifest(shipmentId) {
  */
 export async function printManifest(orderId) {
     return shiprocketRequest("/manifests/print", "POST", {
-        order_ids: [orderId],
+        order_ids: [String(orderId)],
     });
 }
 
@@ -247,7 +248,7 @@ export async function printManifest(orderId) {
  */
 export async function printInvoice(orderId) {
     return shiprocketRequest("/orders/print/invoice", "POST", {
-        ids: [orderId],
+        ids: [String(orderId)],
     });
 }
 
@@ -270,7 +271,7 @@ export async function trackByOrderId(shiprocketOrderId) {
  */
 export async function cancelShiprocketOrder(shiprocketOrderId) {
     return shiprocketRequest("/orders/cancel", "POST", {
-        ids: [shiprocketOrderId],
+        ids: [String(shiprocketOrderId)],
     });
 }
 
