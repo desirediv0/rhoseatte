@@ -595,6 +595,7 @@ export const getShippingLabel = asyncHandler(async (req, res) => {
         select: {
             shiprocketShipmentId: true,
             awbCode: true,
+            orderNumber: true,
         },
     });
 
@@ -606,32 +607,45 @@ export const getShippingLabel = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Order not synced to Shiprocket");
     }
 
+    const extractAwb = (resp) =>
+        resp?.response?.data?.awb_code ||
+        resp?.response?.awb_code ||
+        resp?.awb_code ||
+        resp?.data?.awb_code ||
+        null;
+
     // Shiprocket requires AWB before label generation. Assign if missing.
     if (!order.awbCode) {
         try {
             const awbResponse = await assignAWB(order.shiprocketShipmentId);
-            const awbCode =
-                awbResponse?.response?.data?.awb_code ||
-                awbResponse?.awb_code ||
-                null;
+            const awbCode = extractAwb(awbResponse);
             if (awbCode) {
                 await prisma.order.update({
                     where: { id: orderId },
                     data: {
-                        awbCode,
+                        awbCode: String(awbCode),
                         courierName:
                             awbResponse?.response?.data?.courier_name ||
+                            awbResponse?.response?.courier_name ||
                             awbResponse?.courier_name ||
                             undefined,
                         shiprocketStatus: "AWB_ASSIGNED",
                     },
                 });
+                order.awbCode = String(awbCode);
+            } else {
+                // Some successful assign responses omit awb_code shape — re-check later via label call
+                console.warn("AWB assign returned no awb_code for order", orderId, awbResponse);
             }
         } catch (awbError) {
-            throw new ApiError(
-                400,
-                `AWB not assigned for this shipment: ${awbError?.message || "assignment failed"}`
-            );
+            const msg = awbError?.message || "assignment failed";
+            // Already-assigned is fine — continue to label generation
+            if (!/already|assigned/i.test(msg)) {
+                throw new ApiError(
+                    400,
+                    `AWB not assigned for this shipment: ${msg}`
+                );
+            }
         }
     }
 
@@ -639,16 +653,124 @@ export const getShippingLabel = asyncHandler(async (req, res) => {
     try {
         result = await generateLabel(order.shiprocketShipmentId);
     } catch (labelError) {
-        throw new ApiError(400, `Failed to generate label: ${labelError?.message || "unknown error"}`);
+        throw new ApiError(
+            400,
+            `Failed to generate label: ${labelError?.message || "unknown error"}`
+        );
     }
 
-    if (!result?.label_url && !result?.label?.label_url) {
-        throw new ApiError(400, result?.response || "Shiprocket did not return a label URL");
+    const labelUrl =
+        result?.label_url ||
+        result?.label?.label_url ||
+        result?.response?.data?.label_url ||
+        result?.data?.label_url ||
+        null;
+
+    if (!labelUrl) {
+        const detail =
+            (typeof result?.response === "string" && result.response) ||
+            result?.message ||
+            (Array.isArray(result?.not_created) && result.not_created.length
+                ? `Label not created for shipment(s): ${result.not_created.join(", ")}`
+                : null);
+        throw new ApiError(
+            400,
+            detail || "Shiprocket did not return a label URL"
+        );
     }
 
     res.status(200).json(
-        new ApiResponsive(200, { label: result }, "Shipping label generated successfully")
+        new ApiResponsive(
+            200,
+            {
+                label: result,
+                labelUrl,
+                shipmentId: order.shiprocketShipmentId,
+                awbCode: order.awbCode,
+                orderNumber: order.orderNumber,
+            },
+            "Shipping label generated successfully"
+        )
     );
+});
+
+// Stream label PDF through server (avoids browser CORS on Shiprocket S3 URLs)
+export const downloadShippingLabel = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+            shiprocketShipmentId: true,
+            awbCode: true,
+            orderNumber: true,
+        },
+    });
+
+    if (!order) {
+        throw new ApiError(404, "Order not found");
+    }
+    if (!order.shiprocketShipmentId) {
+        throw new ApiError(400, "Order not synced to Shiprocket");
+    }
+
+    // Reuse label generation logic by calling getShippingLabel-shaped flow
+    let labelUrl = null;
+    if (!order.awbCode) {
+        try {
+            const awbResponse = await assignAWB(order.shiprocketShipmentId);
+            const awbCode =
+                awbResponse?.response?.data?.awb_code ||
+                awbResponse?.response?.awb_code ||
+                awbResponse?.awb_code ||
+                awbResponse?.data?.awb_code ||
+                null;
+            if (awbCode) {
+                await prisma.order.update({
+                    where: { id: orderId },
+                    data: { awbCode: String(awbCode), shiprocketStatus: "AWB_ASSIGNED" },
+                });
+            }
+        } catch (awbError) {
+            if (!/already|assigned/i.test(awbError?.message || "")) {
+                throw new ApiError(400, `AWB not assigned: ${awbError?.message}`);
+            }
+        }
+    }
+
+    try {
+        const result = await generateLabel(order.shiprocketShipmentId);
+        labelUrl =
+            result?.label_url ||
+            result?.label?.label_url ||
+            result?.response?.data?.label_url ||
+            result?.data?.label_url ||
+            null;
+        if (!labelUrl) {
+            throw new ApiError(
+                400,
+                (typeof result?.response === "string" && result.response) ||
+                    "Shiprocket did not return a label URL"
+            );
+        }
+    } catch (error) {
+        if (error instanceof ApiError) throw error;
+        throw new ApiError(400, `Failed to generate label: ${error?.message}`);
+    }
+
+    const pdfRes = await fetch(labelUrl);
+    if (!pdfRes.ok) {
+        throw new ApiError(502, `Failed to fetch label PDF (${pdfRes.status})`);
+    }
+
+    const buf = Buffer.from(await pdfRes.arrayBuffer());
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${order.orderNumber || orderId}-label.pdf"`
+    );
+    res.setHeader("Content-Length", String(buf.length));
+    res.send(buf);
 });
 
 // Get invoice for order
@@ -659,6 +781,7 @@ export const getOrderInvoice = asyncHandler(async (req, res) => {
         where: { id: orderId },
         select: {
             shiprocketOrderId: true,
+            orderNumber: true,
         },
     });
 
@@ -670,10 +793,40 @@ export const getOrderInvoice = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Order not synced to Shiprocket");
     }
 
-    const result = await printInvoice(order.shiprocketOrderId);
+    let result;
+    try {
+        result = await printInvoice(order.shiprocketOrderId);
+    } catch (error) {
+        throw new ApiError(
+            400,
+            `Failed to generate invoice: ${error?.message || "unknown error"}`
+        );
+    }
+
+    const invoiceUrl =
+        result?.invoice_url ||
+        result?.invoice?.invoice_url ||
+        result?.response?.data?.invoice_url ||
+        null;
+
+    if (!invoiceUrl && !result?.invoice) {
+        throw new ApiError(
+            400,
+            (typeof result?.response === "string" && result.response) ||
+                "Shiprocket did not return an invoice URL"
+        );
+    }
 
     res.status(200).json(
-        new ApiResponsive(200, { invoice: result }, "Invoice generated successfully")
+        new ApiResponsive(
+            200,
+            {
+                invoice: result,
+                invoiceUrl,
+                orderNumber: order.orderNumber,
+            },
+            "Invoice generated successfully"
+        )
     );
 });
 

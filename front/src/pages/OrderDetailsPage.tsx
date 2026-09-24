@@ -1334,19 +1334,36 @@ export default function OrderDetailsPage() {
                             variant="outline"
                             onClick={async () => {
                               try {
-                                const response = await orders.getShippingLabel(id!);
-                                if (response.data.success && response.data.data.label?.label_url) {
-                                  window.open(response.data.data.label.label_url, '_blank');
-                                } else if (response.data.success && response.data.data.label?.label?.label_url) {
-                                  window.open(response.data.data.label.label.label_url, '_blank');
-                                } else {
-                                  toast.error(response.data?.message || "Failed to generate label");
-                                }
+                                const response = await orders.downloadShippingLabel(id!);
+                                const blob = new Blob([response.data], { type: "application/pdf" });
+                                const blobUrl = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = blobUrl;
+                                a.download = `${orderDetails.orderNumber || "order"}-label.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                                toast.success("Label downloaded");
                               } catch (error) {
-                                const message =
-                                  (error as { response?: { data?: { message?: string } } })
-                                    ?.response?.data?.message;
-                                toast.error(message || "Failed to download label");
+                                let message = "Failed to download label";
+                                const err = error as {
+                                  response?: { data?: Blob | { message?: string } };
+                                  message?: string;
+                                };
+                                const data = err.response?.data;
+                                if (data && typeof data === "object" && !(data instanceof Blob) && data.message) {
+                                  message = data.message;
+                                } else if (data instanceof Blob && data.type?.includes("json")) {
+                                  try {
+                                    const text = await data.text();
+                                    const parsed = JSON.parse(text);
+                                    if (parsed.message) message = parsed.message;
+                                  } catch { /* keep default */ }
+                                } else if (err.message) {
+                                  message = err.message;
+                                }
+                                toast.error(message);
                               }
                             }}
                             className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
@@ -1359,10 +1376,24 @@ export default function OrderDetailsPage() {
                             onClick={async () => {
                               try {
                                 const response = await orders.getOrderInvoice(id!);
-                                if (response.data.success && response.data.data.invoice?.invoice_url) {
-                                  window.open(response.data.data.invoice.invoice_url, '_blank');
-                                } else if (response.data.success && response.data.data.invoice?.invoice?.invoice_url) {
-                                  window.open(response.data.data.invoice.invoice.invoice_url, '_blank');
+                                const payload = response.data?.data || {};
+                                const invoiceUrl: string | undefined =
+                                  payload.invoice?.invoice_url ||
+                                  payload.invoice?.invoice?.invoice_url ||
+                                  undefined;
+                                if (response.data?.success && invoiceUrl) {
+                                  const pdf = await fetch(invoiceUrl);
+                                  if (!pdf.ok) throw new Error(`Invoice download failed (${pdf.status})`);
+                                  const blob = await pdf.blob();
+                                  const blobUrl = URL.createObjectURL(blob);
+                                  const a = document.createElement("a");
+                                  a.href = blobUrl;
+                                  a.download = `${payload.orderNumber || "order"}-invoice.pdf`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  a.remove();
+                                  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                                  toast.success("Invoice downloaded");
                                 } else {
                                   toast.error(response.data?.message || "Failed to generate invoice");
                                 }
@@ -1370,7 +1401,7 @@ export default function OrderDetailsPage() {
                                 const message =
                                   (error as { response?: { data?: { message?: string } } })
                                     ?.response?.data?.message;
-                                toast.error(message || "Failed to download invoice");
+                                toast.error(message || (error as Error)?.message || "Failed to download invoice");
                               }
                             }}
                             className="border-[#E5E7EB] hover:bg-[#F3F7F6]"

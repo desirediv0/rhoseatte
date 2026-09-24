@@ -535,6 +535,11 @@ export const orders = {
   getShippingLabel: (orderId: string) => {
     return api.get(`/api/admin/shiprocket/orders/${orderId}/label`);
   },
+  downloadShippingLabel: (orderId: string) => {
+    return api.get(`/api/admin/shiprocket/orders/${orderId}/label/download`, {
+      responseType: "blob",
+    });
+  },
   getOrderInvoice: (orderId: string) => {
     return api.get(`/api/admin/shiprocket/orders/${orderId}/invoice`);
   },

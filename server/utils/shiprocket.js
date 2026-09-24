@@ -135,10 +135,27 @@ async function shiprocketRequest(endpoint, method = "GET", body = null) {
             : `${SHIPROCKET_BASE_URL}${endpoint}`;
 
     const response = await fetch(url, options);
-    const data = await response.json();
+    const raw = await response.text();
+    let data;
+    try {
+        data = raw ? JSON.parse(raw) : {};
+    } catch {
+        if (!response.ok) {
+            throw new Error(
+                `Shiprocket API error ${response.status}: ${raw.slice(0, 300)}`
+            );
+        }
+        throw new Error("Shiprocket returned invalid JSON");
+    }
 
     if (!response.ok) {
-        throw new Error(data.message || `Shiprocket API error: ${response.status}`);
+        const detail =
+            data.message ||
+            data.response ||
+            data.error ||
+            data.errors?.message ||
+            `Shiprocket API error: ${response.status}`;
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
     }
 
     return data;
@@ -175,11 +192,11 @@ export async function createShiprocketOrder(orderData) {
  */
 export async function assignAWB(shipmentId, courierId = null) {
     const body = {
-        shipment_id: shipmentId,
+        shipment_id: Number(shipmentId),
     };
 
     if (courierId) {
-        body.courier_id = courierId;
+        body.courier_id = Number(courierId);
     }
 
     return shiprocketRequest("/courier/assign/awb", "POST", body);
@@ -198,8 +215,12 @@ export async function schedulePickup(shipmentId) {
  * Generate shipping label
  */
 export async function generateLabel(shipmentId) {
+    const id = Number(shipmentId);
+    if (!Number.isFinite(id)) {
+        throw new Error(`Invalid shipment id for label: ${shipmentId}`);
+    }
     return shiprocketRequest("/courier/generate/label", "POST", {
-        shipment_id: [shipmentId],
+        shipment_id: [id],
     });
 }
 
@@ -767,8 +788,17 @@ export async function processOrderForShipping(orderId, courierId = null, isManua
         try {
             const awbResponse = await assignAWB(shiprocketResponse.shipment_id, courierId);
 
-            const awbCode = awbResponse.response?.data?.awb_code || null;
-            const courierName = awbResponse.response?.data?.courier_name || null;
+            const awbCode =
+                awbResponse.response?.data?.awb_code ||
+                awbResponse.response?.awb_code ||
+                awbResponse.awb_code ||
+                awbResponse.data?.awb_code ||
+                null;
+            const courierName =
+                awbResponse.response?.data?.courier_name ||
+                awbResponse.response?.courier_name ||
+                awbResponse.courier_name ||
+                null;
 
             await prisma.order.update({
                 where: { id: orderId },
