@@ -936,6 +936,7 @@
       "mark_delivered": "Marcar como Entregado",
       "mark_paid": "Marcar como Pagado",
       "cancel": "Cancelar pedido",
+      "reactivate": "Activar pedido",
       "load_error": "Error al cargar pedidos",
       "status_update_success": "Estado del pedido actualizado a {status}",
       "status_update_error": "Error al actualizar estado"

@@ -943,6 +943,7 @@
       "mark_delivered": "تحديد كتم التوصيل",
       "mark_paid": "تحديد كمدفوع",
       "cancel": "إلغاء الطلب",
+      "reactivate": "تفعيل الطلب",
       "load_error": "فشل تحميل الطلبات",
       "status_update_success": "تم تحديث حالة الطلب إلى {status}",
       "status_update_error": "فشل تحديث الحالة"

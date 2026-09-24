@@ -1213,6 +1213,7 @@
       "mark_delivered": "Mark as Delivered",
       "mark_paid": "Mark Paid",
       "cancel": "Cancel Order",
+      "reactivate": "Activate Order",
       "load_error": "Failed to load orders",
       "status_update_success": "Order status updated to {status}",
       "status_update_error": "Failed to update order status"

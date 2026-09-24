@@ -30,6 +30,7 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPayment, setSelectedPayment] = useState("");
 
@@ -51,6 +52,7 @@ export default function OrdersPage() {
         if (response && response.data && response.data.success) {
           setOrdersList(response.data.data?.orders || []);
           setTotalPages(response.data.data?.pagination?.pages || 1);
+          setTotalCount(response.data.data?.pagination?.total || 0);
         } else {
           setError(response.data?.message || t('orders.actions.load_error'));
         }
@@ -182,7 +184,7 @@ export default function OrdersPage() {
           <div className="flex items-center gap-3 text-sm">
             <div className="flex items-center gap-2 bg-[#F3F4F6] px-3 py-2 rounded-lg">
               <ShoppingCart className="h-4 w-4 text-[#4B5563]" />
-              <span className="font-semibold text-[#1F2937]">{ordersList.length}</span>
+              <span className="font-semibold text-[#1F2937]">{totalCount}</span>
               <span className="text-[#9CA3AF]">{t('orders.summary.total')}</span>
             </div>
             <div className="flex items-center gap-2 bg-[#ECFDF5] px-3 py-2 rounded-lg">

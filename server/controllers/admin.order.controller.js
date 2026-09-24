@@ -319,6 +319,7 @@ export const getOrderById = asyncHandler(async (req, res, next) => {
     tax: parseFloat(order.tax),
     shippingCost: parseFloat(order.shippingCost),
     discount: parseFloat(order.discount) || 0,
+    codCharge: parseFloat(order.codCharge) || 0,
     total: parseFloat(order.total),
     date: order.createdAt, // Add date field for frontend compatibility
     // Add detailed coupon information
@@ -419,6 +420,16 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
           orderData.shiprocketStatus = "CANCEL_FAILED";
         }
       }
+    }
+
+    // Reactivating a previously cancelled order: clear cancel fields + re-reserve stock
+    if (order.status === "CANCELLED" && status !== "CANCELLED") {
+      orderData.cancelReason = null;
+      orderData.cancelledAt = null;
+      orderData.cancelledBy = null;
+
+      // Stock was returned on cancel — take it back for the active order
+      await handleInventoryReserve(tx, orderId, req.admin.id);
     }
 
     // If shipping, create or update tracking AND sync to Shiprocket
@@ -1178,16 +1189,10 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
       startDate.setDate(startDate.getDate() - 7);
   }
 
-  // Get order counts by status
+  // Get order counts by status — all orders' current status, not period-scoped
   const orderStatuses = await prisma.order.groupBy({
     by: ["status"],
     _count: true,
-    where: {
-      createdAt: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
   });
 
   // Convert to a more readable format
@@ -1417,12 +1422,61 @@ function isValidStatusTransition(currentStatus, newStatus) {
     PAID: ["PROCESSING", "SHIPPED", "CANCELLED", "REFUNDED"],
     SHIPPED: ["DELIVERED", "CANCELLED", "PROCESSING"],
     DELIVERED: ["REFUNDED"],
-    CANCELLED: ["REFUNDED"],
+    // Allow reactivation of cancelled orders back into the fulfilment flow
+    CANCELLED: ["PROCESSING", "PAID", "PENDING", "REFUNDED"],
     REFUNDED: [],
   };
 
   // Check if the transition is allowed
   return allowedTransitions[currentStatus]?.includes(newStatus) ?? false;
+}
+
+// Helper: re-reserve stock when a cancelled order is reactivated
+async function handleInventoryReserve(tx, orderId, adminId) {
+  const items = await tx.orderItem.findMany({
+    where: { orderId },
+    include: {
+      variant: true,
+    },
+  });
+
+  for (const item of items) {
+    const currentQuantity = await tx.productVariant
+      .findUnique({
+        where: { id: item.variantId },
+        select: { quantity: true },
+      })
+      .then((v) => v?.quantity ?? 0);
+
+    if (currentQuantity < item.quantity) {
+      // Not enough stock — still reserve (allow negative) but flag it in notes
+      console.warn(
+        `Reactivating order ${orderId}: variant ${item.variantId} has only ${currentQuantity}, needed ${item.quantity}`
+      );
+    }
+
+    await tx.productVariant.update({
+      where: { id: item.variantId },
+      data: {
+        quantity: {
+          decrement: item.quantity,
+        },
+      },
+    });
+
+    await tx.inventoryLog.create({
+      data: {
+        variantId: item.variantId,
+        quantityChange: -item.quantity,
+        reason: "order_reactivated",
+        referenceId: orderId,
+        previousQuantity: currentQuantity,
+        newQuantity: currentQuantity - item.quantity,
+        notes: "Order reactivated - stock reserved again",
+        createdBy: adminId,
+      },
+    });
+  }
 }
 
 // Helper function to handle inventory return for cancelled orders

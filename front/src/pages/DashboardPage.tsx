@@ -956,21 +956,20 @@ export default function DashboardPage() {
                           }
                         >
                           {Object.entries(orderStats.statusCounts).map(
-                            ([_], index) => {
-                              const COLORS = [
-                                "#F59E0B", // PENDING - warning
-                                "#3B82F6", // PROCESSING - blue
-                                "#22C55E", // PAID - success
-                                "#6366F1", // SHIPPED - indigo
-                                "#4CAF50", // DELIVERED - primary
-                                "#EF4444", // CANCELLED - danger
-                                "#A855F7", // REFUNDED - purple
-                                "#9CA3AF", // default - muted
-                              ];
+                            ([status]) => {
+                              const STATUS_COLORS: Record<string, string> = {
+                                PENDING: "#F59E0B",
+                                PROCESSING: "#3B82F6",
+                                PAID: "#22C55E",
+                                SHIPPED: "#6366F1",
+                                DELIVERED: "#4CAF50",
+                                CANCELLED: "#EF4444",
+                                REFUNDED: "#A855F7",
+                              };
                               return (
                                 <Cell
-                                  key={`cell-${index}`}
-                                  fill={COLORS[index % COLORS.length]}
+                                  key={`cell-${status}`}
+                                  fill={STATUS_COLORS[status] || "#9CA3AF"}
                                 />
                               );
                             }

@@ -921,6 +921,7 @@
       "mark_delivered": "Als Geliefert markieren",
       "mark_paid": "Als Bezahlt markieren",
       "cancel": "Bestellung stornieren",
+      "reactivate": "Bestellung aktivieren",
       "load_error": "Fehler beim Laden der Bestellungen",
       "status_update_success": "Bestellstatus auf {status} aktualisiert",
       "status_update_error": "Fehler beim Aktualisieren des Status"

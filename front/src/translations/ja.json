@@ -857,6 +857,7 @@
       "mark_delivered": "配達済みとしてマーク",
       "mark_paid": "支払い済みとしてマーク",
       "cancel": "注文をキャンセル",
+      "reactivate": "注文を再開",
       "load_error": "注文の読み込みに失敗しました",
       "status_update_success": "注文ステータスが{status}に更新されました",
       "status_update_error": "ステータスの更新に失敗しました"

@@ -8,8 +8,6 @@ import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
-import sendEmail from "../utils/sendEmail.js";
-import { getOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
 import {
     authenticate,
     getShiprocketSettings,
@@ -20,6 +18,7 @@ import {
     cancelShiprocketOrder,
     generateLabel,
     printInvoice,
+    assignAWB,
     getPickupLocations,
     addPickupLocation,
     pickWarehouseForOrder,
@@ -342,8 +341,29 @@ export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Order not found");
     }
 
-    if (order.shiprocketOrderId) {
+    if (order.status === "CANCELLED") {
+        throw new ApiError(400, "Cannot sync a cancelled order. Reactivate it first.");
+    }
+
+    const shipmentCancelled =
+        order.shiprocketOrderId && order.shiprocketStatus === "CANCELLED";
+
+    if (order.shiprocketOrderId && !shipmentCancelled) {
         throw new ApiError(400, "Order already synced to Shiprocket");
+    }
+
+    // Clear cancelled shipment refs so a fresh Shiprocket order can be created
+    if (shipmentCancelled) {
+        await prisma.order.update({
+            where: { id: orderId },
+            data: {
+                shiprocketOrderId: null,
+                shiprocketShipmentId: null,
+                shiprocketStatus: null,
+                awbCode: null,
+                courierName: null,
+            },
+        });
     }
 
     const result = await processOrderForShipping(
@@ -441,8 +461,11 @@ export const getCouriersForOrder = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Order not found");
     }
 
-    // If order already has AWB or is cancelled, return empty to prevent duplicate fetching
-    if (order.shiprocketOrderId || order.status === "CANCELLED") {
+    // Block only when order itself is cancelled, or shipment is live (not cancelled)
+    if (
+        order.status === "CANCELLED" ||
+        (order.shiprocketOrderId && order.shiprocketStatus !== "CANCELLED")
+    ) {
         return res.status(200).json(
             new ApiResponsive(200, { couriers: [], alreadySynced: true }, "Order is already processed or cancelled")
         );
@@ -521,7 +544,7 @@ export const getOrderTracking = asyncHandler(async (req, res) => {
     );
 });
 
-// Cancel Shiprocket shipment & send email notification to customer
+// Cancel Shiprocket shipment (does NOT cancel the order itself)
 export const cancelShipment = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
 
@@ -529,9 +552,6 @@ export const cancelShipment = asyncHandler(async (req, res) => {
         where: { id: orderId },
         include: {
             user: true,
-            items: {
-                include: { product: true }
-            }
         }
     });
 
@@ -548,39 +568,21 @@ export const cancelShipment = asyncHandler(async (req, res) => {
         }
     }
 
-    // Update order status in database to CANCELLED
+    // Only cancel the shipment — order status stays active so it can be re-synced later
     const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: {
             shiprocketStatus: "CANCELLED",
-            status: "CANCELLED",
-            cancelledAt: new Date(),
-            cancelledBy: req.user?.id || "ADMIN",
-            cancelReason: req.body?.reason || "Cancelled by admin"
+            awbCode: null,
         },
     });
 
-    // Send cancellation email to customer
-    if (order.user?.email) {
-        try {
-            await sendEmail({
-                email: order.user.email,
-                subject: `Your Order #${order.orderNumber} has been Cancelled — RHOSEATTE`,
-                html: getOrderCancelledTemplate({
-                    userName: order.user.name || "Customer",
-                    orderNumber: order.orderNumber,
-                    reason: req.body?.reason || "Cancelled by admin",
-                    refundAmount: order.paymentMethod !== "CASH" ? parseFloat(order.total || 0) : null,
-                }),
-            });
-            console.log(`Cancellation email sent to ${order.user.email} for order #${order.orderNumber}`);
-        } catch (emailErr) {
-            console.error("Error sending order cancellation email:", emailErr);
-        }
-    }
-
     res.status(200).json(
-        new ApiResponsive(200, { result, order: updatedOrder }, "Order and shipment cancelled successfully and email sent to customer")
+        new ApiResponsive(
+            200,
+            { result, order: updatedOrder },
+            "Shipment cancelled. Order remains active and can be re-synced."
+        )
     );
 });
 
@@ -592,6 +594,7 @@ export const getShippingLabel = asyncHandler(async (req, res) => {
         where: { id: orderId },
         select: {
             shiprocketShipmentId: true,
+            awbCode: true,
         },
     });
 
@@ -603,7 +606,45 @@ export const getShippingLabel = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Order not synced to Shiprocket");
     }
 
-    const result = await generateLabel(order.shiprocketShipmentId);
+    // Shiprocket requires AWB before label generation. Assign if missing.
+    if (!order.awbCode) {
+        try {
+            const awbResponse = await assignAWB(order.shiprocketShipmentId);
+            const awbCode =
+                awbResponse?.response?.data?.awb_code ||
+                awbResponse?.awb_code ||
+                null;
+            if (awbCode) {
+                await prisma.order.update({
+                    where: { id: orderId },
+                    data: {
+                        awbCode,
+                        courierName:
+                            awbResponse?.response?.data?.courier_name ||
+                            awbResponse?.courier_name ||
+                            undefined,
+                        shiprocketStatus: "AWB_ASSIGNED",
+                    },
+                });
+            }
+        } catch (awbError) {
+            throw new ApiError(
+                400,
+                `AWB not assigned for this shipment: ${awbError?.message || "assignment failed"}`
+            );
+        }
+    }
+
+    let result;
+    try {
+        result = await generateLabel(order.shiprocketShipmentId);
+    } catch (labelError) {
+        throw new ApiError(400, `Failed to generate label: ${labelError?.message || "unknown error"}`);
+    }
+
+    if (!result?.label_url && !result?.label?.label_url) {
+        throw new ApiError(400, result?.response || "Shiprocket did not return a label URL");
+    }
 
     res.status(200).json(
         new ApiResponsive(200, { label: result }, "Shipping label generated successfully")
@@ -693,16 +734,15 @@ export const handleWebhook = asyncHandler(async (req, res) => {
         updateData.courierName = courier_name;
     }
 
-    // Map Shiprocket status to our order status
+    // Map Shiprocket status to our order status.
+    // Shipment CANCELLED / RTO only updates shiprocketStatus — order stays active
+    // so admin can reactivate and re-sync. Full order cancel is a separate admin action.
     const statusMapping = {
         PICKED_UP: "SHIPPED",
         SHIPPED: "SHIPPED",
         IN_TRANSIT: "SHIPPED",
         OUT_FOR_DELIVERY: "SHIPPED",
         DELIVERED: "DELIVERED",
-        CANCELLED: "CANCELLED",
-        RTO_INITIATED: "CANCELLED",
-        RTO_DELIVERED: "CANCELLED",
     };
 
     if (statusMapping[current_status]) {

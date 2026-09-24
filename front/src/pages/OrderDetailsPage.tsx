@@ -31,10 +31,7 @@ export default function OrderDetailsPage() {
     id: string;
     orderNumber: string;
     status: string;
-    totalAmount: number;
     subTotal: string | number;
-    shippingAmount: number;
-    taxAmount: number;
     discount?: string | number;
     codCharge?: string | number;
     createdAt: string;
@@ -90,6 +87,7 @@ export default function OrderDetailsPage() {
     };
     shippingCost?: string | number;
     total?: string | number;
+    tax?: string | number;
   }
 
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
@@ -349,17 +347,18 @@ export default function OrderDetailsPage() {
       if (response && response.data && response.data.success) {
         toast.success(t('orders.actions.status_update_success', { status: newStatus }));
 
-        // Update the order status in the UI
-        setOrderDetails((prev: OrderDetails | null) => ({
-          ...prev!,
-          status: newStatus,
-        }));
+        // Full refresh clears cancel fields on reactivation / sets shiprocket flags on cancel
+        await fetchOrderDetails();
       } else {
         toast.error(response.data?.message || t('orders.actions.status_update_error'));
       }
     } catch (error: unknown) {
       console.error("Error updating order status:", error);
-      toast.error(t('orders.actions.status_update_error'));
+      const message =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      toast.error(message || t('orders.actions.status_update_error'));
     }
   };
 
@@ -420,7 +419,10 @@ export default function OrderDetailsPage() {
   // Load warehouse options + the auto-suggested one for this order
   useEffect(() => {
     if (!id) return;
-    if (orderDetails?.shiprocket?.orderId) return; // already synced
+    if (
+      orderDetails?.shiprocket?.orderId &&
+      orderDetails?.shiprocket?.status !== "CANCELLED"
+    ) return; // already synced and not cancelled
     let cancelled = false;
     orders
       .getOrderWarehouseOptions(id)
@@ -447,7 +449,8 @@ export default function OrderDetailsPage() {
 
   // Fetch available courier delivery partners (rates, time) for this order
   const handleFetchCouriers = async () => {
-    if (!id || orderDetails?.shiprocket?.orderId || orderDetails?.status === "CANCELLED") return;
+    if (!id || orderDetails?.status === "CANCELLED") return;
+    if (orderDetails?.shiprocket?.orderId && orderDetails?.shiprocket?.status !== "CANCELLED") return;
     setIsFetchingCouriers(true);
     try {
       const response = await orders.getCouriersForOrder(id);
@@ -693,6 +696,18 @@ export default function OrderDetailsPage() {
                   </Button>
                 </div>
               )}
+
+            {/* Reactivate cancelled order */}
+            {orderDetails.status === "CANCELLED" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-[#22C55E] text-[#16A34A] hover:bg-[#ECFDF5]"
+                onClick={() => handleStatusUpdate("PROCESSING")}
+              >
+                {t('orders.actions.reactivate')}
+              </Button>
+            )}
           </div>
         </div>
         <div className="h-px bg-[#E5E7EB]" />
@@ -998,9 +1013,24 @@ export default function OrderDetailsPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#4B5563]">{t('orders.details.tax')} (0%):</span>
+                  <span className="text-[#4B5563]">
+                    {t('orders.details.tax')}
+                    {(() => {
+                      const taxVal = typeof orderDetails.tax === 'string'
+                        ? parseFloat(orderDetails.tax)
+                        : (orderDetails.tax || 0);
+                      const subVal = typeof orderDetails.subTotal === 'string'
+                        ? parseFloat(orderDetails.subTotal)
+                        : (orderDetails.subTotal || 0);
+                      if (taxVal > 0 && subVal > 0) {
+                        return ` (${Math.round((taxVal / subVal) * 100)}%)`;
+                      }
+                      return '';
+                    })()}
+                    :
+                  </span>
                   <span className="font-medium text-[#1F2937]">
-                    {formatCurrency(0)}
+                    {formatCurrency(orderDetails.tax || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -1068,8 +1098,9 @@ export default function OrderDetailsPage() {
                   <span className="text-[#1F2937]">
                     {formatCurrency(
                       orderDetails.total ||
-                      ((typeof orderDetails.subTotal === 'string' ? parseFloat(orderDetails.subTotal) : orderDetails.subTotal) +
+                      ((typeof orderDetails.subTotal === 'string' ? parseFloat(orderDetails.subTotal) : orderDetails.subTotal || 0) +
                         (typeof orderDetails.shippingCost === 'string' ? parseFloat(orderDetails.shippingCost) : (orderDetails.shippingCost || 0)) +
+                        (typeof orderDetails.tax === 'string' ? parseFloat(orderDetails.tax) : (orderDetails.tax || 0)) +
                         (typeof orderDetails.codCharge === 'string' ? parseFloat(orderDetails.codCharge) : (orderDetails.codCharge || 0)) -
                         (typeof orderDetails.discount === 'string' ? parseFloat(orderDetails.discount) : (orderDetails.discount || 0)))
                     )}
@@ -1306,11 +1337,16 @@ export default function OrderDetailsPage() {
                                 const response = await orders.getShippingLabel(id!);
                                 if (response.data.success && response.data.data.label?.label_url) {
                                   window.open(response.data.data.label.label_url, '_blank');
+                                } else if (response.data.success && response.data.data.label?.label?.label_url) {
+                                  window.open(response.data.data.label.label.label_url, '_blank');
                                 } else {
-                                  toast.error("Failed to generate label");
+                                  toast.error(response.data?.message || "Failed to generate label");
                                 }
                               } catch (error) {
-                                toast.error("Failed to download label");
+                                const message =
+                                  (error as { response?: { data?: { message?: string } } })
+                                    ?.response?.data?.message;
+                                toast.error(message || "Failed to download label");
                               }
                             }}
                             className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
@@ -1325,11 +1361,16 @@ export default function OrderDetailsPage() {
                                 const response = await orders.getOrderInvoice(id!);
                                 if (response.data.success && response.data.data.invoice?.invoice_url) {
                                   window.open(response.data.data.invoice.invoice_url, '_blank');
+                                } else if (response.data.success && response.data.data.invoice?.invoice?.invoice_url) {
+                                  window.open(response.data.data.invoice.invoice.invoice_url, '_blank');
                                 } else {
-                                  toast.error("Failed to generate invoice");
+                                  toast.error(response.data?.message || "Failed to generate invoice");
                                 }
                               } catch (error) {
-                                toast.error("Failed to download invoice");
+                                const message =
+                                  (error as { response?: { data?: { message?: string } } })
+                                    ?.response?.data?.message;
+                                toast.error(message || "Failed to download invoice");
                               }
                             }}
                             className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
@@ -1368,12 +1409,60 @@ export default function OrderDetailsPage() {
                     </div>
 
                     {/* Info Note */}
-                    {orderDetails.shiprocket.status === "CANCELLED" || orderDetails.status === "CANCELLED" ? (
+                    {orderDetails.status === "CANCELLED" ? (
                       <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                         <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                         <p className="text-sm text-red-700 font-medium">
-                          This shipment has been cancelled. Pickup and dispatch are stopped.
+                          This order is cancelled. Reactivate it to re-sync shipping.
                         </p>
+                      </div>
+                    ) : orderDetails.shiprocket.status === "CANCELLED" ? (
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-amber-700 font-medium">
+                            Shipment was cancelled. Order is still active — re-sync to book a new shipment.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            onClick={() => handleSyncToShiprocket()}
+                            disabled={isSyncing}
+                            size="sm"
+                            className="bg-[#22C55E] hover:bg-[#16A34A] text-white"
+                          >
+                            {isSyncing ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Re-syncing...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Re-sync to Shiprocket
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={handleFetchCouriers}
+                            disabled={isFetchingCouriers || isSyncing}
+                            size="sm"
+                            variant="outline"
+                            className="border-[#3B82F6] text-[#3B82F6] hover:bg-[#EFF6FF]"
+                          >
+                            {isFetchingCouriers ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Fetching...
+                              </>
+                            ) : (
+                              <>
+                                <Truck className="mr-2 h-4 w-4" />
+                                View Couriers
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex items-start gap-2 p-3 bg-[#EFF6FF] border border-[#DBEAFE] rounded-lg">
@@ -1390,11 +1479,19 @@ export default function OrderDetailsPage() {
                       <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 mb-3 border border-emerald-100">
                         <Truck className="h-7 w-7 text-emerald-600" />
                       </div>
-                      <p className="font-semibold text-[#1F2937] text-base mb-1">Not Synced to Shiprocket Yet</p>
+                      <p className="font-semibold text-[#1F2937] text-base mb-1">
+                        {orderDetails.status === "CANCELLED"
+                          ? "Order Cancelled"
+                          : "Not Synced to Shiprocket Yet"}
+                      </p>
                       <p className="text-sm text-[#6B7280] mb-4 max-w-md mx-auto">
-                        In Manual Mode, you can fetch available courier partners to compare rates &amp; estimated delivery time, or auto-assign the best courier directly.
+                        {orderDetails.status === "CANCELLED"
+                          ? "Reactivate the order before syncing it to Shiprocket."
+                          : "In Manual Mode, you can fetch available courier partners to compare rates &amp; estimated delivery time, or auto-assign the best courier directly."}
                       </p>
 
+                      {orderDetails.status !== "CANCELLED" && (
+                      <>
                       {warehouseOptions.length > 1 && (
                         <div className="max-w-sm mx-auto mb-4 text-left">
                           <label className="block text-xs font-semibold text-[#374151] mb-1.5">
@@ -1459,9 +1556,11 @@ export default function OrderDetailsPage() {
                           )}
                         </Button>
                       </div>
+                      </>
+                      )}
                     </div>
 
-                    {availableCouriers.length > 0 && (
+                    {orderDetails.status !== "CANCELLED" && availableCouriers.length > 0 && (
                       <div className="mt-4 border rounded-xl p-4 bg-gray-50/60 space-y-3">
                         <div className="flex items-center justify-between">
                           <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-2">
