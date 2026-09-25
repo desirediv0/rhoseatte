@@ -452,8 +452,8 @@ export default function DashboardPage() {
       )}
 
       {/* Premium Stats Cards Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total Revenue */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {/* Total Revenue — prepaid orders + COD orders marked Paid, any stage */}
         <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-6 pt-6">
@@ -463,7 +463,7 @@ export default function DashboardPage() {
             <IndianRupee className="h-5 w-5 text-[#4CAF50]" />
           </CardHeader>
           <CardContent className="px-6 pb-6">
-            <div className="text-3xl   text-[#1F2937]">
+            <div className="text-3xl text-[#1F2937]">
               ₹
               {orderStats?.totalSales
                 ? parseFloat(orderStats.totalSales.toString()).toLocaleString(
@@ -491,10 +491,15 @@ export default function DashboardPage() {
                 <span className="ml-1.5 text-[#9CA3AF]">{t("dashboard.stats.vs_last_month")}</span>
               )}
             </div>
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-[#F3F4F6] text-[11px] text-[#6B7280]">
+              <span>Prepaid: ₹{Math.round(orderStats?.prepaid?.revenue || 0).toLocaleString("en-IN")}</span>
+              <span>·</span>
+              <span>COD Paid: ₹{Math.round(orderStats?.codPaid?.revenue || 0).toLocaleString("en-IN")}</span>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Total Orders */}
+        {/* Total Orders — every order except Cancelled */}
         <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#22C55E]" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-6 pt-6">
@@ -504,7 +509,7 @@ export default function DashboardPage() {
             <ShoppingCart className="h-5 w-5 text-[#22C55E]" />
           </CardHeader>
           <CardContent className="px-6 pb-6">
-            <div className="text-3xl   text-[#1F2937]">
+            <div className="text-3xl text-[#1F2937]">
               {orderStats?.totalOrders || 0}
             </div>
             <div className="flex items-center text-xs mt-3">
@@ -527,10 +532,36 @@ export default function DashboardPage() {
                 <span className="ml-1.5 text-[#9CA3AF]">{t("dashboard.stats.vs_last_month")}</span>
               )}
             </div>
+            <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-[#F3F4F6] text-[11px]">
+              <XCircle className="h-3 w-3 text-[#EF4444]" />
+              <span className="text-[#EF4444] font-medium">{orderStats?.cancelled?.count || 0} cancelled</span>
+              <span className="text-[#9CA3AF]">
+                (₹{Math.round(orderStats?.cancelled?.revenue || 0).toLocaleString("en-IN")} lost)
+              </span>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Total Users */}
+        {/* Prepaid Orders */}
+        <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#3B82F6]" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-6 pt-6">
+            <CardTitle className="text-sm font-medium text-[#4B5563]">
+              Prepaid Orders
+            </CardTitle>
+            <IndianRupee className="h-5 w-5 text-[#3B82F6]" />
+          </CardHeader>
+          <CardContent className="px-6 pb-6">
+            <div className="text-3xl text-[#1F2937]">
+              {orderStats?.prepaid?.count || 0}
+            </div>
+            <div className="flex items-center text-xs mt-3 text-[#6B7280]">
+              <span>₹{Math.round(orderStats?.prepaid?.revenue || 0).toLocaleString("en-IN")} collected online</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Total Users — verified vs unverified */}
         <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#2E7D32]" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-6 pt-6">
@@ -540,20 +571,18 @@ export default function DashboardPage() {
             <UsersIcon className="h-5 w-5 text-[#2E7D32]" />
           </CardHeader>
           <CardContent className="px-6 pb-6">
-            <div className="text-3xl   text-[#1F2937]">
-              {userStats?.total || 0}
+            <div className="text-3xl text-[#1F2937]">
+              {orderStats?.users?.total ?? userStats?.total ?? 0}
             </div>
-            <div className="flex items-center text-xs mt-3">
-              {userStats?.newThisMonth ? (
-                <>
-                  <ArrowUpRight className="mr-1 h-3 w-3 text-[#22C55E]" />
-                  <span className="text-[#22C55E] font-medium">
-                    {t("dashboard.stats.new_this_month", { count: userStats.newThisMonth })}
-                  </span>
-                </>
-              ) : (
-                <span className="text-[#9CA3AF]">{t("dashboard.stats.no_new_users")}</span>
-              )}
+            <div className="flex items-center gap-3 mt-3 text-[11px]">
+              <span className="inline-flex items-center gap-1 text-[#22C55E] font-medium">
+                <CheckCircle2 className="h-3 w-3" />
+                {orderStats?.users?.verified ?? 0} verified
+              </span>
+              <span className="inline-flex items-center gap-1 text-[#F59E0B] font-medium">
+                <XCircle className="h-3 w-3" />
+                {orderStats?.users?.unverified ?? 0} unverified
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -568,7 +597,7 @@ export default function DashboardPage() {
             <RotateCcw className="h-5 w-5 text-[#F59E0B]" />
           </CardHeader>
           <CardContent className="px-6 pb-6">
-            <div className="text-3xl   text-[#1F2937]">
+            <div className="text-3xl text-[#1F2937]">
               {returnStats?.total || 0}
             </div>
             <div className="flex items-center text-xs mt-3">

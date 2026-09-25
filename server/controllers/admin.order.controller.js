@@ -1519,6 +1519,57 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
     })
   );
 
+  // Prepaid orders — paid online (Razorpay/PhonePe), any non-cancelled status.
+  // Revenue here is always counted (payment is confirmed at checkout).
+  const [prepaidCount, prepaidSales] = await Promise.all([
+    prisma.order.count({
+      where: {
+        paymentMethod: { in: ["RAZORPAY", "PHONEPE"] },
+        status: { not: "CANCELLED" },
+      },
+    }),
+    prisma.order.aggregate({
+      _sum: { total: true },
+      where: {
+        paymentMethod: { in: ["RAZORPAY", "PHONEPE"] },
+        status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] },
+      },
+    }),
+  ]);
+
+  // COD orders that have actually been paid for (marked PAID or beyond) —
+  // the other half of "Total Revenue" alongside prepaid orders.
+  const [codPaidCount, codPaidSales] = await Promise.all([
+    prisma.order.count({
+      where: {
+        paymentMethod: "CASH",
+        status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] },
+      },
+    }),
+    prisma.order.aggregate({
+      _sum: { total: true },
+      where: {
+        paymentMethod: "CASH",
+        status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] },
+      },
+    }),
+  ]);
+
+  // Cancelled orders — count + the value that was lost.
+  const [cancelledCount, cancelledSales] = await Promise.all([
+    prisma.order.count({ where: { status: "CANCELLED" } }),
+    prisma.order.aggregate({
+      _sum: { total: true },
+      where: { status: "CANCELLED" },
+    }),
+  ]);
+
+  // Users — verified (completed OTP verification) vs not.
+  const [verifiedUserCount, unverifiedUserCount] = await Promise.all([
+    prisma.user.count({ where: { otpVerified: true } }),
+    prisma.user.count({ where: { otpVerified: false } }),
+  ]);
+
   res.status(200).json(
     new ApiResponsive(
       200,
@@ -1536,6 +1587,23 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
         monthlySales,
         orderGrowth,
         revenueGrowth,
+        prepaid: {
+          count: prepaidCount,
+          revenue: prepaidSales._sum.total || 0,
+        },
+        codPaid: {
+          count: codPaidCount,
+          revenue: codPaidSales._sum.total || 0,
+        },
+        cancelled: {
+          count: cancelledCount,
+          revenue: cancelledSales._sum.total || 0,
+        },
+        users: {
+          verified: verifiedUserCount,
+          unverified: unverifiedUserCount,
+          total: verifiedUserCount + unverifiedUserCount,
+        },
       },
       "Order statistics fetched successfully"
     )
