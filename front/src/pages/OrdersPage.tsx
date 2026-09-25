@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { orders } from "@/api/adminService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import { useLanguage } from "@/context/LanguageContext";
 
 export default function OrdersPage() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [ordersList, setOrdersList] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -398,20 +399,32 @@ export default function OrdersPage() {
         </Card>
       ) : (
         <>
-          {/* Desktop table (md and up) */}
+          {/* Desktop table (md and up) — sized to fit within the sidebar
+              layout without forcing horizontal scroll; every row is a link
+              (not just the tiny eye icon) so a click anywhere opens it. */}
           <Card className="hidden md:block bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed">
+                <colgroup>
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[13%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[4%]" />
+                </colgroup>
                 <thead>
                   <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">{t('orders.list.order_date') ? "Order" : "Order"}</th>
-                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">{t('orders.list.customer')}</th>
-                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">{t('orders.list.order_date')}</th>
-                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">Status</th>
-                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">Payment</th>
-                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">Shipment</th>
-                    <th className="text-right font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">{t('orders.list.total_amount')}</th>
-                    <th className="text-right font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap"></th>
+                    <th className="text-left font-medium text-[#6B7280] px-3 py-3">Order</th>
+                    <th className="text-left font-medium text-[#6B7280] px-3 py-3">{t('orders.list.customer')}</th>
+                    <th className="text-left font-medium text-[#6B7280] px-3 py-3">{t('orders.list.order_date')}</th>
+                    <th className="text-left font-medium text-[#6B7280] px-3 py-3">Status</th>
+                    <th className="text-left font-medium text-[#6B7280] px-3 py-3">Payment</th>
+                    <th className="text-left font-medium text-[#6B7280] px-3 py-3">Shipment</th>
+                    <th className="text-right font-medium text-[#6B7280] px-3 py-3">{t('orders.list.total_amount')}</th>
+                    <th className="px-3 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -420,40 +433,47 @@ export default function OrdersPage() {
                     return (
                       <tr
                         key={order.id}
-                        className="border-b border-[#F3F4F6] last:border-0 hover:bg-[#F9FAFB] transition-colors"
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                        className="border-b border-[#F3F4F6] last:border-0 hover:bg-[#F9FAFB] transition-colors cursor-pointer"
                       >
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2.5">
+                        <td className="px-3 py-3.5">
+                          <div className="flex items-center gap-2 min-w-0">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#E8F5E9]">
                               <ShoppingCart className="h-4 w-4 text-[#2E7D32]" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-[#1F2937] whitespace-nowrap">#{order.orderNumber}</p>
+                              <p className="font-semibold text-[#1F2937] truncate" title={order.orderNumber}>
+                                #{order.orderNumber}
+                              </p>
                               <p className="text-xs text-[#9CA3AF]">
                                 {t('orders.list.items_count', { count: order.items?.length || 0 })}
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5">
-                          <p className="font-medium text-[#1F2937] whitespace-nowrap">{order.user?.name || "Guest"}</p>
-                          <p className="text-xs text-[#9CA3AF] whitespace-nowrap">{order.user?.email || "No email"}</p>
+                        <td className="px-3 py-3.5 min-w-0">
+                          <p className="font-medium text-[#1F2937] truncate" title={order.user?.name || "Guest"}>
+                            {order.user?.name || "Guest"}
+                          </p>
+                          <p className="text-xs text-[#9CA3AF] truncate" title={order.user?.email || "No email"}>
+                            {order.user?.email || "No email"}
+                          </p>
                         </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5 text-[#1F2937]">
-                            <Calendar className="h-3.5 w-3.5 text-[#9CA3AF]" />
-                            {formatDate(order.createdAt)}
+                        <td className="px-3 py-3.5">
+                          <div className="flex items-center gap-1.5 text-[#1F2937] text-xs">
+                            <Calendar className="h-3.5 w-3.5 text-[#9CA3AF] shrink-0" />
+                            <span className="truncate">{formatDate(order.createdAt)}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5">
-                          <Badge className={cn("text-xs font-medium border whitespace-nowrap", getStatusBadgeClass(order.status))}>
+                        <td className="px-3 py-3.5">
+                          <Badge className={cn("text-xs font-medium border", getStatusBadgeClass(order.status))}>
                             {getStatusLabel(order.status)}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-3 py-3.5">
                           <Badge
                             className={cn(
-                              "text-xs font-medium border whitespace-nowrap",
+                              "text-xs font-medium border",
                               order.paymentMethod === "CASH"
                                 ? "bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]"
                                 : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
@@ -462,22 +482,24 @@ export default function OrdersPage() {
                             {order.paymentMethod === "CASH" ? t('orders.filters.cod') : t('orders.filters.prepaid')}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-3 py-3.5 min-w-0">
                           {shipment ? (
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-col gap-0.5 min-w-0">
                               <span className="text-xs text-[#6B7280]">{shipment.provider}</span>
                               {shipment.trackingCode && shipment.trackingUrl ? (
                                 <a
                                   href={shipment.trackingUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="font-mono text-xs font-medium text-[#22C55E] hover:underline flex items-center gap-1 whitespace-nowrap"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-mono text-xs font-medium text-[#22C55E] hover:underline flex items-center gap-1 truncate"
+                                  title={shipment.trackingCode}
                                 >
-                                  {shipment.trackingCode}
-                                  <ExternalLink className="h-3 w-3" />
+                                  <span className="truncate">{shipment.trackingCode}</span>
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
                                 </a>
                               ) : (
-                                <span className="text-xs text-[#9CA3AF]">
+                                <span className="text-xs text-[#9CA3AF] truncate">
                                   {shipment.status ? shipment.status.replace(/_/g, " ") : "Pending"}
                                 </span>
                               )}
@@ -486,8 +508,8 @@ export default function OrdersPage() {
                             <span className="text-xs text-[#D1D5DB]">Not synced</span>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                          <p className="font-semibold text-[#1F2937]">
+                        <td className="px-3 py-3.5 text-right">
+                          <p className="font-semibold text-[#1F2937] whitespace-nowrap">
                             {formatCurrency(
                               order.total || order.totalAmount ||
                               (parseFloat(order.subTotal || 0) +
@@ -496,18 +518,19 @@ export default function OrdersPage() {
                             )}
                           </p>
                           {parseFloat(order.discount || 0) > 0 && (
-                            <p className="text-xs text-[#22C55E]">
+                            <p className="text-xs text-[#22C55E] whitespace-nowrap">
                               -{formatCurrency(parseFloat(order.discount))}
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 text-right">
+                        <td className="px-3 py-3.5 text-right">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-[#F3F4F6]"
                             asChild
                             title={t('orders.actions.view_details')}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Link to={`/orders/${order.id}`}>
                               <Eye className="h-4 w-4 text-[#4B5563]" />
