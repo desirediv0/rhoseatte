@@ -1293,7 +1293,12 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
     statusCounts[status.status] = status._count;
   });
 
-  // Get total sales amount
+  // Get total sales amount — any order that has actually been paid for:
+  // prepaid orders are created as PAID directly, and a COD order becomes
+  // PAID once the admin marks it so. Once PAID, an order naturally
+  // progresses to PROCESSING/SHIPPED/DELIVERED and must keep counting as
+  // revenue — only unpaid (PENDING) and voided (CANCELLED/REFUNDED) orders
+  // are excluded.
   const totalSales = await prisma.order.aggregate({
     _sum: {
       total: true,
@@ -1304,17 +1309,20 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
         lte: endDate,
       },
       status: {
-        in: ["PAID", "SHIPPED", "DELIVERED"],
+        notIn: ["PENDING", "CANCELLED", "REFUNDED"],
       },
     },
   });
 
-  // Get total number of orders
+  // Get total number of orders — every order except cancelled ones.
   const totalOrders = await prisma.order.count({
     where: {
       createdAt: {
         gte: startDate,
         lte: endDate,
+      },
+      status: {
+        not: "CANCELLED",
       },
     },
   });
@@ -1337,7 +1345,7 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
         gte: monthlyRevenueStartDate,
       },
       status: {
-        in: ["PAID", "SHIPPED", "DELIVERED"],
+        notIn: ["PENDING", "CANCELLED", "REFUNDED"],
       },
     },
     select: {
@@ -1397,6 +1405,9 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
         gte: previousPeriodStartDate,
         lt: startDate,
       },
+      status: {
+        not: "CANCELLED",
+      },
     },
   });
 
@@ -1410,7 +1421,7 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
         lt: startDate,
       },
       status: {
-        in: ["PAID", "SHIPPED", "DELIVERED"],
+        notIn: ["PENDING", "CANCELLED", "REFUNDED"],
       },
     },
   });
@@ -1446,7 +1457,7 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
           lte: endDate,
         },
         status: {
-          in: ["PAID", "SHIPPED", "DELIVERED"],
+          notIn: ["PENDING", "CANCELLED", "REFUNDED"],
         },
       },
     },
