@@ -1293,34 +1293,30 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
     statusCounts[status.status] = status._count;
   });
 
-  // Get total sales amount — any order that has actually been paid for:
-  // prepaid orders are created as PAID directly, and a COD order becomes
-  // PAID once the admin marks it so. Once PAID, an order naturally
-  // progresses to PROCESSING/SHIPPED/DELIVERED and must keep counting as
-  // revenue — only unpaid (PENDING) and voided (CANCELLED/REFUNDED) orders
-  // are excluded.
+  // Get total sales amount — ALL-TIME, not scoped to `period`. The
+  // dashboard card just says "Total Revenue" with no visible date range, so
+  // it must mean the lifetime total, not a rolling week/month window (that
+  // distinction is what previousPeriodSales/revenueGrowth below is for).
+  // Counts any order that has actually been paid for: prepaid orders are
+  // created as PAID directly, and a COD order becomes PAID once the admin
+  // marks it so. Once PAID, an order naturally progresses to
+  // PROCESSING/SHIPPED/DELIVERED and must keep counting as revenue — only
+  // unpaid (PENDING) and voided (CANCELLED/REFUNDED) orders are excluded.
   const totalSales = await prisma.order.aggregate({
     _sum: {
       total: true,
     },
     where: {
-      createdAt: {
-        gte: startDate,
-        lte: endDate,
-      },
       status: {
         notIn: ["PENDING", "CANCELLED", "REFUNDED"],
       },
     },
   });
 
-  // Get total number of orders — every order except cancelled ones.
+  // Get total number of orders — ALL-TIME, every order except cancelled
+  // ones (same "Total Orders" card has no visible date range either).
   const totalOrders = await prisma.order.count({
     where: {
-      createdAt: {
-        gte: startDate,
-        lte: endDate,
-      },
       status: {
         not: "CANCELLED",
       },
@@ -1399,6 +1395,36 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
     previousPeriodStartDate.getTime() - periodLength
   );
 
+  // Growth is "this period vs the same-length period before it" — needs its
+  // own period-scoped current-period totals, since totalOrders/totalSales
+  // above are now all-time (the headline dashboard cards), not period-scoped.
+  const currentPeriodOrders = await prisma.order.count({
+    where: {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+      status: {
+        not: "CANCELLED",
+      },
+    },
+  });
+
+  const currentPeriodSales = await prisma.order.aggregate({
+    _sum: {
+      total: true,
+    },
+    where: {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+      status: {
+        notIn: ["PENDING", "CANCELLED", "REFUNDED"],
+      },
+    },
+  });
+
   const previousPeriodOrders = await prisma.order.count({
     where: {
       createdAt: {
@@ -1430,14 +1456,14 @@ export const getOrderStats = asyncHandler(async (req, res, next) => {
   let orderGrowth = 0;
   if (previousPeriodOrders > 0) {
     orderGrowth = Math.round(
-      ((totalOrders - previousPeriodOrders) / previousPeriodOrders) * 100
+      ((currentPeriodOrders - previousPeriodOrders) / previousPeriodOrders) * 100
     );
   }
 
   let revenueGrowth = 0;
   if (previousPeriodSales._sum.total) {
     revenueGrowth = Math.round(
-      ((totalSales._sum.total - previousPeriodSales._sum.total) /
+      (((currentPeriodSales._sum.total || 0) - previousPeriodSales._sum.total) /
         previousPeriodSales._sum.total) *
       100
     );
