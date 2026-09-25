@@ -511,6 +511,9 @@ export const orders = {
   ) => {
     return api.get("/api/admin/orders", { params });
   },
+  getOrderFilterCounts: () => {
+    return api.get("/api/admin/orders/filter-counts");
+  },
   getOrderById: (orderId: string) => {
     return api.get(`/api/admin/orders/${orderId}`);
   },
@@ -545,6 +548,34 @@ export const orders = {
   },
   cancelShiprocketShipment: (orderId: string) => {
     return api.post(`/api/admin/shiprocket/orders/${orderId}/cancel`);
+  },
+  getRateForOrderDelhivery: (orderId: string) => {
+    return api.get(`/api/admin/delhivery/orders/${orderId}/rate`);
+  },
+  getOrderWarehouseOptionsDelhivery: (orderId: string) => {
+    return api.get(`/api/admin/delhivery/orders/${orderId}/warehouse-options`);
+  },
+  syncToDelhivery: (orderId: string, data?: { warehouseId?: string }) => {
+    return api.post(`/api/admin/delhivery/orders/${orderId}/sync`, data);
+  },
+  getOrderTrackingDelhivery: (orderId: string) => {
+    return api.get(`/api/admin/delhivery/orders/${orderId}/tracking`);
+  },
+  getShippingLabelDelhivery: (orderId: string) => {
+    return api.get(`/api/admin/delhivery/orders/${orderId}/label`);
+  },
+  downloadShippingLabelDelhivery: (orderId: string) => {
+    return api.get(`/api/admin/delhivery/orders/${orderId}/label/download`, {
+      responseType: "blob",
+    });
+  },
+  downloadInvoiceDelhivery: (orderId: string) => {
+    return api.get(`/api/admin/delhivery/orders/${orderId}/invoice/download`, {
+      responseType: "blob",
+    });
+  },
+  cancelDelhiveryShipment: (orderId: string) => {
+    return api.post(`/api/admin/delhivery/orders/${orderId}/cancel`);
   },
   getOrderStats: async () => {
     try {

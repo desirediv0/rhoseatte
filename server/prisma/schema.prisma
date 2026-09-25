@@ -439,6 +439,9 @@ model Order {
   cancelReason                 String?
   cancelledAt                  DateTime?
   cancelledBy                  String?
+  // Which courier fulfilled this order — "SHIPROCKET" or "DELHIVERY", null
+  // until it's synced to one of them.
+  courierProvider              String?
   // Shiprocket Integration Fields
   shiprocketOrderId            Int?
   shiprocketShipmentId         Int?
@@ -451,6 +454,13 @@ model Order {
   warehouseId                  String?
   warehouseNickname            String?
   warehouseAssignedBy          String? // "AUTO" or "MANUAL"
+  // Delhivery Integration Fields
+  delhiveryWaybill             String?
+  delhiveryOrderId             String?
+  delhiveryStatus              String?
+  delhiveryWarehouseId         String?
+  delhiveryWarehouseNickname   String?
+  delhiveryWarehouseAssignedBy String? // "AUTO" or "MANUAL"
   shippingAddress              Address?             @relation(fields: [shippingAddressId], references: [id])
   user                         User                 @relation(fields: [userId], references: [id])
   items                        OrderItem[]
@@ -1231,11 +1241,62 @@ model ShiprocketSettings {
   shippingCharge        Decimal @default(0) @db.Decimal(10, 2)
   freeShippingThreshold Decimal @default(0) @db.Decimal(10, 2)
 
+  // Which courier auto-syncs new orders by default — "SHIPROCKET" or
+  // "DELHIVERY". Admin can still override per-order at manual-sync time.
+  // Lives here (rather than a new table) since this row already doubles as
+  // the general shipping-config singleton read by cart.controller.js.
+  defaultCourierProvider String @default("SHIPROCKET")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   updatedBy String?
 
   @@unique([id])
+}
+
+// -----------------------
+// Delhivery Integration
+// -----------------------
+model DelhiverySettings {
+  id        String  @id @default(uuid())
+  isEnabled Boolean @default(false)
+  apiToken  String? // Encrypted
+  clientName String?
+
+  // Shipment Booking Mode: AUTO or MANUAL
+  bookingMode String @default("MANUAL") // "AUTO" or "MANUAL"
+
+  // Default shipping dimensions (fallback values)
+  defaultLength  Float @default(10) // cm
+  defaultBreadth Float @default(10) // cm
+  defaultHeight  Float @default(10) // cm
+  defaultWeight  Float @default(0.5) // kg
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@unique([id])
+}
+
+model DelhiveryPickupAddress {
+  id                  String   @id @default(uuid())
+  nickname            String   @default("Primary Warehouse")
+  name                String
+  email               String
+  phone               String
+  address             String
+  address2            String?
+  city                String
+  state               String
+  country             String   @default("India")
+  pincode             String
+  isDefault           Boolean  @default(true)
+  delhiveryRegistered Boolean  @default(false) // Confirmed as a client warehouse on Delhivery
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([isDefault])
 }
 
 // -----------------------

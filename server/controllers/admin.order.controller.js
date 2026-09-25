@@ -3,7 +3,9 @@ import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import { razorpay } from "../app.js";
-import { cancelShiprocketOrder, getShiprocketSettings, processOrderForShipping } from "../utils/shiprocket.js";
+import { cancelShiprocketOrder, getShiprocketSettings } from "../utils/shiprocket.js";
+import { cancelDelhiveryShipment, getDelhiverySettings } from "../utils/delhivery.js";
+import { dispatchOrderForShipping } from "../utils/shipping.js";
 import sendEmail from "../utils/sendEmail.js";
 import { getOrderCancelledTemplate, getAdminOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
 
@@ -156,6 +158,7 @@ export const getOrders = asyncHandler(async (req, res, next) => {
       : order.couponCode
         ? { code: order.couponCode }
         : null,
+    courierProvider: order.courierProvider,
     // Include Shiprocket data
     shiprocket: {
       orderId: order.shiprocketOrderId,
@@ -166,6 +169,15 @@ export const getOrders = asyncHandler(async (req, res, next) => {
       warehouseId: order.warehouseId,
       warehouseNickname: order.warehouseNickname,
       warehouseAssignedBy: order.warehouseAssignedBy,
+    },
+    // Include Delhivery data
+    delhivery: {
+      waybill: order.delhiveryWaybill,
+      orderId: order.delhiveryOrderId,
+      status: order.delhiveryStatus,
+      warehouseId: order.delhiveryWarehouseId,
+      warehouseNickname: order.delhiveryWarehouseNickname,
+      warehouseAssignedBy: order.delhiveryWarehouseAssignedBy,
     },
   }));
 
@@ -182,6 +194,38 @@ export const getOrders = asyncHandler(async (req, res, next) => {
         },
       },
       "Orders fetched successfully"
+    )
+  );
+});
+
+// Lightweight counts for the Orders list page's filter pills — across ALL
+// orders (not just the current page), so "Processing (9)" etc. reflect the
+// true total and don't go empty/misleading when a filter is applied.
+export const getOrderFilterCounts = asyncHandler(async (req, res, next) => {
+  const [statusGroups, paymentGroups, total] = await Promise.all([
+    prisma.order.groupBy({ by: ["status"], _count: true }),
+    prisma.order.groupBy({ by: ["paymentMethod"], _count: true }),
+    prisma.order.count(),
+  ]);
+
+  const byStatus = {};
+  for (const row of statusGroups) {
+    byStatus[row.status] = row._count;
+  }
+
+  const byPayment = { COD: 0, PREPAID: 0 };
+  for (const row of paymentGroups) {
+    if (row.paymentMethod === "CASH") byPayment.COD += row._count;
+    else if (row.paymentMethod === "RAZORPAY" || row.paymentMethod === "PHONEPE") {
+      byPayment.PREPAID += row._count;
+    }
+  }
+
+  res.status(200).json(
+    new ApiResponsive(
+      200,
+      { total, byStatus, byPayment },
+      "Order filter counts fetched successfully"
     )
   );
 });
@@ -334,6 +378,7 @@ export const getOrderById = asyncHandler(async (req, res, next) => {
       : order.couponCode
         ? { code: order.couponCode }
         : null,
+    courierProvider: order.courierProvider,
     // Include Shiprocket data
     shiprocket: {
       orderId: order.shiprocketOrderId,
@@ -344,6 +389,15 @@ export const getOrderById = asyncHandler(async (req, res, next) => {
       warehouseId: order.warehouseId,
       warehouseNickname: order.warehouseNickname,
       warehouseAssignedBy: order.warehouseAssignedBy,
+    },
+    // Include Delhivery data
+    delhivery: {
+      waybill: order.delhiveryWaybill,
+      orderId: order.delhiveryOrderId,
+      status: order.delhiveryStatus,
+      warehouseId: order.delhiveryWarehouseId,
+      warehouseNickname: order.delhiveryWarehouseNickname,
+      warehouseAssignedBy: order.delhiveryWarehouseAssignedBy,
     },
   };
 
@@ -407,7 +461,7 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
       // Return items to inventory
       await handleInventoryReturn(tx, orderId, req.admin.id);
 
-      // Cancel Shiprocket order if it exists
+      // Cancel the courier shipment if one exists
       if (order.shiprocketOrderId) {
         try {
           await cancelShiprocketOrder(order.shiprocketOrderId);
@@ -418,6 +472,15 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
           // Continue with order cancellation, but flag that Shiprocket still
           // needs a manual cancel.
           orderData.shiprocketStatus = "CANCEL_FAILED";
+        }
+      } else if (order.delhiveryWaybill) {
+        try {
+          await cancelDelhiveryShipment(order.delhiveryWaybill);
+          orderData.delhiveryStatus = "CANCELLED";
+          console.log(`Admin cancelled Delhivery shipment ${order.delhiveryWaybill}`);
+        } catch (error) {
+          console.error("Failed to cancel Delhivery shipment:", error.message);
+          orderData.delhiveryStatus = "CANCEL_FAILED";
         }
       }
     }
@@ -476,17 +539,22 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
         });
       }
 
-      // Auto-sync to Shiprocket if enabled and not already synced
+      // Auto-sync to the configured default courier if not already synced to either
       try {
-        const shiprocketSettings = await getShiprocketSettings();
-        if (shiprocketSettings.isEnabled && !order.shiprocketOrderId) {
-          console.log(`Auto-syncing order ${order.orderNumber} to Shiprocket...`);
-          await processOrderForShipping(orderId);
-          console.log(`Order ${order.orderNumber} synced to Shiprocket successfully`);
+        if (!order.shiprocketOrderId && !order.delhiveryWaybill) {
+          const [shiprocketSettings, delhiverySettings] = await Promise.all([
+            getShiprocketSettings(),
+            getDelhiverySettings(),
+          ]);
+          if (shiprocketSettings.isEnabled || delhiverySettings.isEnabled) {
+            console.log(`Auto-syncing order ${order.orderNumber} to shipping...`);
+            await dispatchOrderForShipping(orderId);
+            console.log(`Order ${order.orderNumber} synced to shipping successfully`);
+          }
         }
-      } catch (shiprocketError) {
+      } catch (shippingError) {
         // Non-critical: log error but don't fail the order status update
-        console.error(`Failed to auto-sync order ${order.orderNumber} to Shiprocket:`, shiprocketError.message);
+        console.error(`Failed to auto-sync order ${order.orderNumber} to shipping:`, shippingError.message);
       }
     }
 
@@ -639,10 +707,13 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     },
   });
 
-  // Send cancellation email to customer when admin cancels order
+  // Send cancellation emails when admin cancels order — to the customer, and
+  // a notification copy to the admin/store inbox, regardless of which
+  // courier (or none) had fulfilled the order.
   if (status === "CANCELLED") {
+    let userRecord = null;
     try {
-      const userRecord = await prisma.user.findUnique({
+      userRecord = await prisma.user.findUnique({
         where: { id: order.userId },
         select: { email: true, name: true },
       });
@@ -661,6 +732,27 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
       }
     } catch (emailErr) {
       console.error("Failed to send admin cancellation email:", emailErr.message);
+    }
+
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.STORE_EMAIL;
+      if (adminEmail) {
+        await sendEmail({
+          email: adminEmail,
+          subject: `❌ Order #${order.orderNumber} Cancelled by Admin`,
+          html: getAdminOrderCancelledTemplate({
+            orderNumber: order.orderNumber,
+            customerName: userRecord?.name || "Guest",
+            customerEmail: userRecord?.email || "No email",
+            reason: notes || "Cancelled by admin",
+            total: parseFloat(order.total).toFixed(2),
+            cancelledBy: "admin",
+          }),
+        });
+        console.log(`Admin cancellation notification sent for order ${order.orderNumber}`);
+      }
+    } catch (emailErr) {
+      console.error("Failed to send admin cancellation notification:", emailErr.message);
     }
   }
 

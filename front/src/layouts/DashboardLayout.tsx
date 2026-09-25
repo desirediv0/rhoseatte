@@ -284,7 +284,7 @@ export default function DashboardLayout() {
         secretAccess: false,
         fragranceQuiz: false,
       });
-    } else if (path.startsWith("/settings") || path.startsWith("/moq-settings") || path.startsWith("/pricing-slabs") || path.startsWith("/payment-settings") || path.startsWith("/payment-gateway-settings") || path.startsWith("/price-visibility-settings") || path.startsWith("/shiprocket-settings") || path.startsWith("/shipping-settings")) {
+    } else if (path.startsWith("/settings") || path.startsWith("/moq-settings") || path.startsWith("/pricing-slabs") || path.startsWith("/payment-settings") || path.startsWith("/payment-gateway-settings") || path.startsWith("/price-visibility-settings") || path.startsWith("/shiprocket-settings") || path.startsWith("/delhivery-settings") || path.startsWith("/shipping-settings")) {
       setOpenSections({
         products: false,
         orders: false,
@@ -820,6 +820,16 @@ export default function DashboardLayout() {
                     ),
                   },
                   {
+                    href: "/delhivery-settings",
+                    title: "Delhivery",
+                    icon: <Truck className="h-3 w-3" />,
+                    hasPermission: hasPermissionFor(
+                      admin,
+                      Resource.SETTINGS,
+                      Action.UPDATE
+                    ),
+                  },
+                  {
                     href: "/shipping-settings",
                     title: t("nav.shipping"),
                     icon: <Truck className="h-3 w-3" />,
@@ -1299,6 +1309,16 @@ export default function DashboardLayout() {
                   {
                     href: "/shiprocket-settings",
                     title: t("nav.shiprocket"),
+                    icon: <Truck className="h-3 w-3" />,
+                    hasPermission: hasPermissionFor(
+                      admin,
+                      Resource.SETTINGS,
+                      Action.UPDATE
+                    ),
+                  },
+                  {
+                    href: "/delhivery-settings",
+                    title: "Delhivery",
                     icon: <Truck className="h-3 w-3" />,
                     hasPermission: hasPermissionFor(
                       admin,

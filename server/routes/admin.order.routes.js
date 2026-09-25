@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getOrders,
+  getOrderFilterCounts,
   getOrderById,
   updateOrderStatus,
   updateTracking,
@@ -22,6 +23,13 @@ router.get(
   verifyAdminJWT,
   hasPermission("orders", "read"),
   getOrders
+);
+
+router.get(
+  "/orders/filter-counts",
+  verifyAdminJWT,
+  hasPermission("orders", "read"),
+  getOrderFilterCounts
 );
 
 router.get(

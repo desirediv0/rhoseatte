@@ -2,7 +2,9 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
-import { getShiprocketSettings, processShiprocketReturn } from "../utils/shiprocket.js";
+import { getShiprocketSettings } from "../utils/shiprocket.js";
+import { getDelhiverySettings } from "../utils/delhivery.js";
+import { dispatchReturn } from "../utils/shipping.js";
 
 // Get return settings
 export const getReturnSettings = asyncHandler(async (req, res) => {
@@ -324,9 +326,12 @@ export const updateReturnRequestStatus = asyncHandler(async (req, res) => {
       });
     }
 
-    // Check if Shiprocket is enabled and order has Shiprocket info - process return
+    // Check if the courier that fulfilled this order is enabled - process return
     try {
-      const shiprocketSettings = await getShiprocketSettings();
+      const [shiprocketSettings, delhiverySettings] = await Promise.all([
+        getShiprocketSettings(),
+        getDelhiverySettings(),
+      ]);
 
       // Update order status to indicate return
       await prisma.order.update({
@@ -336,11 +341,12 @@ export const updateReturnRequestStatus = asyncHandler(async (req, res) => {
         },
       });
 
-      // Process Shiprocket return if enabled
-      if (shiprocketSettings.isEnabled) {
-        // This will create return order in Shiprocket and update shiprocketStatus
-        processShiprocketReturn(returnRequest.orderId, returnRequest.reason).catch((err) => {
-          console.error("Shiprocket return processing error:", err.message);
+      // Process the return with whichever courier fulfilled the order, if enabled
+      if (shiprocketSettings.isEnabled || delhiverySettings.isEnabled) {
+        // This will create a return/reverse-pickup order with the courier and
+        // update its status field on the order
+        dispatchReturn(returnRequest.orderId, returnRequest.reason).catch((err) => {
+          console.error("Courier return processing error:", err.message);
         });
       }
     } catch (err) {

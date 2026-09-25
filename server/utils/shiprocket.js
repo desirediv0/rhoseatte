@@ -822,6 +822,7 @@ export async function processOrderForShipping(orderId, courierId = null, isManua
         await prisma.order.update({
             where: { id: orderId },
             data: {
+                courierProvider: "SHIPROCKET",
                 shiprocketOrderId: srOrderId,
                 shiprocketShipmentId: Number(shipmentId),
                 shiprocketStatus: "CREATED",

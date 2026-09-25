@@ -38,6 +38,8 @@ import adminReturnRoutes from "./routes/admin.return.routes.js";
 import adminMOQRoutes from "./routes/admin.moq.routes.js";
 import adminPaymentGatewayRoutes from "./routes/admin.payment-gateway.routes.js";
 import adminShiprocketRoutes from "./routes/admin.shiprocket.routes.js";
+import adminDelhiveryRoutes from "./routes/admin.delhivery.routes.js";
+import webhooksDelhiveryRoutes from "./routes/webhooks.delhivery.routes.js";
 import adminVideoReelRoutes from "./routes/admin.video-reel.routes.js";
 import adminBundleRoutes from "./routes/admin.bundle.routes.js";
 import bundleRoutes from "./routes/bundle.routes.js";
@@ -174,6 +176,7 @@ app.use("/api/admin/returns", adminReturnRoutes);
 app.use("/api/admin", adminMOQRoutes);
 app.use("/api/admin", adminPaymentGatewayRoutes);
 app.use("/api/admin/shiprocket", adminShiprocketRoutes);
+app.use("/api/admin/delhivery", adminDelhiveryRoutes);
 app.use("/api/admin", adminVideoReelRoutes);
 app.use("/api/admin/bundles", adminBundleRoutes);
 app.use("/api/bundles", bundleRoutes);
@@ -192,6 +195,10 @@ app.use("/api/admin", adminCheckoutRecommendationRoutes);
 
 // Shiprocket webhook (public endpoint)
 app.use("/api/webhooks/shiprocket", adminShiprocketRoutes);
+
+// Delhivery webhook (public endpoint — only the single /webhook route, not
+// the whole admin router, unlike the Shiprocket mount above)
+app.use("/api/webhooks/delhivery", webhooksDelhiveryRoutes);
 
 /* -------------------- HEALTH CHECK -------------------- */
 

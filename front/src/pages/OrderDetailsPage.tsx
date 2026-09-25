@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { orders } from "@/api/adminService";
+import api from "@/api/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -78,11 +79,17 @@ export default function OrderDetailsPage() {
       estimatedDelivery?: string;
       updates?: OrderUpdate[];
     };
+    courierProvider?: string | null;
     shiprocket?: {
       orderId?: number;
       shipmentId?: number;
       awbCode?: string;
       courierName?: string;
+      status?: string;
+    };
+    delhivery?: {
+      waybill?: string;
+      orderId?: string;
       status?: string;
     };
     shippingCost?: string | number;
@@ -382,6 +389,57 @@ export default function OrderDetailsPage() {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [suggestedWarehouseId, setSuggestedWarehouseId] = useState<string>("");
 
+  // Which courier the admin wants to sync this (not-yet-synced) order with —
+  // defaults to the site-wide default courier, fetched once below.
+  const [selectedCourierProvider, setSelectedCourierProvider] = useState<"SHIPROCKET" | "DELHIVERY">("SHIPROCKET");
+  const [isSyncingDelhivery, setIsSyncingDelhivery] = useState(false);
+  const [delhiveryRate, setDelhiveryRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    api
+      .get("/api/admin/shiprocket/settings")
+      .then((res) => {
+        const provider = res.data?.data?.settings?.defaultCourierProvider;
+        if (provider === "DELHIVERY" || provider === "SHIPROCKET") {
+          setSelectedCourierProvider(provider);
+        }
+      })
+      .catch(() => {
+        /* default courier fetch is optional */
+      });
+  }, []);
+
+  // Handle manual sync to Delhivery
+  const handleSyncToDelhivery = async () => {
+    if (!id) return;
+    try {
+      setIsSyncingDelhivery(true);
+      const payload: { warehouseId?: string } = {};
+      if (selectedWarehouseId) payload.warehouseId = selectedWarehouseId;
+      const response = await orders.syncToDelhivery(
+        id,
+        Object.keys(payload).length ? payload : undefined
+      );
+
+      if (response && response.data && response.data.success) {
+        toast.success("Order synced to Delhivery successfully!");
+        await fetchOrderDetails();
+      } else {
+        toast.error(response.data?.message || "Failed to sync to Delhivery");
+      }
+    } catch (error: unknown) {
+      console.error("Error syncing to Delhivery:", error);
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as { response: { data?: { message?: string } } };
+        toast.error(axiosError.response?.data?.message || "Failed to sync to Delhivery");
+      } else {
+        toast.error("Failed to sync to Delhivery");
+      }
+    } finally {
+      setIsSyncingDelhivery(false);
+    }
+  };
+
   // Handle manual sync to Shiprocket (with optional specific courierId)
   const handleSyncToShiprocket = async (courierId?: number | string) => {
     if (!id) return;
@@ -466,6 +524,30 @@ export default function OrderDetailsPage() {
     } catch (error: any) {
       console.error("Error fetching couriers:", error);
       toast.error(error.response?.data?.message || "Failed to fetch courier partners");
+    } finally {
+      setIsFetchingCouriers(false);
+    }
+  };
+
+  // Fetch a Delhivery rate estimate for this order
+  const handleFetchDelhiveryRate = async () => {
+    if (!id || orderDetails?.status === "CANCELLED") return;
+    if (orderDetails?.delhivery?.waybill && orderDetails?.delhivery?.status !== "CANCELLED") return;
+    setIsFetchingCouriers(true);
+    try {
+      const response = await orders.getRateForOrderDelhivery(id);
+      if (response.data?.success) {
+        const rateData = response.data.data?.rate;
+        const charge =
+          rateData?.[0]?.total_amount ??
+          rateData?.[0]?.charge_DL ??
+          null;
+        setDelhiveryRate(typeof charge === "number" ? charge : null);
+        toast.success("Delhivery rate estimate fetched!");
+      }
+    } catch (error: any) {
+      console.error("Error fetching Delhivery rate:", error);
+      toast.error(error.response?.data?.message || "Failed to fetch Delhivery rate");
     } finally {
       setIsFetchingCouriers(false);
     }
@@ -1221,7 +1303,15 @@ export default function OrderDetailsPage() {
           ) : null}
 
           {/* Shiprocket Information */}
-          {orderDetails.shiprocket && (
+          {orderDetails.shiprocket && (() => {
+            const isDelhiverySynced = Boolean(orderDetails.delhivery?.waybill);
+            const isShiprocketSynced = Boolean(orderDetails.shiprocket?.orderId);
+            const isSynced = isDelhiverySynced || isShiprocketSynced;
+            const providerLabel = isDelhiverySynced ? "Delhivery" : "Shiprocket";
+            const currentStatus = isDelhiverySynced
+              ? orderDetails.delhivery?.status
+              : orderDetails.shiprocket?.status;
+            return (
             <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl">
               <CardHeader className="px-6 pt-6 pb-4">
                 <div className="flex items-center justify-between">
@@ -1231,40 +1321,194 @@ export default function OrderDetailsPage() {
                     </div>
                     <div>
                       <CardTitle className="text-lg font-semibold text-[#1F2937]">
-                        Shiprocket Shipment
+                        {isSynced ? `${providerLabel} Shipment` : "Shipment"}
                       </CardTitle>
                       <p className="text-sm text-[#9CA3AF]">Courier management & live tracking</p>
                     </div>
                   </div>                  <div className="flex items-center gap-2">
-                    {orderDetails.shiprocket.orderId && (
+                    {isSynced && (
                       <Badge className={cn(
                         "text-xs border",
-                        (orderDetails.shiprocket.status === "CANCELLED" || orderDetails.status === "CANCELLED")
+                        (currentStatus === "CANCELLED" || orderDetails.status === "CANCELLED")
                           ? "bg-gray-100 text-gray-500 border-gray-200"
                           : "bg-[#ECFDF5] text-[#22C55E] border-[#D1FAE5]"
                       )}>
-                        ✓ Synced to Shiprocket
+                        ✓ Synced to {providerLabel}
                       </Badge>
                     )}
-                    {orderDetails.shiprocket.status && (
+                    {currentStatus && (
                       <Badge className={cn(
                         "text-xs font-medium border",
-                        orderDetails.shiprocket.status === "CANCELLED"
+                        currentStatus === "CANCELLED"
                           ? "bg-red-50 text-red-600 border-red-200"
-                          : orderDetails.shiprocket.status === "PICKUP_SCHEDULED"
+                          : currentStatus === "PICKUP_SCHEDULED"
                           ? "bg-[#FEF3C7] text-[#D97706] border-[#FCD34D]"
-                          : orderDetails.shiprocket.status === "AWB_ASSIGNED"
+                          : currentStatus === "AWB_ASSIGNED"
                           ? "bg-[#EFF6FF] text-[#3B82F6] border-[#DBEAFE]"
                           : "bg-[#F3F4F6] text-[#6B7280] border-[#E5E7EB]"
                       )}>
-                        {orderDetails.shiprocket.status.replace(/_/g, " ")}
+                        {currentStatus.replace(/_/g, " ")}
                       </Badge>
                     )}
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="px-6 pb-6">
-                {orderDetails.shiprocket.orderId ? (
+                {isDelhiverySynced ? (
+                  <div className="space-y-4">
+                    {/* Waybill with Track Live */}
+                    <div className={cn(
+                      "p-4 border rounded-xl",
+                      (orderDetails.delhivery?.status === "CANCELLED" || orderDetails.status === "CANCELLED")
+                        ? "bg-gray-50 border-gray-200"
+                        : "bg-[#ECFDF5] border-[#D1FAE5]"
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={cn(
+                            "text-xs font-medium mb-1",
+                            (orderDetails.delhivery?.status === "CANCELLED" || orderDetails.status === "CANCELLED")
+                              ? "text-gray-500"
+                              : "text-[#22C55E]"
+                          )}>
+                            WAYBILL / TRACKING NUMBER {(orderDetails.delhivery?.status === "CANCELLED" || orderDetails.status === "CANCELLED") && "(CANCELLED)"}
+                          </p>
+                          <p className="font-mono text-xl font-bold text-[#1F2937]">
+                            {orderDetails.delhivery?.waybill}
+                          </p>
+                        </div>
+                        {orderDetails.delhivery?.status !== "CANCELLED" && orderDetails.status !== "CANCELLED" && (
+                          <a
+                            href={`https://www.delhivery.com/track/package/${orderDetails.delhivery?.waybill}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#22C55E] text-white rounded-lg hover:bg-[#16A34A] transition-colors"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Track Live
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      {orderDetails.delhivery?.status !== "CANCELLED" && orderDetails.status !== "CANCELLED" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const response = await orders.downloadShippingLabelDelhivery(id!);
+                                const blob = new Blob([response.data], { type: "application/pdf" });
+                                const blobUrl = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = blobUrl;
+                                a.download = `${orderDetails.orderNumber || "order"}-label.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                                toast.success("Label downloaded");
+                              } catch (error) {
+                                toast.error("Failed to download label");
+                              }
+                            }}
+                            className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                          >
+                            Download Label
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const response = await orders.downloadInvoiceDelhivery(id!);
+                                const blob = new Blob([response.data], { type: "application/pdf" });
+                                const blobUrl = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = blobUrl;
+                                a.download = `${orderDetails.orderNumber || "order"}-invoice.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                                toast.success("Invoice downloaded");
+                              } catch (error) {
+                                toast.error("Failed to download invoice");
+                              }
+                            }}
+                            className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                          >
+                            Print Invoice
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              if (!confirm("Are you sure you want to cancel this shipment?")) return;
+                              try {
+                                const response = await orders.cancelDelhiveryShipment(id!);
+                                if (response.data.success) {
+                                  toast.success("Shipment cancelled successfully");
+                                  await fetchOrderDetails();
+                                } else {
+                                  toast.error(response.data?.message || "Failed to cancel shipment");
+                                }
+                              } catch (error) {
+                                toast.error("Failed to cancel shipment");
+                              }
+                            }}
+                            className="border-[#EF4444] text-[#EF4444] hover:bg-[#FEF2F2]"
+                          >
+                            Cancel Shipment
+                          </Button>
+                        </>
+                      ) : (
+                        <Button size="sm" variant="outline" disabled className="bg-red-50 text-red-600 border-red-200 cursor-not-allowed">
+                          Shipment Cancelled
+                        </Button>
+                      )}
+                    </div>
+
+                    {orderDetails.status === "CANCELLED" ? (
+                      <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-red-700 font-medium">
+                          This order is cancelled. Reactivate it to re-sync shipping.
+                        </p>
+                      </div>
+                    ) : orderDetails.delhivery?.status === "CANCELLED" ? (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={handleSyncToDelhivery}
+                          disabled={isSyncingDelhivery}
+                          size="sm"
+                          className="bg-[#22C55E] hover:bg-[#16A34A] text-white"
+                        >
+                          {isSyncingDelhivery ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Re-syncing...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Re-sync to Delhivery
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2 p-3 bg-[#EFF6FF] border border-[#DBEAFE] rounded-lg">
+                        <CheckCircle className="h-4 w-4 text-[#3B82F6] mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-[#1E40AF]">
+                          Shipment booked with Delhivery. Click "Track Live" for live location updates.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : orderDetails.shiprocket.orderId ? (
                   <div className="space-y-4">
                     {/* AWB Code with Track Live */}
                     {orderDetails.shiprocket.awbCode && (
@@ -1513,15 +1757,85 @@ export default function OrderDetailsPage() {
                       <p className="font-semibold text-[#1F2937] text-base mb-1">
                         {orderDetails.status === "CANCELLED"
                           ? "Order Cancelled"
-                          : "Not Synced to Shiprocket Yet"}
+                          : "Not Synced to a Courier Yet"}
                       </p>
                       <p className="text-sm text-[#6B7280] mb-4 max-w-md mx-auto">
                         {orderDetails.status === "CANCELLED"
-                          ? "Reactivate the order before syncing it to Shiprocket."
-                          : "In Manual Mode, you can fetch available courier partners to compare rates &amp; estimated delivery time, or auto-assign the best courier directly."}
+                          ? "Reactivate the order before syncing it to a courier."
+                          : "Choose a courier below, then fetch available rates/couriers or auto-assign directly."}
                       </p>
 
                       {orderDetails.status !== "CANCELLED" && (
+                      <>
+                      <div className="max-w-sm mx-auto mb-4">
+                        <label className="block text-xs font-semibold text-[#374151] mb-1.5 text-left">
+                          Courier
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(["SHIPROCKET", "DELHIVERY"] as const).map((provider) => (
+                            <button
+                              key={provider}
+                              type="button"
+                              onClick={() => setSelectedCourierProvider(provider)}
+                              className={cn(
+                                "px-3 py-2 text-sm rounded-lg border transition-colors",
+                                selectedCourierProvider === provider
+                                  ? "border-[#22C55E] bg-[#ECFDF5] text-[#16A34A] font-semibold"
+                                  : "border-[#D1D5DB] bg-white text-[#374151] hover:border-[#9CA3AF]"
+                              )}
+                            >
+                              {provider === "SHIPROCKET" ? "Shiprocket" : "Delhivery"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {selectedCourierProvider === "DELHIVERY" ? (
+                        <div className="flex flex-col items-center gap-3">
+                          {delhiveryRate !== null && (
+                            <p className="text-sm text-[#374151]">
+                              Estimated rate: <span className="font-semibold text-emerald-700">₹{delhiveryRate}</span>
+                            </p>
+                          )}
+                          <div className="flex flex-wrap justify-center gap-3">
+                            <Button
+                              onClick={handleFetchDelhiveryRate}
+                              disabled={isFetchingCouriers || isSyncingDelhivery}
+                              variant="outline"
+                              className="border-[#3B82F6] text-[#3B82F6] hover:bg-[#EFF6FF]"
+                            >
+                              {isFetchingCouriers ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Fetching Rate...
+                                </>
+                              ) : (
+                                <>
+                                  <Truck className="mr-2 h-4 w-4" />
+                                  View Rate Estimate
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              onClick={handleSyncToDelhivery}
+                              disabled={isSyncingDelhivery}
+                              className="bg-[#22C55E] hover:bg-[#16A34A] text-white"
+                            >
+                              {isSyncingDelhivery ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Syncing...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                  Sync to Delhivery
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
                       <>
                       {warehouseOptions.length > 1 && (
                         <div className="max-w-sm mx-auto mb-4 text-left">
@@ -1589,9 +1903,11 @@ export default function OrderDetailsPage() {
                       </div>
                       </>
                       )}
+                      </>
+                      )}
                     </div>
 
-                    {orderDetails.status !== "CANCELLED" && availableCouriers.length > 0 && (
+                    {orderDetails.status !== "CANCELLED" && selectedCourierProvider === "SHIPROCKET" && availableCouriers.length > 0 && (
                       <div className="mt-4 border rounded-xl p-4 bg-gray-50/60 space-y-3">
                         <div className="flex items-center justify-between">
                           <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-2">
@@ -1631,7 +1947,8 @@ export default function OrderDetailsPage() {
                 )}
               </CardContent>
             </Card>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>

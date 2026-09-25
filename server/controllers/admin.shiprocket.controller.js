@@ -346,6 +346,17 @@ export const syncOrderToShiprocket = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Cannot sync a cancelled order. Reactivate it first.");
     }
 
+    // An order can only be booked with one courier at a time — if it's live
+    // on Delhivery, that must be cancelled first before switching to Shiprocket.
+    const delhiveryShipmentActive =
+        order.delhiveryWaybill && order.delhiveryStatus !== "CANCELLED";
+    if (delhiveryShipmentActive) {
+        throw new ApiError(
+            400,
+            "This order already has an active Delhivery shipment. Cancel it before syncing to Shiprocket."
+        );
+    }
+
     const shipmentCancelled =
         order.shiprocketOrderId && order.shiprocketStatus === "CANCELLED";
 

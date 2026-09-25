@@ -9,7 +9,7 @@ import { getOrderConfirmationTemplate, getAdminNewOrderTemplate, getOrderCancell
 import { getFileUrl } from "../utils/deleteFromS3.js";
 import { processReferralReward } from "./referral.controller.js";
 import { decrypt } from "../utils/encryption.js";
-import { processOrderForShipping } from "../utils/shiprocket.js";
+import { dispatchOrderForShipping } from "../utils/shipping.js";
 import { calculateCouponDiscount, cartItemsToDiscountInput } from "../utils/couponDiscount.js";
 import { calculateSlabPrice } from "../utils/slabPrice.js";
 
@@ -1097,10 +1097,11 @@ export const paymentVerification = asyncHandler(async (req, res) => {
       console.error("Referral reward processing error:", err);
     });
 
-    // Process Shiprocket shipping (outside transaction, non-blocking)
-    // This creates the order in Shiprocket and assigns AWB if enabled
-    processOrderForShipping(result.order.id).catch((err) => {
-      console.error("Shiprocket order processing error:", err);
+    // Process shipping with whichever courier is configured as default
+    // (outside transaction, non-blocking). Creates the order/shipment and
+    // assigns AWB/waybill if enabled.
+    dispatchOrderForShipping(result.order.id).catch((err) => {
+      console.error("Shipping order processing error:", err);
       // Non-critical - admin can manually sync later
     });
 
@@ -1673,7 +1674,7 @@ export const cancelOrder = asyncHandler(async (req, res) => {
     }
   });
 
-  // Cancel Shiprocket order if it exists (outside transaction, non-blocking)
+  // Cancel the courier shipment if it exists (outside transaction, non-blocking)
   if (order.shiprocketOrderId) {
     try {
       const { cancelShiprocketOrder, getShiprocketSettings } = await import("../utils/shiprocket.js");
@@ -1689,6 +1690,22 @@ export const cancelOrder = asyncHandler(async (req, res) => {
       }
     } catch (error) {
       console.error("Failed to cancel Shiprocket order:", error.message);
+      // Non-critical - order is already cancelled in our system
+    }
+  } else if (order.delhiveryWaybill) {
+    try {
+      const { cancelDelhiveryShipment, getDelhiverySettings } = await import("../utils/delhivery.js");
+      const settings = await getDelhiverySettings();
+      if (settings.isEnabled) {
+        await cancelDelhiveryShipment(order.delhiveryWaybill);
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { delhiveryStatus: "CANCELLED" },
+        });
+        console.log(`Delhivery shipment ${order.delhiveryWaybill} cancelled`);
+      }
+    } catch (error) {
+      console.error("Failed to cancel Delhivery shipment:", error.message);
       // Non-critical - order is already cancelled in our system
     }
   }
@@ -2593,9 +2610,10 @@ export const createCashOrder = asyncHandler(async (req, res) => {
       console.error("Referral reward processing error:", err);
     });
 
-    // Process Shiprocket shipping (outside transaction, non-blocking)
-    processOrderForShipping(result.order.id).catch((err) => {
-      console.error("Shiprocket order processing error:", err);
+    // Process shipping with whichever courier is configured as default
+    // (outside transaction, non-blocking).
+    dispatchOrderForShipping(result.order.id).catch((err) => {
+      console.error("Shipping order processing error:", err);
     });
 
     // Send order confirmation email
