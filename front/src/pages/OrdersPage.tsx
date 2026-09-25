@@ -495,7 +495,7 @@ export default function OrdersPage() {
                                 parseFloat(order.discount || 0))
                             )}
                           </p>
-                          {order.discount && parseFloat(order.discount) > 0 && (
+                          {parseFloat(order.discount || 0) > 0 && (
                             <p className="text-xs text-[#22C55E]">
                               -{formatCurrency(parseFloat(order.discount))}
                             </p>
@@ -622,7 +622,7 @@ export default function OrdersPage() {
                           )}
                         </p>
                       </div>
-                      {order.discount && parseFloat(order.discount) > 0 && (
+                      {parseFloat(order.discount || 0) > 0 && (
                         <p className="text-xs text-[#22C55E]">
                           -{formatCurrency(parseFloat(order.discount))}
                         </p>
