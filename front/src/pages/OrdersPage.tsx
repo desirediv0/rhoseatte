@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { orders } from "@/api/adminService";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,31 @@ export default function OrdersPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPayment, setSelectedPayment] = useState("");
+
+  // Filter-pill counts — fetched once from the server across ALL orders, not
+  // just the current page, so "Processing (9)" etc. reflect the true total
+  // instead of going stale/misleading (e.g. showing 0 when the current page
+  // happens to have none, even though other pages do).
+  const [filterCounts, setFilterCounts] = useState<{
+    total: number;
+    byStatus: Record<string, number>;
+    byPayment: { COD: number; PREPAID: number };
+  }>({ total: 0, byStatus: {}, byPayment: { COD: 0, PREPAID: 0 } });
+
+  const fetchFilterCounts = useCallback(async () => {
+    try {
+      const response = await orders.getOrderFilterCounts();
+      if (response.data?.success) {
+        setFilterCounts(response.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching order filter counts:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFilterCounts();
+  }, [fetchFilterCounts]);
 
   // Fetch orders
   useEffect(() => {
@@ -124,6 +149,42 @@ export default function OrdersPage() {
     }
   };
 
+  // Which courier (if any) fulfilled this order, and its tracking info —
+  // works with both Shiprocket and Delhivery without mixing their data.
+  const getShipmentInfo = (order: any) => {
+    if (order.delhivery?.waybill) {
+      return {
+        provider: "Delhivery",
+        trackingCode: order.delhivery.waybill,
+        trackingUrl: `https://www.delhivery.com/track/package/${order.delhivery.waybill}`,
+        courierName: "Delhivery",
+        status: order.delhivery.status,
+        warehouseNickname: order.delhivery.warehouseNickname,
+        warehouseAssignedBy: order.delhivery.warehouseAssignedBy,
+      };
+    }
+    if (order.shiprocket?.awbCode || order.shiprocket?.orderId) {
+      return {
+        provider: "Shiprocket",
+        trackingCode: order.shiprocket.awbCode,
+        trackingUrl: order.shiprocket.awbCode
+          ? `https://shiprocket.co/tracking/${order.shiprocket.awbCode}`
+          : null,
+        courierName: order.shiprocket.courierName,
+        status: order.shiprocket.status,
+        warehouseNickname: order.shiprocket.warehouseNickname,
+        warehouseAssignedBy: order.shiprocket.warehouseAssignedBy,
+      };
+    }
+    return null;
+  };
+
+  const clearFilters = () => {
+    setSelectedStatus("");
+    setSelectedPayment("");
+    setSearchQuery("");
+    setCurrentPage(1);
+  };
 
   // Loading state
   if (isLoading && ordersList.length === 0) {
@@ -163,34 +224,34 @@ export default function OrdersPage() {
     );
   }
 
-  const deliveredCount = ordersList.filter((o: any) => o.status === "DELIVERED").length;
-  const pendingCount = ordersList.filter((o: any) => o.status === "PENDING").length;
-  const processingCount = ordersList.filter((o: any) => o.status === "PROCESSING").length;
-  const shippedCount = ordersList.filter((o: any) => o.status === "SHIPPED").length;
+  const deliveredCount = filterCounts.byStatus.DELIVERED || 0;
+  const pendingCount = filterCounts.byStatus.PENDING || 0;
+  const processingCount = filterCounts.byStatus.PROCESSING || 0;
+  const shippedCount = filterCounts.byStatus.SHIPPED || 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {/* Premium Page Header */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold text-[#1F2937] tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-[#1F2937] tracking-tight">
               {t('orders.title')}
             </h1>
             <p className="text-[#9CA3AF] text-sm mt-1.5">
               {t('orders.description')}
             </p>
           </div>
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-2 sm:gap-3 text-sm">
             <div className="flex items-center gap-2 bg-[#F3F4F6] px-3 py-2 rounded-lg">
               <ShoppingCart className="h-4 w-4 text-[#4B5563]" />
-              <span className="font-semibold text-[#1F2937]">{totalCount}</span>
-              <span className="text-[#9CA3AF]">{t('orders.summary.total')}</span>
+              <span className="font-semibold text-[#1F2937]">{filterCounts.total || totalCount}</span>
+              <span className="text-[#9CA3AF] hidden xs:inline">{t('orders.summary.total')}</span>
             </div>
             <div className="flex items-center gap-2 bg-[#ECFDF5] px-3 py-2 rounded-lg">
               <CheckCircle className="h-4 w-4 text-[#22C55E]" />
               <span className="font-semibold text-[#22C55E]">{deliveredCount}</span>
-              <span className="text-[#22C55E]">{t('orders.summary.delivered')}</span>
+              <span className="text-[#22C55E] hidden xs:inline">{t('orders.summary.delivered')}</span>
             </div>
           </div>
         </div>
@@ -200,7 +261,7 @@ export default function OrdersPage() {
       {/* Filters Bar */}
       <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl">
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-3">
             <form onSubmit={handleSearch} className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9CA3AF]" />
               <Input
@@ -211,46 +272,43 @@ export default function OrdersPage() {
                 className="pl-10 border-[#E5E7EB] focus:border-primary"
               />
             </form>
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="px-4 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
-            >
-              <option value="">{t('orders.filters.all_status')}</option>
-              <option value="PENDING">{t('orders.status.pending')}</option>
-              <option value="PROCESSING">{t('orders.status.processing')}</option>
-              <option value="SHIPPED">{t('orders.status.shipped')}</option>
-              <option value="DELIVERED">{t('orders.status.delivered')}</option>
-              <option value="CANCELLED">{t('orders.status.cancelled')}</option>
-              <option value="REFUNDED">{t('orders.status.refunded')}</option>
-              <option value="RETURN_APPROVED">{t('orders.status.return_approved') || "Return Approved"}</option>
-              <option value="RETURN_COMPLETED">{t('orders.status.return_completed') || "Return Completed"}</option>
-            </select>
-            <select
-              value={selectedPayment}
-              onChange={(e) => {
-                setSelectedPayment(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="px-4 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
-            >
-              <option value="">{t('orders.filters.all_payments')}</option>
-              <option value="COD">{t('orders.filters.cod')}</option>
-              <option value="PREPAID">{t('orders.filters.prepaid')}</option>
-            </select>
+            <div className="flex gap-3">
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="flex-1 md:flex-none px-3 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
+              >
+                <option value="">{t('orders.filters.all_status')}</option>
+                <option value="PENDING">{t('orders.status.pending')}</option>
+                <option value="PROCESSING">{t('orders.status.processing')}</option>
+                <option value="SHIPPED">{t('orders.status.shipped')}</option>
+                <option value="DELIVERED">{t('orders.status.delivered')}</option>
+                <option value="CANCELLED">{t('orders.status.cancelled')}</option>
+                <option value="REFUNDED">{t('orders.status.refunded')}</option>
+                <option value="RETURN_APPROVED">{t('orders.status.return_approved') || "Return Approved"}</option>
+                <option value="RETURN_COMPLETED">{t('orders.status.return_completed') || "Return Completed"}</option>
+              </select>
+              <select
+                value={selectedPayment}
+                onChange={(e) => {
+                  setSelectedPayment(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="flex-1 md:flex-none px-3 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
+              >
+                <option value="">{t('orders.filters.all_payments')}</option>
+                <option value="COD">{t('orders.filters.cod')}</option>
+                <option value="PREPAID">{t('orders.filters.prepaid')}</option>
+              </select>
+            </div>
             {(searchQuery || selectedStatus || selectedPayment) && (
               <Button
                 variant="ghost"
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedStatus("");
-                  setSelectedPayment("");
-                  setCurrentPage(1);
-                }}
-                className="text-[#4B5563] hover:text-[#1F2937]"
+                onClick={clearFilters}
+                className="text-[#4B5563] hover:text-[#1F2937] shrink-0"
               >
                 {t('orders.filters.clear')}
               </Button>
@@ -275,18 +333,19 @@ export default function OrdersPage() {
                     ? ""
                     : "border-[#E5E7EB] hover:bg-[#F3F7F6]"
                 )}
-                onClick={() =>
-                  setSelectedStatus(selectedStatus === status ? "" : status)
-                }
+                onClick={() => {
+                  setSelectedStatus(selectedStatus === status ? "" : status);
+                  setCurrentPage(1);
+                }}
               >
                 {label} ({count})
               </Button>
             ))}
-            <div className="w-px h-9 bg-[#E5E7EB] mx-1" />
+            <div className="w-px h-9 bg-[#E5E7EB] mx-1 hidden sm:block" />
             {[
-              { value: "COD", label: t('orders.filters.cod') },
-              { value: "PREPAID", label: t('orders.filters.prepaid') },
-            ].map(({ value, label }) => (
+              { value: "COD", label: t('orders.filters.cod'), count: filterCounts.byPayment.COD },
+              { value: "PREPAID", label: t('orders.filters.prepaid'), count: filterCounts.byPayment.PREPAID },
+            ].map(({ value, label, count }) => (
               <Button
                 key={value}
                 variant={selectedPayment === value ? "default" : "outline"}
@@ -297,11 +356,12 @@ export default function OrdersPage() {
                     ? ""
                     : "border-[#E5E7EB] hover:bg-[#F3F7F6]"
                 )}
-                onClick={() =>
-                  setSelectedPayment(selectedPayment === value ? "" : value)
-                }
+                onClick={() => {
+                  setSelectedPayment(selectedPayment === value ? "" : value);
+                  setCurrentPage(1);
+                }}
               >
-                {label}
+                {label} ({count})
               </Button>
             ))}
           </div>
@@ -311,7 +371,7 @@ export default function OrdersPage() {
       {/* Orders List */}
       {ordersList.length === 0 ? (
         <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl">
-          <div className="text-center py-16">
+          <div className="text-center py-16 px-4">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#F3F4F6] mb-4">
               <ShoppingCart className="h-8 w-8 text-[#9CA3AF]" />
             </div>
@@ -329,12 +389,7 @@ export default function OrdersPage() {
               <Button
                 variant="outline"
                 className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
-                onClick={() => {
-                  setSelectedStatus("");
-                  setSelectedPayment("");
-                  setSearchQuery("");
-                  setCurrentPage(1);
-                }}
+                onClick={clearFilters}
               >
                 {t('orders.filters.clear')}
               </Button>
@@ -342,176 +397,243 @@ export default function OrdersPage() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {ordersList.map((order: any) => (
-            <Card
-              key={order.id}
-              className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl hover:shadow-md transition-shadow"
-            >
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Order Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E8F5E9]">
-                          <ShoppingCart className="h-5 w-5 text-[#2E7D32]" />
+        <>
+          {/* Desktop table (md and up) */}
+          <Card className="hidden md:block bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">{t('orders.list.order_date') ? "Order" : "Order"}</th>
+                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">{t('orders.list.customer')}</th>
+                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">{t('orders.list.order_date')}</th>
+                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">Status</th>
+                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">Payment</th>
+                    <th className="text-left font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">Shipment</th>
+                    <th className="text-right font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap">{t('orders.list.total_amount')}</th>
+                    <th className="text-right font-medium text-[#6B7280] px-4 py-3 whitespace-nowrap"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordersList.map((order: any) => {
+                    const shipment = getShipmentInfo(order);
+                    return (
+                      <tr
+                        key={order.id}
+                        className="border-b border-[#F3F4F6] last:border-0 hover:bg-[#F9FAFB] transition-colors"
+                      >
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#E8F5E9]">
+                              <ShoppingCart className="h-4 w-4 text-[#2E7D32]" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-[#1F2937] whitespace-nowrap">#{order.orderNumber}</p>
+                              <p className="text-xs text-[#9CA3AF]">
+                                {t('orders.list.items_count', { count: order.items?.length || 0 })}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <p className="font-medium text-[#1F2937] whitespace-nowrap">{order.user?.name || "Guest"}</p>
+                          <p className="text-xs text-[#9CA3AF] whitespace-nowrap">{order.user?.email || "No email"}</p>
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 text-[#1F2937]">
+                            <Calendar className="h-3.5 w-3.5 text-[#9CA3AF]" />
+                            {formatDate(order.createdAt)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <Badge className={cn("text-xs font-medium border whitespace-nowrap", getStatusBadgeClass(order.status))}>
+                            {getStatusLabel(order.status)}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <Badge
+                            className={cn(
+                              "text-xs font-medium border whitespace-nowrap",
+                              order.paymentMethod === "CASH"
+                                ? "bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]"
+                                : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
+                            )}
+                          >
+                            {order.paymentMethod === "CASH" ? t('orders.filters.cod') : t('orders.filters.prepaid')}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          {shipment ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs text-[#6B7280]">{shipment.provider}</span>
+                              {shipment.trackingCode && shipment.trackingUrl ? (
+                                <a
+                                  href={shipment.trackingUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-xs font-medium text-[#22C55E] hover:underline flex items-center gap-1 whitespace-nowrap"
+                                >
+                                  {shipment.trackingCode}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              ) : (
+                                <span className="text-xs text-[#9CA3AF]">
+                                  {shipment.status ? shipment.status.replace(/_/g, " ") : "Pending"}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[#D1D5DB]">Not synced</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                          <p className="font-semibold text-[#1F2937]">
+                            {formatCurrency(
+                              order.total || order.totalAmount ||
+                              (parseFloat(order.subTotal || 0) +
+                                parseFloat(order.shippingCost || 0) -
+                                parseFloat(order.discount || 0))
+                            )}
+                          </p>
+                          {order.discount && parseFloat(order.discount) > 0 && (
+                            <p className="text-xs text-[#22C55E]">
+                              -{formatCurrency(parseFloat(order.discount))}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-[#F3F4F6]"
+                            asChild
+                            title={t('orders.actions.view_details')}
+                          >
+                            <Link to={`/orders/${order.id}`}>
+                              <Eye className="h-4 w-4 text-[#4B5563]" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Mobile cards (below md) */}
+          <div className="md:hidden space-y-3">
+            {ordersList.map((order: any) => {
+              const shipment = getShipmentInfo(order);
+              return (
+                <Card
+                  key={order.id}
+                  className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E8F5E9]">
+                          <ShoppingCart className="h-4 w-4 text-[#2E7D32]" />
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-[#1F2937]">
-                            #{order.orderNumber}
-                          </h3>
-                          <p className="text-sm text-[#9CA3AF]">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[#1F2937] text-sm truncate">#{order.orderNumber}</p>
+                          <p className="text-xs text-[#9CA3AF]">
                             {t('orders.list.items_count', { count: order.items?.length || 0 })}
                           </p>
                         </div>
                       </div>
-                      <Badge
-                        className={cn(
-                          "text-xs font-medium border",
-                          getStatusBadgeClass(order.status)
-                        )}
-                      >
-                        {getStatusLabel(order.status)}
-                      </Badge>
-                      <Badge
-                        className={cn(
-                          "text-xs font-medium border",
-                          order.paymentMethod === "CASH"
-                            ? "bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]"
-                            : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
-                        )}
-                      >
-                        {order.paymentMethod === "CASH"
-                          ? t('orders.filters.cod')
-                          : t('orders.filters.prepaid')}
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-[#9CA3AF] mb-1">{t('orders.list.customer')}</p>
-                        <p className="font-medium text-[#1F2937]">
-                          {order.user?.name || "Guest"}
-                        </p>
-                        <p className="text-xs text-[#9CA3AF]">
-                          {order.user?.email || "No email"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[#9CA3AF] mb-1">{t('orders.list.order_date')}</p>
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5 text-[#9CA3AF]" />
-                          <span className="text-[#1F2937]">
-                            {formatDate(order.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Shipment Info */}
-                    {order.shiprocket && (
-                      <div className="mt-4 p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Truck className="h-4 w-4 text-[#4CAF50]" />
-                          <span className="text-xs font-medium text-[#1F2937]">SHIPMENT</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          {order.shiprocket.awbCode && (
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={`https://shiprocket.co/tracking/${order.shiprocket.awbCode}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-mono text-sm font-medium text-[#22C55E] hover:underline flex items-center gap-1"
-                              >
-                                {order.shiprocket.awbCode}
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            </div>
-                          )}
-                          {order.shiprocket.courierName && (
-                            <span className="text-sm text-[#6B7280]">
-                              {order.shiprocket.courierName}
-                            </span>
-                          )}
-                          {order.shiprocket.warehouseNickname && (
-                            <span className="text-xs text-[#6B7280] inline-flex items-center gap-1">
-                              <span className="text-[#9CA3AF]">Warehouse:</span>
-                              <span className="font-medium text-[#1F2937]">
-                                {order.shiprocket.warehouseNickname}
-                              </span>
-                              {order.shiprocket.warehouseAssignedBy && (
-                                <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF]">
-                                  ({order.shiprocket.warehouseAssignedBy})
-                                </span>
-                              )}
-                            </span>
-                          )}
-                          {order.shiprocket.status && (
-                            <Badge className={cn(
-                              "text-xs",
-                              order.shiprocket.status === "PICKUP_SCHEDULED"
-                                ? "bg-[#FEF3C7] text-[#D97706] border-[#FCD34D]"
-                                : order.shiprocket.status === "AWB_ASSIGNED"
-                                ? "bg-[#EFF6FF] text-[#3B82F6] border-[#DBEAFE]"
-                                : "bg-[#F3F4F6] text-[#6B7280] border-[#E5E7EB]"
-                            )}>
-                              {order.shiprocket.status.replace(/_/g, " ")}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Total & Actions */}
-                  <div className="flex items-center justify-between lg:flex-col lg:items-end gap-4 lg:gap-2">
-                    <div className="text-right">
-                      <p className="text-sm text-[#9CA3AF] mb-1">{t('orders.list.total_amount')}</p>
-                      <p className="text-xl   text-[#1F2937]">
-                        {formatCurrency(
-                          order.total || order.totalAmount ||
-                          (parseFloat(order.subTotal || 0) +
-                            parseFloat(order.shippingCost || 0) -
-                            parseFloat(order.discount || 0))
-                        )}
-                      </p>
-                      {order.discount && parseFloat(order.discount) > 0 && (
-                        <p className="text-xs text-[#22C55E] mt-1">
-                          {t('orders.list.discount', { amount: formatCurrency(parseFloat(order.discount)) })}
-                        </p>
-                      )}
-                      {order.shippingCost && parseFloat(order.shippingCost) > 0 && (
-                        <p className="text-xs text-[#6B7280] mt-1">
-                          Shipping: {formatCurrency(parseFloat(order.shippingCost))}
-                        </p>
-                      )}
-                      {order.couponCode && (
-                        <p className="text-xs text-[#22C55E] mt-1">
-                          Coupon: {order.couponCode}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 hover:bg-[#F3F4F6]"
+                        className="h-8 w-8 shrink-0 hover:bg-[#F3F4F6]"
                         asChild
-                        title={t('orders.actions.view_details')}
                       >
                         <Link to={`/orders/${order.id}`}>
                           <Eye className="h-4 w-4 text-[#4B5563]" />
                         </Link>
                       </Button>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      <Badge className={cn("text-[10px] font-medium border", getStatusBadgeClass(order.status))}>
+                        {getStatusLabel(order.status)}
+                      </Badge>
+                      <Badge
+                        className={cn(
+                          "text-[10px] font-medium border",
+                          order.paymentMethod === "CASH"
+                            ? "bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]"
+                            : "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
+                        )}
+                      >
+                        {order.paymentMethod === "CASH" ? t('orders.filters.cod') : t('orders.filters.prepaid')}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                      <div>
+                        <p className="text-[#9CA3AF] mb-0.5">{t('orders.list.customer')}</p>
+                        <p className="font-medium text-[#1F2937] truncate">{order.user?.name || "Guest"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[#9CA3AF] mb-0.5">{t('orders.list.order_date')}</p>
+                        <div className="flex items-center gap-1 text-[#1F2937]">
+                          <Calendar className="h-3 w-3 text-[#9CA3AF]" />
+                          {formatDate(order.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {shipment && (
+                      <div className="mb-3 p-2.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Truck className="h-3.5 w-3.5 text-[#4CAF50]" />
+                          <span className="text-[10px] font-medium text-[#1F2937]">{shipment.provider.toUpperCase()}</span>
+                        </div>
+                        {shipment.trackingCode && shipment.trackingUrl ? (
+                          <a
+                            href={shipment.trackingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-xs font-medium text-[#22C55E] hover:underline flex items-center gap-1"
+                          >
+                            {shipment.trackingCode}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span className="text-xs text-[#9CA3AF]">
+                            {shipment.status ? shipment.status.replace(/_/g, " ") : "Pending"}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-end justify-between pt-2 border-t border-[#F3F4F6]">
+                      <div>
+                        <p className="text-[10px] text-[#9CA3AF]">{t('orders.list.total_amount')}</p>
+                        <p className="text-base font-semibold text-[#1F2937]">
+                          {formatCurrency(
+                            order.total || order.totalAmount ||
+                            (parseFloat(order.subTotal || 0) +
+                              parseFloat(order.shippingCost || 0) -
+                              parseFloat(order.discount || 0))
+                          )}
+                        </p>
+                      </div>
+                      {order.discount && parseFloat(order.discount) > 0 && (
+                        <p className="text-xs text-[#22C55E]">
+                          -{formatCurrency(parseFloat(order.discount))}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Pagination */}
