@@ -382,12 +382,23 @@ export default function OrderDetailsPage() {
   const [availableCouriers, setAvailableCouriers] = useState<CourierPartner[]>([]);
   const [isFetchingCouriers, setIsFetchingCouriers] = useState(false);
 
-  // Warehouse (pickup location) options for this order
+  // Warehouse (pickup location) options for this order — Shiprocket
   const [warehouseOptions, setWarehouseOptions] = useState<
     { id: string; nickname: string; city?: string; state?: string; pincode?: string; isDefault?: boolean }[]
   >([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [suggestedWarehouseId, setSuggestedWarehouseId] = useState<string>("");
+
+  // Warehouse (pickup location) options for this order — Delhivery. Kept
+  // separate from the Shiprocket state above: the two couriers have their
+  // own pickup-address tables with different ids, so reusing one state for
+  // both sent a Shiprocket warehouse id to Delhivery's sync endpoint and
+  // failed with "Selected warehouse not found".
+  const [delhiveryWarehouseOptions, setDelhiveryWarehouseOptions] = useState<
+    { id: string; nickname: string; city?: string; state?: string; pincode?: string; isDefault?: boolean }[]
+  >([]);
+  const [selectedDelhiveryWarehouseId, setSelectedDelhiveryWarehouseId] = useState<string>("");
+  const [suggestedDelhiveryWarehouseId, setSuggestedDelhiveryWarehouseId] = useState<string>("");
 
   // Which courier the admin wants to sync this (not-yet-synced) order with —
   // defaults to the site-wide default courier, fetched once below.
@@ -415,7 +426,7 @@ export default function OrderDetailsPage() {
     try {
       setIsSyncingDelhivery(true);
       const payload: { warehouseId?: string } = {};
-      if (selectedWarehouseId) payload.warehouseId = selectedWarehouseId;
+      if (selectedDelhiveryWarehouseId) payload.warehouseId = selectedDelhiveryWarehouseId;
       const response = await orders.syncToDelhivery(
         id,
         Object.keys(payload).length ? payload : undefined
@@ -504,6 +515,37 @@ export default function OrderDetailsPage() {
       cancelled = true;
     };
   }, [id, orderDetails?.shiprocket?.orderId]);
+
+  // Load Delhivery warehouse options + the auto-suggested one for this order
+  useEffect(() => {
+    if (!id) return;
+    if (
+      orderDetails?.delhivery?.waybill &&
+      orderDetails?.delhivery?.status !== "CANCELLED"
+    ) return; // already synced and not cancelled
+    let cancelled = false;
+    orders
+      .getOrderWarehouseOptionsDelhivery(id)
+      .then((res) => {
+        if (cancelled || !res.data?.success) return;
+        const d = res.data.data || {};
+        const list = d.warehouses || [];
+        setDelhiveryWarehouseOptions(list);
+        const suggested =
+          d.suggestedWarehouseId ||
+          list.find((w: { isDefault?: boolean }) => w.isDefault)?.id ||
+          list[0]?.id ||
+          "";
+        setSuggestedDelhiveryWarehouseId(d.suggestedWarehouseId || "");
+        setSelectedDelhiveryWarehouseId((prev) => prev || suggested);
+      })
+      .catch(() => {
+        /* warehouse picker is optional; ignore */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, orderDetails?.delhivery?.waybill]);
 
   // Fetch available courier delivery partners (rates, time) for this order
   const handleFetchCouriers = async () => {
@@ -1792,6 +1834,32 @@ export default function OrderDetailsPage() {
 
                       {selectedCourierProvider === "DELHIVERY" ? (
                         <div className="flex flex-col items-center gap-3">
+                          {delhiveryWarehouseOptions.length > 1 && (
+                            <div className="w-full max-w-sm text-left">
+                              <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                                Ship from warehouse
+                              </label>
+                              <select
+                                value={selectedDelhiveryWarehouseId}
+                                onChange={(e) => setSelectedDelhiveryWarehouseId(e.target.value)}
+                                className="w-full border border-[#D1D5DB] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#22C55E]/30"
+                              >
+                                {delhiveryWarehouseOptions.map((w) => (
+                                  <option key={w.id} value={w.id}>
+                                    {w.nickname}
+                                    {w.city ? ` — ${w.city}` : ""}
+                                    {w.pincode ? ` (${w.pincode})` : ""}
+                                    {w.id === suggestedDelhiveryWarehouseId ? "  · nearest" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                              <p className="text-[11px] text-[#9CA3AF] mt-1">
+                                {suggestedDelhiveryWarehouseId
+                                  ? "Pre-selected the warehouse nearest the delivery pincode. Change it if needed."
+                                  : "Pick which warehouse this order ships from."}
+                              </p>
+                            </div>
+                          )}
                           {delhiveryRate !== null && (
                             <p className="text-sm text-[#374151]">
                               Estimated rate: <span className="font-semibold text-emerald-700">₹{delhiveryRate}</span>
