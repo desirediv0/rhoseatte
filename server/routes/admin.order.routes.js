@@ -61,6 +61,28 @@ router.put(
   updateInvoiceSettings
 );
 
+// Find Razorpay payments that were captured (money taken) but have no
+// matching order in our DB — e.g. from a server crash or a cart-emptied
+// race during payment verification. ?days=N controls the lookback window
+// (default 7). Must come before /orders/:orderId or Express matches
+// "reconcile-payments" as an :orderId value.
+router.get(
+  "/orders/reconcile-payments",
+  verifyAdminJWT,
+  hasPermission("orders", "read"),
+  reconcileMissingOrders
+);
+
+// Recover an orphaned Razorpay payment into a real (PAID) order, with
+// confirmation email + courier dispatch — used from the Missing Orders
+// Check panel once the admin knows what the customer actually ordered.
+router.post(
+  "/orders/recover-payment",
+  verifyAdminJWT,
+  hasPermission("orders", "create"),
+  recoverOrphanedPayment
+);
+
 router.get(
   "/orders/:orderId",
   verifyAdminJWT,
@@ -117,27 +139,6 @@ router.post(
   verifyAdminJWT,
   hasPermission("orders", "update"),
   cleanupInvalidPartnerEarnings
-);
-
-// Find Razorpay payments that were captured (money taken) but have no
-// matching order in our DB — e.g. from a server crash or a cart-emptied
-// race during payment verification. ?days=N controls the lookback window
-// (default 7).
-router.get(
-  "/orders/reconcile-payments",
-  verifyAdminJWT,
-  hasPermission("orders", "read"),
-  reconcileMissingOrders
-);
-
-// Recover an orphaned Razorpay payment into a real (PAID) order, with
-// confirmation email + courier dispatch — used from the Missing Orders
-// Check panel once the admin knows what the customer actually ordered.
-router.post(
-  "/orders/recover-payment",
-  verifyAdminJWT,
-  hasPermission("orders", "create"),
-  recoverOrphanedPayment
 );
 
 export default router;
