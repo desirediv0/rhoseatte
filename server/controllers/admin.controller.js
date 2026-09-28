@@ -733,6 +733,27 @@ export const getUserById = asyncHandler(async (req, res) => {
     .json(new ApiResponsive(200, { user }, "User fetched successfully"));
 });
 
+// List a specific user's saved addresses — needed by admin tools that must
+// create an order on a customer's behalf (e.g. recovering an orphaned
+// Razorpay payment) without the customer being logged in to pick one.
+export const getUserAddressesAdmin = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const addresses = await prisma.address.findMany({
+    where: { userId },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+  });
+
+  res
+    .status(200)
+    .json(new ApiResponsive(200, { addresses }, "Addresses fetched successfully"));
+});
+
 // Update user status (active/inactive)
 export const updateUserStatus = asyncHandler(async (req, res) => {
   const { userId } = req.params;

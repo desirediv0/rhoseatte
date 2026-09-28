@@ -7,7 +7,7 @@ import { cancelShiprocketOrder, getShiprocketSettings } from "../utils/shiprocke
 import { cancelDelhiveryShipment, getDelhiverySettings } from "../utils/delhivery.js";
 import { dispatchOrderForShipping } from "../utils/shipping.js";
 import sendEmail from "../utils/sendEmail.js";
-import { getOrderCancelledTemplate, getAdminOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
+import { getOrderCancelledTemplate, getAdminOrderCancelledTemplate, getOrderConfirmationTemplate, getAdminNewOrderTemplate } from "../email/temp/EmailTemplate.js";
 import archiver from "archiver";
 import { streamInvoicePdf, buildInvoiceBuffer, getCompanyInvoiceSettings } from "../utils/invoice.js";
 
@@ -1382,6 +1382,239 @@ export const processPayment = asyncHandler(async (req, res, next) => {
         "Payment processed successfully"
       )
     );
+});
+
+// Recover an orphaned Razorpay payment — one that the "Missing Orders Check"
+// tool (reconcileMissingOrders in payment.controller.js) found was captured
+// by Razorpay but has no order/RazorpayPayment row here. Creates the real
+// order (as PAID, with the actual Razorpay payment linked instead of a
+// placeholder), decrements stock, sends the customer's normal order
+// confirmation email + the admin new-order notification, and kicks off
+// courier dispatch — i.e. everything paymentVerification should have done
+// the first time.
+export const recoverOrphanedPayment = asyncHandler(async (req, res, next) => {
+  const {
+    razorpayPaymentId,
+    razorpayOrderId,
+    userId,
+    items,
+    shippingAddressId,
+    shippingCost,
+    discount,
+    couponCode,
+    couponId,
+    notes,
+  } = req.body;
+
+  if (!razorpayPaymentId || !userId || !items || items.length === 0 || !shippingAddressId) {
+    throw new ApiError(
+      400,
+      "razorpayPaymentId, userId, shippingAddressId, and at least one item are required"
+    );
+  }
+
+  const existingPayment = await prisma.razorpayPayment.findUnique({
+    where: { razorpayPaymentId },
+  });
+  if (existingPayment) {
+    throw new ApiError(400, "This payment already has an order — it is not orphaned");
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const address = await prisma.address.findFirst({
+    where: { id: shippingAddressId, userId },
+  });
+  if (!address) {
+    throw new ApiError(404, "Shipping address not found for this user");
+  }
+
+  let finalCouponId = couponId;
+  if (couponCode && !couponId) {
+    const coupon = await prisma.coupon.findUnique({ where: { code: couponCode } });
+    if (coupon) finalCouponId = coupon.id;
+  }
+
+  const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  let subTotal = 0;
+  const orderItemsData = [];
+  for (const item of items) {
+    const variant = await prisma.productVariant.findUnique({
+      where: { id: item.variantId },
+      include: { product: true },
+    });
+    if (!variant) {
+      throw new ApiError(404, `Product variant not found: ${item.variantId}`);
+    }
+    if (variant.quantity < item.quantity) {
+      throw new ApiError(400, `Insufficient stock for ${variant.product.name}`);
+    }
+
+    const price = parseFloat(variant.salePrice || variant.price);
+    const itemTotal = price * item.quantity;
+    subTotal += itemTotal;
+
+    orderItemsData.push({
+      productId: variant.productId,
+      variantId: variant.id,
+      price,
+      quantity: item.quantity,
+      subtotal: itemTotal,
+    });
+  }
+
+  const discountAmount = parseFloat(discount) || 0;
+  const shippingAmount = parseFloat(shippingCost) || 0;
+  const total = subTotal + shippingAmount - discountAmount;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const order = await tx.order.create({
+      data: {
+        orderNumber,
+        userId,
+        status: "PAID",
+        subTotal,
+        tax: 0,
+        shippingCost: shippingAmount,
+        discount: discountAmount,
+        couponCode: couponCode || null,
+        couponId: finalCouponId || null,
+        total,
+        paymentMethod: "RAZORPAY",
+        shippingAddressId,
+        notes: notes
+          ? `${notes}\n[Recovered orphaned payment ${razorpayPaymentId}]`
+          : `[Recovered orphaned payment ${razorpayPaymentId}]`,
+        billingAddressSameAsShipping: true,
+        items: { create: orderItemsData },
+      },
+    });
+
+    const payment = await tx.razorpayPayment.create({
+      data: {
+        orderId: order.id,
+        amount: total,
+        currency: "INR",
+        razorpayOrderId: razorpayOrderId || `RECOVERED-${razorpayPaymentId}`,
+        razorpayPaymentId,
+        status: "CAPTURED",
+      },
+    });
+
+    for (const item of items) {
+      await tx.productVariant.update({
+        where: { id: item.variantId },
+        data: { quantity: { decrement: item.quantity } },
+      });
+      await tx.inventoryLog.create({
+        data: {
+          variantId: item.variantId,
+          quantityChange: -item.quantity,
+          reason: "sale",
+          referenceId: order.id,
+          previousQuantity: await tx.productVariant
+            .findUnique({ where: { id: item.variantId }, select: { quantity: true } })
+            .then((v) => v.quantity + item.quantity),
+          newQuantity: await tx.productVariant
+            .findUnique({ where: { id: item.variantId }, select: { quantity: true } })
+            .then((v) => v.quantity),
+          notes: `Recovered order ${orderNumber} (payment ${razorpayPaymentId})`,
+          createdBy: req.admin.id,
+        },
+      });
+    }
+
+    return { order, payment };
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      entityType: "order",
+      entityId: result.order.id,
+      action: "create",
+      description: `Order recovered from orphaned Razorpay payment ${razorpayPaymentId}`,
+      performedBy: req.admin.id,
+      performedByRole: "admin",
+    },
+  });
+
+  dispatchOrderForShipping(result.order.id).catch((err) => {
+    console.error("Shipping dispatch error for recovered order:", err);
+  });
+
+  // Send the same confirmation emails a normal successful checkout sends.
+  try {
+    const orderItemsWithDetails = await prisma.orderItem.findMany({
+      where: { orderId: result.order.id },
+      include: {
+        product: true,
+        variant: { include: { attributes: { include: { attributeValue: { include: { attribute: true } } } } } },
+      },
+    });
+
+    const emailItems = orderItemsWithDetails.map((item) => ({
+      name: item.product.name,
+      variant: item.variant.attributes
+        .map((attr) => `${attr.attributeValue.attribute.name}: ${attr.attributeValue.value}`)
+        .join(", "),
+      quantity: item.quantity,
+      price: parseFloat(item.price).toFixed(2),
+    }));
+
+    if (user.email) {
+      await sendEmail({
+        email: user.email,
+        subject: `Order Confirmation - #${result.order.orderNumber}`,
+        html: getOrderConfirmationTemplate({
+          userName: user.name || "Valued Customer",
+          orderNumber: result.order.orderNumber,
+          orderDate: result.order.createdAt,
+          paymentMethod: "Online",
+          items: emailItems,
+          subtotal: parseFloat(result.order.subTotal).toFixed(2),
+          shipping: parseFloat(result.order.shippingCost || 0).toFixed(2),
+          tax: "0.00",
+          discount: parseFloat(result.order.discount || 0).toFixed(2),
+          couponCode: result.order.couponCode || "",
+          total: parseFloat(result.order.total).toFixed(2),
+          shippingAddress: address,
+        }),
+      });
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.STORE_EMAIL;
+    if (adminEmail) {
+      await sendEmail({
+        email: adminEmail,
+        subject: `🔔 Recovered Order #${result.order.orderNumber} - ₹${parseFloat(result.order.total).toFixed(2)}`,
+        html: getAdminNewOrderTemplate({
+          orderNumber: result.order.orderNumber,
+          customerName: user.name || "Guest",
+          customerEmail: user.email,
+          customerPhone: user.phone || "",
+          orderDate: result.order.createdAt,
+          paymentMethod: "Online",
+          total: parseFloat(result.order.total).toFixed(2),
+          items: emailItems,
+          shippingAddress: address,
+        }),
+      });
+    }
+  } catch (emailError) {
+    console.error("Recovered-order confirmation email error:", emailError);
+  }
+
+  res.status(201).json(
+    new ApiResponsive(
+      201,
+      { order: result.order, payment: result.payment },
+      "Order recovered and confirmation email sent"
+    )
+  );
 });
 
 // Get order statistics

@@ -11,6 +11,7 @@ import {
   updateTracking,
   createOrder,
   processPayment,
+  recoverOrphanedPayment,
   getOrderStats,
   cleanupInvalidPartnerEarnings,
 } from "../controllers/admin.order.controller.js";
@@ -127,6 +128,16 @@ router.get(
   verifyAdminJWT,
   hasPermission("orders", "read"),
   reconcileMissingOrders
+);
+
+// Recover an orphaned Razorpay payment into a real (PAID) order, with
+// confirmation email + courier dispatch — used from the Missing Orders
+// Check panel once the admin knows what the customer actually ordered.
+router.post(
+  "/orders/recover-payment",
+  verifyAdminJWT,
+  hasPermission("orders", "create"),
+  recoverOrphanedPayment
 );
 
 export default router;

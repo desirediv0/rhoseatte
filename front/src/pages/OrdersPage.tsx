@@ -23,6 +23,7 @@ import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import { toast } from "sonner";
+import RecoverPaymentModal from "@/components/RecoverPaymentModal";
 
 export default function OrdersPage() {
   const { t } = useLanguage();
@@ -49,6 +50,7 @@ export default function OrdersPage() {
   // exists here).
   const [isCheckingPayments, setIsCheckingPayments] = useState(false);
   const [orphanedPayments, setOrphanedPayments] = useState<any[] | null>(null);
+  const [recoveringPayment, setRecoveringPayment] = useState<any | null>(null);
 
   // Filter-pill counts — fetched once from the server across ALL orders, not
   // just the current page, so "Processing (9)" etc. reflect the true total
@@ -540,6 +542,7 @@ export default function OrdersPage() {
                       <th className="py-1.5 pr-3">Email</th>
                       <th className="py-1.5 pr-3">Contact</th>
                       <th className="py-1.5 pr-3">Date</th>
+                      <th className="py-1.5 pr-3"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -550,6 +553,16 @@ export default function OrdersPage() {
                         <td className="py-1.5 pr-3">{p.email || "—"}</td>
                         <td className="py-1.5 pr-3">{p.contact || "—"}</td>
                         <td className="py-1.5 pr-3">{new Date(p.createdAt).toLocaleString("en-IN")}</td>
+                        <td className="py-1.5 pr-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs border-red-300 text-red-700 hover:bg-red-100"
+                            onClick={() => setRecoveringPayment(p)}
+                          >
+                            Recover
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -879,6 +892,20 @@ export default function OrdersPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {recoveringPayment && (
+        <RecoverPaymentModal
+          payment={recoveringPayment}
+          open={!!recoveringPayment}
+          onClose={() => setRecoveringPayment(null)}
+          onRecovered={() => {
+            setOrphanedPayments((prev) =>
+              (prev || []).filter((p) => p.paymentId !== recoveringPayment.paymentId)
+            );
+            fetchFilterCounts();
+          }}
+        />
       )}
     </div>
   );

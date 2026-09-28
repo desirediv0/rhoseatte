@@ -12,6 +12,7 @@ import {
   getLowStockAlerts,
   getUsers,
   getUserById,
+  getUserAddressesAdmin,
   verifyUserEmail,
   deleteUser,
   updateUserDetails,
@@ -86,6 +87,13 @@ router.get(
   verifyAdminJWT,
   hasPermission("users", "read"),
   getUserById
+);
+
+router.get(
+  "/users/:userId/addresses",
+  verifyAdminJWT,
+  hasPermission("users", "read"),
+  getUserAddressesAdmin
 );
 
 router.post(

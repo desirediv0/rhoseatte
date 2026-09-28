@@ -161,6 +161,9 @@ export const customerUsers = {
   ) => {
     return api.patch(`/api/admin/users/${userId}`, data);
   },
+  getUserAddresses: (userId: string) => {
+    return api.get(`/api/admin/users/${userId}/addresses`);
+  },
 };
 
 // Product Management
@@ -516,6 +519,19 @@ export const orders = {
   },
   reconcilePayments: (days: number = 7) => {
     return api.get("/api/admin/orders/reconcile-payments", { params: { days } });
+  },
+  recoverOrphanedPayment: (data: {
+    razorpayPaymentId: string;
+    razorpayOrderId?: string;
+    userId: string;
+    shippingAddressId: string;
+    items: { variantId: string; quantity: number }[];
+    shippingCost?: number;
+    discount?: number;
+    couponCode?: string;
+    notes?: string;
+  }) => {
+    return api.post("/api/admin/orders/recover-payment", data);
   },
   getOrderById: (orderId: string) => {
     return api.get(`/api/admin/orders/${orderId}`);
