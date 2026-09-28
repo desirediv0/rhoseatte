@@ -8,6 +8,8 @@ import { cancelDelhiveryShipment, getDelhiverySettings } from "../utils/delhiver
 import { dispatchOrderForShipping } from "../utils/shipping.js";
 import sendEmail from "../utils/sendEmail.js";
 import { getOrderCancelledTemplate, getAdminOrderCancelledTemplate } from "../email/temp/EmailTemplate.js";
+import archiver from "archiver";
+import { streamInvoicePdf, buildInvoiceBuffer, getCompanyInvoiceSettings } from "../utils/invoice.js";
 
 // Get all orders with pagination, filtering, and sorting
 export const getOrders = asyncHandler(async (req, res, next) => {
@@ -410,6 +412,132 @@ export const getOrderById = asyncHandler(async (req, res, next) => {
         "Order details fetched successfully"
       )
     );
+});
+
+// Load an order with exactly what the invoice PDF needs. Shared by the
+// single-download and bulk-download endpoints below.
+const loadOrderForInvoice = (orderId) =>
+  prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      user: { select: { id: true, name: true, email: true, phone: true } },
+      shippingAddress: true,
+      items: { include: { product: { select: { name: true } }, variant: { select: { sku: true } } } },
+    },
+  });
+
+// Download a first-party invoice PDF for a single order — works for ANY
+// order regardless of whether it has ever been synced to a courier (unlike
+// the Shiprocket/Delhivery "invoice" buttons, which are hard-gated on
+// shiprocketOrderId/delhiveryWaybill being set).
+export const downloadOrderInvoice = asyncHandler(async (req, res, next) => {
+  const { orderId } = req.params;
+
+  const order = await loadOrderForInvoice(orderId);
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  await streamInvoicePdf(order, res);
+});
+
+// Download a ZIP of invoices for every "paid" order in a given month —
+// "paid" uses the same definition as the dashboard revenue cards
+// (status notIn PENDING/CANCELLED/REFUNDED), so it matches what admins
+// already see counted as revenue elsewhere in this app.
+export const downloadBulkInvoices = asyncHandler(async (req, res, next) => {
+  const { month, year } = req.query;
+
+  const monthNum = parseInt(month, 10);
+  const yearNum = parseInt(year, 10);
+
+  if (
+    !Number.isInteger(monthNum) ||
+    monthNum < 1 ||
+    monthNum > 12 ||
+    !Number.isInteger(yearNum)
+  ) {
+    throw new ApiError(400, "A valid month (1-12) and year are required");
+  }
+
+  const startOfMonth = new Date(yearNum, monthNum - 1, 1);
+  const startOfNextMonth = new Date(yearNum, monthNum, 1);
+
+  const orders = await prisma.order.findMany({
+    where: {
+      createdAt: { gte: startOfMonth, lt: startOfNextMonth },
+      status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] },
+    },
+    include: {
+      user: { select: { id: true, name: true, email: true, phone: true } },
+      shippingAddress: true,
+      items: { include: { product: { select: { name: true } }, variant: { select: { sku: true } } } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (orders.length === 0) {
+    throw new ApiError(404, "No paid orders found for that month");
+  }
+
+  const companySettings = await getCompanyInvoiceSettings();
+
+  const monthLabel = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename="invoices-${monthLabel}.zip"`);
+
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  archive.on("error", (err) => {
+    console.error("Invoice zip error:", err);
+    if (!res.headersSent) {
+      res.status(500).end();
+    } else {
+      res.end();
+    }
+  });
+  archive.pipe(res);
+
+  for (const order of orders) {
+    const buffer = await buildInvoiceBuffer(order, companySettings);
+    archive.append(buffer, { name: `invoice-${order.orderNumber}.pdf` });
+  }
+
+  await archive.finalize();
+});
+
+// Get the company header shown on invoices (name, address, GSTIN, logo,
+// invoice number prefix) — every field is optional.
+export const getInvoiceSettings = asyncHandler(async (req, res) => {
+  const settings = await getCompanyInvoiceSettings();
+  res.status(200).json(
+    new ApiResponsive(200, { settings }, "Invoice settings fetched successfully")
+  );
+});
+
+// Update the company header shown on invoices.
+export const updateInvoiceSettings = asyncHandler(async (req, res) => {
+  const { companyName, addressLine, gstin, logoUrl, invoicePrefix } = req.body;
+
+  const settings = await getCompanyInvoiceSettings();
+  const updateData = {};
+
+  if (companyName !== undefined) updateData.companyName = companyName.trim() || null;
+  if (addressLine !== undefined) updateData.addressLine = addressLine.trim() || null;
+  if (gstin !== undefined) updateData.gstin = gstin.trim() || null;
+  if (logoUrl !== undefined) updateData.logoUrl = logoUrl.trim() || null;
+  if (invoicePrefix !== undefined && invoicePrefix.trim()) {
+    updateData.invoicePrefix = invoicePrefix.trim();
+  }
+  updateData.updatedBy = req.admin?.id;
+
+  const updated = await prisma.companyInvoiceSettings.update({
+    where: { id: settings.id },
+    data: updateData,
+  });
+
+  res.status(200).json(
+    new ApiResponsive(200, { settings: updated }, "Invoice settings updated successfully")
+  );
 });
 
 // Update order status

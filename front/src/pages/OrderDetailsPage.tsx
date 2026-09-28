@@ -18,6 +18,7 @@ import {
   CheckCircle,
   RefreshCw,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency, debugData, cn } from "@/lib/utils";
@@ -381,6 +382,7 @@ export default function OrderDetailsPage() {
 
   const [availableCouriers, setAvailableCouriers] = useState<CourierPartner[]>([]);
   const [isFetchingCouriers, setIsFetchingCouriers] = useState(false);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
 
   // Warehouse (pickup location) options for this order — Shiprocket
   const [warehouseOptions, setWarehouseOptions] = useState<
@@ -595,6 +597,43 @@ export default function OrderDetailsPage() {
     }
   };
 
+  // Download the first-party invoice — works regardless of courier-sync
+  // state, unlike the courier-specific "Print Invoice" buttons below.
+  const handleDownloadInvoice = async () => {
+    if (!id) return;
+    setIsDownloadingInvoice(true);
+    try {
+      const response = await orders.downloadOrderInvoice(id);
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `invoice-${orderDetails?.orderNumber || id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      toast.success("Invoice downloaded");
+    } catch (error: any) {
+      let message = "Failed to download invoice";
+      const data = error?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const text = await data.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.message) message = parsed.message;
+        } catch {
+          /* keep default message */
+        }
+      } else if (data?.message) {
+        message = data.message;
+      }
+      toast.error(message);
+    } finally {
+      setIsDownloadingInvoice(false);
+    }
+  };
+
   // Get image URL helper
   const getImageUrl = (image: string | string[] | undefined | null): string => {
     if (!image) return "/images/product-placeholder.jpg";
@@ -730,17 +769,34 @@ export default function OrderDetailsPage() {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="mb-3 border-[#E5E7EB] hover:bg-[#F3F7F6]"
-            >
-              <Link to="/orders">
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                {t('orders.details.back_to_list')}
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2 mb-3">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+              >
+                <Link to="/orders">
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  {t('orders.details.back_to_list')}
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadInvoice}
+                disabled={isDownloadingInvoice}
+                className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                title="Download invoice (amount paid + discount, no tax breakdown)"
+              >
+                {isDownloadingInvoice ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-1 h-4 w-4" />
+                )}
+                Download Invoice
+              </Button>
+            </div>
             <h1 className="text-3xl font-semibold text-[#1F2937] tracking-tight">
               {t('orders.details.title', { number: orderDetails.orderNumber })}
             </h1>

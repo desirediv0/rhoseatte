@@ -577,6 +577,31 @@ export const orders = {
   cancelDelhiveryShipment: (orderId: string) => {
     return api.post(`/api/admin/delhivery/orders/${orderId}/cancel`);
   },
+  // First-party invoice (courier-agnostic — works even if the order was
+  // never synced to Shiprocket or Delhivery).
+  downloadOrderInvoice: (orderId: string) => {
+    return api.get(`/api/admin/orders/${orderId}/invoice/download`, {
+      responseType: "blob",
+    });
+  },
+  downloadBulkInvoices: (month: number, year: number) => {
+    return api.get(`/api/admin/orders/invoices/bulk`, {
+      params: { month, year },
+      responseType: "blob",
+    });
+  },
+  getInvoiceSettings: () => {
+    return api.get("/api/admin/orders/invoice-settings");
+  },
+  updateInvoiceSettings: (data: {
+    companyName?: string;
+    addressLine?: string;
+    gstin?: string;
+    logoUrl?: string;
+    invoicePrefix?: string;
+  }) => {
+    return api.put("/api/admin/orders/invoice-settings", data);
+  },
   getOrderStats: async () => {
     try {
       const response = await api.get("/api/admin/orders-stats");

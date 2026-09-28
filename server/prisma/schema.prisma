@@ -1284,6 +1284,26 @@ model DelhiverySettings {
   @@unique([id])
 }
 
+// -----------------------
+// Invoice Settings
+// -----------------------
+// Fully optional company header for the first-party invoice PDF — every
+// field can stay blank, in which case that block is simply omitted from the
+// invoice rather than failing.
+model CompanyInvoiceSettings {
+  id            String   @id @default(uuid())
+  companyName   String?
+  addressLine   String?
+  gstin         String?
+  logoUrl       String?
+  invoicePrefix String   @default("INV")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?
+
+  @@unique([id])
+}
+
 model DelhiveryPickupAddress {
   id                  String   @id @default(uuid())
   nickname            String   @default("Primary Warehouse")

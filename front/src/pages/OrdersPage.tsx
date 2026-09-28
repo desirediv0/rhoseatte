@@ -17,10 +17,12 @@ import {
   Calendar,
   Truck,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
+import { toast } from "sonner";
 
 export default function OrdersPage() {
   const { t } = useLanguage();
@@ -34,6 +36,12 @@ export default function OrdersPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPayment, setSelectedPayment] = useState("");
+
+  // Month-wise bulk invoice download (all paid orders in the chosen month)
+  const now = new Date();
+  const [invoiceMonth, setInvoiceMonth] = useState(now.getMonth() + 1);
+  const [invoiceYear, setInvoiceYear] = useState(now.getFullYear());
+  const [isDownloadingBulkInvoices, setIsDownloadingBulkInvoices] = useState(false);
 
   // Filter-pill counts — fetched once from the server across ALL orders, not
   // just the current page, so "Processing (9)" etc. reflect the true total
@@ -185,6 +193,43 @@ export default function OrdersPage() {
     setSelectedPayment("");
     setSearchQuery("");
     setCurrentPage(1);
+  };
+
+  // Download invoices (as a ZIP) for every paid order placed in the chosen month
+  const handleDownloadBulkInvoices = async () => {
+    setIsDownloadingBulkInvoices(true);
+    try {
+      const response = await orders.downloadBulkInvoices(invoiceMonth, invoiceYear);
+      const blob = new Blob([response.data], { type: "application/zip" });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `invoices-${invoiceYear}-${String(invoiceMonth).padStart(2, "0")}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      toast.success("Invoices downloaded");
+    } catch (error: any) {
+      // The error body also comes back as a Blob (since responseType is
+      // "blob"), so the JSON message has to be read out of it explicitly.
+      let message = "Failed to download invoices for that month";
+      const data = error?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const text = await data.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.message) message = parsed.message;
+        } catch {
+          /* keep default message */
+        }
+      } else if (data?.message) {
+        message = data.message;
+      }
+      toast.error(message);
+    } finally {
+      setIsDownloadingBulkInvoices(false);
+    }
   };
 
   // Loading state
@@ -366,6 +411,63 @@ export default function OrdersPage() {
               </Button>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Bulk Invoice Download */}
+      <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-[#4B5563] shrink-0">
+              <Download className="h-4 w-4 text-[#4B5563]" />
+              <span className="font-medium">Bulk Invoices</span>
+            </div>
+            <div className="flex flex-1 gap-2">
+              <select
+                value={invoiceMonth}
+                onChange={(e) => setInvoiceMonth(parseInt(e.target.value, 10))}
+                className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
+              >
+                {[
+                  "January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December",
+                ].map((label, idx) => (
+                  <option key={label} value={idx + 1}>{label}</option>
+                ))}
+              </select>
+              <select
+                value={invoiceYear}
+                onChange={(e) => setInvoiceYear(parseInt(e.target.value, 10))}
+                className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
+              >
+                {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadBulkInvoices}
+              disabled={isDownloadingBulkInvoices}
+              className="border-[#E5E7EB] hover:bg-[#F3F7F6] shrink-0"
+            >
+              {isDownloadingBulkInvoices ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Preparing ZIP...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Invoices (ZIP)
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-[11px] text-[#9CA3AF] mt-2">
+            Downloads one invoice per paid order placed that month (excludes pending and cancelled orders).
+          </p>
         </CardContent>
       </Card>
 

@@ -3,6 +3,10 @@ import {
   getOrders,
   getOrderFilterCounts,
   getOrderById,
+  downloadOrderInvoice,
+  downloadBulkInvoices,
+  getInvoiceSettings,
+  updateInvoiceSettings,
   updateOrderStatus,
   updateTracking,
   createOrder,
@@ -32,11 +36,41 @@ router.get(
   getOrderFilterCounts
 );
 
+// Bulk invoice download must come before /orders/:orderId so "invoices"
+// isn't captured as an :orderId param.
+router.get(
+  "/orders/invoices/bulk",
+  verifyAdminJWT,
+  hasPermission("orders", "read"),
+  downloadBulkInvoices
+);
+
+router.get(
+  "/orders/invoice-settings",
+  verifyAdminJWT,
+  hasPermission("orders", "read"),
+  getInvoiceSettings
+);
+
+router.put(
+  "/orders/invoice-settings",
+  verifyAdminJWT,
+  hasPermission("orders", "update"),
+  updateInvoiceSettings
+);
+
 router.get(
   "/orders/:orderId",
   verifyAdminJWT,
   hasPermission("orders", "read"),
   getOrderById
+);
+
+router.get(
+  "/orders/:orderId/invoice/download",
+  verifyAdminJWT,
+  hasPermission("orders", "read"),
+  downloadOrderInvoice
 );
 
 router.patch(
