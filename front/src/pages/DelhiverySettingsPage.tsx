@@ -33,6 +33,7 @@ interface DelhiverySettings {
     apiToken: string | null;
     clientName: string | null;
     bookingMode: string;
+    shippingMode: string;
     defaultLength: number;
     defaultBreadth: number;
     defaultHeight: number;
@@ -73,6 +74,8 @@ export default function DelhiverySettingsPage() {
     const [apiToken, setApiToken] = useState("");
     const [clientName, setClientName] = useState("");
     const [bookingMode, setBookingMode] = useState<string>("MANUAL");
+    const [shippingMode, setShippingMode] = useState<string>("Surface");
+    const [isSavingShippingMode, setIsSavingShippingMode] = useState(false);
     const [defaultLength, setDefaultLength] = useState(10);
     const [defaultBreadth, setDefaultBreadth] = useState(10);
     const [defaultHeight, setDefaultHeight] = useState(10);
@@ -109,6 +112,7 @@ export default function DelhiverySettingsPage() {
                 setApiToken(data.apiToken || "");
                 setClientName(data.clientName || "");
                 setBookingMode(data.bookingMode || "MANUAL");
+                setShippingMode(data.shippingMode || "Surface");
                 setDefaultLength(data.defaultLength || 10);
                 setDefaultBreadth(data.defaultBreadth || 10);
                 setDefaultHeight(data.defaultHeight || 10);
@@ -217,6 +221,22 @@ export default function DelhiverySettingsPage() {
             toast.error(error.response?.data?.message || "Failed to save booking mode");
         } finally {
             setIsSavingBookingMode(false);
+        }
+    };
+
+    const handleSaveShippingMode = async () => {
+        try {
+            setIsSavingShippingMode(true);
+            const response = await api.put("/api/admin/delhivery/settings", { shippingMode });
+
+            if (response.data.success) {
+                toast.success("Shipping mode updated successfully!");
+                setSettings(response.data.data.settings);
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to save shipping mode");
+        } finally {
+            setIsSavingShippingMode(false);
         }
     };
 
@@ -683,6 +703,94 @@ export default function DelhiverySettingsPage() {
                                 </>
                             ) : (
                                 "Save Booking Mode"
+                            )}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Shipping Speed */}
+            <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl">
+                <CardHeader className="px-6 pt-6 pb-4">
+                    <CardTitle className="text-lg font-semibold text-[#1F2937] flex items-center">
+                        <Truck className="h-5 w-5 mr-2 text-[#4CAF50]" />
+                        Shipping Speed
+                    </CardTitle>
+                    <p className="text-sm text-[#9CA3AF] mt-1">
+                        Which Delhivery service every shipment books as
+                    </p>
+                </CardHeader>
+                <CardContent className="px-6 pb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div
+                            className={`p-5 border-2 rounded-xl cursor-pointer transition-all ${
+                                shippingMode === "Surface"
+                                    ? "border-[#22C55E] bg-[#ECFDF5]"
+                                    : "border-[#E5E7EB] bg-white hover:border-[#9CA3AF]"
+                            }`}
+                            onClick={() => setShippingMode("Surface")}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div
+                                    className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                        shippingMode === "Surface" ? "border-[#22C55E] bg-[#22C55E]" : "border-[#D1D5DB]"
+                                    }`}
+                                >
+                                    {shippingMode === "Surface" && <div className="w-2 h-2 bg-white rounded-full" />}
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-[#1F2937]">Surface (Recommended)</h3>
+                                    <p className="text-sm text-[#6B7280] mt-1">
+                                        Standard ground shipping — slower, lower cost.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            className={`p-5 border-2 rounded-xl cursor-pointer transition-all ${
+                                shippingMode === "Express"
+                                    ? "border-[#22C55E] bg-[#ECFDF5]"
+                                    : "border-[#E5E7EB] bg-white hover:border-[#9CA3AF]"
+                            }`}
+                            onClick={() => setShippingMode("Express")}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div
+                                    className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                        shippingMode === "Express" ? "border-[#22C55E] bg-[#22C55E]" : "border-[#D1D5DB]"
+                                    }`}
+                                >
+                                    {shippingMode === "Express" && <div className="w-2 h-2 bg-white rounded-full" />}
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-[#1F2937]">Express</h3>
+                                    <p className="text-sm text-[#6B7280] mt-1">
+                                        Air/priority shipping — faster, higher cost.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-4 mt-4 bg-[#FEF3C7] border border-[#FCD34D] rounded-xl">
+                        <AlertCircle className="h-5 w-5 text-[#D97706] mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-[#92400E]">
+                            If Delhivery keeps booking Express even with Surface selected here, check your
+                            Delhivery seller dashboard — some accounts have the pickup location/warehouse itself
+                            registered for Express only, which overrides this setting.
+                        </p>
+                    </div>
+
+                    <div className="flex justify-end pt-4 mt-4 border-t border-[#E5E7EB]">
+                        <Button onClick={handleSaveShippingMode} disabled={isSavingShippingMode}>
+                            {isSavingShippingMode ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                "Save Shipping Speed"
                             )}
                         </Button>
                     </div>

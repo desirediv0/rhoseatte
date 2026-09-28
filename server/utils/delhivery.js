@@ -384,15 +384,22 @@ export async function buildDelhiveryShipmentPayload(order, warehouseId = null) {
         payment_mode: order.paymentMethod === "CASH" ? "COD" : "Prepaid",
         cod_amount: order.paymentMethod === "CASH" ? parseFloat(order.total) : 0,
         total_amount: parseFloat(order.total),
+        // products_desc is a free-text label for the manifest — it should
+        // read like "Perfume x2, Deo x1", not just concatenated names, and
+        // quantity is the number of PACKAGES in this single shipment (always
+        // 1 here, since every order ships as one consolidated parcel) — not
+        // the sum of item quantities. Sending the summed unit count as
+        // "quantity" was what showed up as wrong item counts on Delhivery's
+        // own dashboard.
         products_desc: order.items
-            .map((item) => item.product.name)
+            .map((item) => `${item.product.name} x${item.quantity}`)
             .filter(Boolean)
             .join(", "),
-        quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+        quantity: 1,
         weight: weightGrams,
         shipment_width: settings.defaultBreadth,
         shipment_height: settings.defaultHeight,
-        shipping_mode: "Surface",
+        shipping_mode: settings.shippingMode || "Surface",
         address_type: "home",
     };
 

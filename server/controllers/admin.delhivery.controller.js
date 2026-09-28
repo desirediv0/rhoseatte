@@ -42,6 +42,7 @@ export const updateSettings = asyncHandler(async (req, res) => {
         apiToken,
         clientName,
         bookingMode,
+        shippingMode,
         defaultLength,
         defaultBreadth,
         defaultHeight,
@@ -70,6 +71,10 @@ export const updateSettings = asyncHandler(async (req, res) => {
         if (bookingMode === "AUTO") {
             updateData.isEnabled = true;
         }
+    }
+
+    if (shippingMode !== undefined && (shippingMode === "Surface" || shippingMode === "Express")) {
+        updateData.shippingMode = shippingMode;
     }
 
     if (defaultLength !== undefined) updateData.defaultLength = parseFloat(defaultLength);

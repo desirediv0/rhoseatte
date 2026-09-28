@@ -1266,6 +1266,11 @@ model DelhiverySettings {
   // Shipment Booking Mode: AUTO or MANUAL
   bookingMode String @default("MANUAL") // "AUTO" or "MANUAL"
 
+  // Which Delhivery service every shipment books as — "Surface" or
+  // "Express". Admin-configurable since Delhivery's own dashboard/account
+  // config can override what the API payload requests.
+  shippingMode String @default("Surface") // "Surface" or "Express"
+
   // Default shipping dimensions (fallback values)
   defaultLength  Float @default(10) // cm
   defaultBreadth Float @default(10) // cm
