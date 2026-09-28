@@ -18,6 +18,7 @@ import {
   verifyAdminJWT,
   hasPermission,
 } from "../middlewares/admin.middleware.js";
+import { reconcileMissingOrders } from "../controllers/payment.controller.js";
 
 const router = express.Router();
 
@@ -115,6 +116,17 @@ router.post(
   verifyAdminJWT,
   hasPermission("orders", "update"),
   cleanupInvalidPartnerEarnings
+);
+
+// Find Razorpay payments that were captured (money taken) but have no
+// matching order in our DB — e.g. from a server crash or a cart-emptied
+// race during payment verification. ?days=N controls the lookback window
+// (default 7).
+router.get(
+  "/orders/reconcile-payments",
+  verifyAdminJWT,
+  hasPermission("orders", "read"),
+  reconcileMissingOrders
 );
 
 export default router;

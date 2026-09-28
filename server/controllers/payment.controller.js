@@ -101,6 +101,78 @@ async function getPaymentGatewayConfig(userId = null, gateway = "RAZORPAY") {
   };
 }
 
+// Admin tool: find Razorpay payments that were captured (money actually
+// taken) but have no matching RazorpayPayment/Order row in our database —
+// e.g. because paymentVerification threw after Razorpay already confirmed
+// the charge (server crash, empty-cart race, etc). These are real customer
+// payments sitting in Razorpay with no corresponding order on our side and
+// need manual follow-up (create the order from what the customer says they
+// bought, or refund).
+export const reconcileMissingOrders = asyncHandler(async (req, res) => {
+  const { days = 7 } = req.query;
+
+  const { razorpayInstance } = await getPaymentGatewayConfig(null, "RAZORPAY");
+  if (!razorpayInstance) {
+    throw new ApiError(400, "Razorpay is not configured");
+  }
+
+  const to = Math.floor(Date.now() / 1000);
+  const from = to - parseInt(days, 10) * 24 * 60 * 60;
+
+  // Razorpay paginates 100 at a time — page through the whole window.
+  const allPayments = [];
+  let skip = 0;
+  while (true) {
+    const page = await razorpayInstance.payments.all({
+      from,
+      to,
+      count: 100,
+      skip,
+    });
+    allPayments.push(...page.items);
+    if (page.items.length < 100) break;
+    skip += 100;
+  }
+
+  const captured = allPayments.filter((p) => p.status === "captured");
+
+  const paymentIds = captured.map((p) => p.id);
+  const existing = await prisma.razorpayPayment.findMany({
+    where: { razorpayPaymentId: { in: paymentIds } },
+    select: { razorpayPaymentId: true },
+  });
+  const existingIds = new Set(existing.map((e) => e.razorpayPaymentId));
+
+  const orphaned = captured
+    .filter((p) => !existingIds.has(p.id))
+    .map((p) => ({
+      paymentId: p.id,
+      orderId: p.order_id,
+      amount: p.amount / 100,
+      currency: p.currency,
+      email: p.email,
+      contact: p.contact,
+      method: p.method,
+      createdAt: new Date(p.created_at * 1000),
+      notes: p.notes,
+    }));
+
+  res.status(200).json(
+    new ApiResponsive(
+      200,
+      {
+        windowDays: parseInt(days, 10),
+        totalCaptured: captured.length,
+        orphanedCount: orphaned.length,
+        orphaned,
+      },
+      orphaned.length > 0
+        ? `Found ${orphaned.length} captured payment(s) with no matching order`
+        : "No orphaned payments found in this window"
+    )
+  );
+});
+
 // Get payment settings (public endpoint for checkout page)
 export const getPaymentSettings = asyncHandler(async (req, res) => {
   // Get or create payment settings (singleton)
@@ -1209,6 +1281,37 @@ export const paymentVerification = asyncHandler(async (req, res) => {
     );
   } catch (error) {
     console.error("Payment Verification Error:", error);
+
+    // The Razorpay signature above already proved this payment is real and
+    // captured — Razorpay has the customer's money regardless of what fails
+    // past this point. If order creation itself fails (stock race, empty
+    // cart, a crash mid-transaction, etc), that money would otherwise sit
+    // silently unmatched to any order until someone thinks to check. Alert
+    // admin immediately so it can be resolved by hand instead of only
+    // surfacing when a customer complains days later.
+    if (error.code !== "P2002" || error.message !== "Duplicate payment record") {
+      try {
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.STORE_EMAIL;
+        if (adminEmail && razorpay_payment_id) {
+          await sendEmail({
+            email: adminEmail,
+            subject: `URGENT: Razorpay payment ${razorpay_payment_id} captured but order creation failed`,
+            html: `
+              <h2>A captured Razorpay payment has no order</h2>
+              <p>Payment ID: <b>${razorpay_payment_id}</b></p>
+              <p>Razorpay Order ID: <b>${razorpay_order_id}</b></p>
+              <p>User ID: <b>${req.user?.id || "unknown"}</b></p>
+              <p>Error: ${error.message || "unknown error"}</p>
+              <p>The customer's money was captured by Razorpay but no order was created on our side.
+              Check the Razorpay dashboard for this payment and create/refund the order manually,
+              or run the reconcile-payments admin tool.</p>
+            `,
+          });
+        }
+      } catch (alertError) {
+        console.error("Failed to send orphaned-payment alert email:", alertError);
+      }
+    }
 
     if (error.code === "P2002") {
       throw new ApiError(400, "Duplicate payment record");

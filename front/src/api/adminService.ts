@@ -514,6 +514,9 @@ export const orders = {
   getOrderFilterCounts: () => {
     return api.get("/api/admin/orders/filter-counts");
   },
+  reconcilePayments: (days: number = 7) => {
+    return api.get("/api/admin/orders/reconcile-payments", { params: { days } });
+  },
   getOrderById: (orderId: string) => {
     return api.get(`/api/admin/orders/${orderId}`);
   },

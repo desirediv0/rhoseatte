@@ -43,6 +43,13 @@ export default function OrdersPage() {
   const [invoiceYear, setInvoiceYear] = useState(now.getFullYear());
   const [isDownloadingBulkInvoices, setIsDownloadingBulkInvoices] = useState(false);
 
+  // Reconciliation: find Razorpay payments that were captured but have no
+  // matching order in our DB (e.g. server crash / empty-cart race during
+  // payment verification — the customer's money was taken but no order
+  // exists here).
+  const [isCheckingPayments, setIsCheckingPayments] = useState(false);
+  const [orphanedPayments, setOrphanedPayments] = useState<any[] | null>(null);
+
   // Filter-pill counts — fetched once from the server across ALL orders, not
   // just the current page, so "Processing (9)" etc. reflect the true total
   // instead of going stale/misleading (e.g. showing 0 when the current page
@@ -229,6 +236,25 @@ export default function OrdersPage() {
       toast.error(message);
     } finally {
       setIsDownloadingBulkInvoices(false);
+    }
+  };
+
+  const handleCheckOrphanedPayments = async () => {
+    setIsCheckingPayments(true);
+    try {
+      const response = await orders.reconcilePayments(7);
+      if (response.data?.success) {
+        setOrphanedPayments(response.data.data.orphaned || []);
+        if ((response.data.data.orphaned || []).length === 0) {
+          toast.success("No missing orders found in the last 7 days");
+        } else {
+          toast.error(`${response.data.data.orphaned.length} payment(s) have no matching order`);
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to check for missing orders");
+    } finally {
+      setIsCheckingPayments(false);
     }
   };
 
@@ -468,6 +494,69 @@ export default function OrdersPage() {
           <p className="text-[11px] text-[#9CA3AF] mt-2">
             Downloads one invoice per paid order placed that month (excludes pending and cancelled orders).
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Payment Reconciliation — catches Razorpay payments captured with no matching order */}
+      <Card className="bg-[#FFFFFF] border-[#E5E7EB] shadow-[0_1px_2px_rgba(0,0,0,0.04)] rounded-xl">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-[#4B5563] flex-1">
+              <AlertTriangle className="h-4 w-4 text-[#F59E0B]" />
+              <span className="font-medium">Missing Orders Check</span>
+              <span className="text-[#9CA3AF] text-xs hidden sm:inline">
+                — find payments Razorpay captured that have no order here (last 7 days)
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCheckOrphanedPayments}
+              disabled={isCheckingPayments}
+              className="border-[#E5E7EB] hover:bg-[#F3F7F6] shrink-0"
+            >
+              {isCheckingPayments ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                "Check Now"
+              )}
+            </Button>
+          </div>
+
+          {orphanedPayments !== null && orphanedPayments.length > 0 && (
+            <div className="mt-4 border border-red-200 bg-red-50/50 rounded-lg p-3 space-y-2">
+              <p className="text-sm font-medium text-red-700">
+                {orphanedPayments.length} payment(s) were captured by Razorpay but have no matching order — the customer's money was taken but no order exists. Contact them and create the order manually or refund from the Razorpay dashboard.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-[#6B7280] border-b border-red-200">
+                      <th className="py-1.5 pr-3">Payment ID</th>
+                      <th className="py-1.5 pr-3">Amount</th>
+                      <th className="py-1.5 pr-3">Email</th>
+                      <th className="py-1.5 pr-3">Contact</th>
+                      <th className="py-1.5 pr-3">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orphanedPayments.map((p) => (
+                      <tr key={p.paymentId} className="border-b border-red-100 last:border-0">
+                        <td className="py-1.5 pr-3 font-mono">{p.paymentId}</td>
+                        <td className="py-1.5 pr-3">{formatCurrency(p.amount)}</td>
+                        <td className="py-1.5 pr-3">{p.email || "—"}</td>
+                        <td className="py-1.5 pr-3">{p.contact || "—"}</td>
+                        <td className="py-1.5 pr-3">{new Date(p.createdAt).toLocaleString("en-IN")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
