@@ -12,6 +12,8 @@ interface InvoiceSettings {
     companyName: string | null;
     addressLine: string | null;
     gstin: string | null;
+    email: string | null;
+    phone: string | null;
     logoUrl: string | null;
     invoicePrefix: string;
 }
@@ -23,6 +25,8 @@ export default function InvoiceSettingsPage() {
     const [companyName, setCompanyName] = useState("");
     const [addressLine, setAddressLine] = useState("");
     const [gstin, setGstin] = useState("");
+    const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
     const [logoUrl, setLogoUrl] = useState("");
     const [invoicePrefix, setInvoicePrefix] = useState("INV");
 
@@ -38,6 +42,8 @@ export default function InvoiceSettingsPage() {
                 setCompanyName(data.companyName || "");
                 setAddressLine(data.addressLine || "");
                 setGstin(data.gstin || "");
+                setEmail(data.email || "");
+                setPhone(data.phone || "");
                 setLogoUrl(data.logoUrl || "");
                 setInvoicePrefix(data.invoicePrefix || "INV");
             }
@@ -56,6 +62,8 @@ export default function InvoiceSettingsPage() {
                 companyName,
                 addressLine,
                 gstin,
+                email,
+                phone,
                 logoUrl,
                 invoicePrefix,
             });
@@ -133,6 +141,26 @@ export default function InvoiceSettingsPage() {
                             onChange={(e) => setAddressLine(e.target.value)}
                             placeholder="Registered business address"
                         />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email (optional)</Label>
+                            <Input
+                                id="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="admin@rhoseatte.shop"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="phone">Phone (optional)</Label>
+                            <Input
+                                id="phone"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="7678336268"
+                            />
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">

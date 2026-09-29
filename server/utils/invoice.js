@@ -21,7 +21,18 @@ export async function getCompanyInvoiceSettings() {
     let settings = await prisma.companyInvoiceSettings.findFirst();
 
     if (!settings) {
-        settings = await prisma.companyInvoiceSettings.create({ data: {} });
+        // First-run default — the admin can still change any of this from
+        // the Invoice Settings page; this just means invoices are correct
+        // from day one instead of blank until someone visits that page.
+        settings = await prisma.companyInvoiceSettings.create({
+            data: {
+                companyName: "Rhoseatte Fragrances Private Limited",
+                addressLine: "132, Ramdaspeth, Nagpur, India",
+                gstin: "27AAOCR6143E1Z7",
+                email: "admin@rhoseatte.shop",
+                phone: "7678336268",
+            },
+        });
     }
 
     return settings;
@@ -59,15 +70,21 @@ function drawInvoice(doc, order, companySettings) {
 
     // Header — company block only if any field is actually filled in.
     const hasCompanyInfo =
-        companySettings.companyName || companySettings.addressLine || companySettings.gstin;
+        companySettings.companyName ||
+        companySettings.addressLine ||
+        companySettings.gstin ||
+        companySettings.email ||
+        companySettings.phone;
 
     if (hasCompanyInfo) {
         if (companySettings.companyName) {
             doc.fontSize(16).font("Helvetica-Bold").text(companySettings.companyName);
         }
         doc.fontSize(9).font("Helvetica").fillColor("#555555");
-        if (companySettings.addressLine) doc.text(companySettings.addressLine);
         if (companySettings.gstin) doc.text(`GSTIN: ${companySettings.gstin}`);
+        if (companySettings.addressLine) doc.text(companySettings.addressLine);
+        if (companySettings.email) doc.text(`Email: ${companySettings.email}`);
+        if (companySettings.phone) doc.text(`Phone: ${companySettings.phone}`);
         doc.moveDown(0.5);
     }
 

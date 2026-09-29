@@ -516,7 +516,7 @@ export const getInvoiceSettings = asyncHandler(async (req, res) => {
 
 // Update the company header shown on invoices.
 export const updateInvoiceSettings = asyncHandler(async (req, res) => {
-  const { companyName, addressLine, gstin, logoUrl, invoicePrefix } = req.body;
+  const { companyName, addressLine, gstin, email, phone, logoUrl, invoicePrefix } = req.body;
 
   const settings = await getCompanyInvoiceSettings();
   const updateData = {};
@@ -524,6 +524,8 @@ export const updateInvoiceSettings = asyncHandler(async (req, res) => {
   if (companyName !== undefined) updateData.companyName = companyName.trim() || null;
   if (addressLine !== undefined) updateData.addressLine = addressLine.trim() || null;
   if (gstin !== undefined) updateData.gstin = gstin.trim() || null;
+  if (email !== undefined) updateData.email = email.trim() || null;
+  if (phone !== undefined) updateData.phone = phone.trim() || null;
   if (logoUrl !== undefined) updateData.logoUrl = logoUrl.trim() || null;
   if (invoicePrefix !== undefined && invoicePrefix.trim()) {
     updateData.invoicePrefix = invoicePrefix.trim();

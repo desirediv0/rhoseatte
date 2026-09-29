@@ -1295,6 +1295,8 @@ model CompanyInvoiceSettings {
   companyName   String?
   addressLine   String?
   gstin         String?
+  email         String?
+  phone         String?
   logoUrl       String?
   invoicePrefix String   @default("INV")
   createdAt     DateTime @default(now())
