@@ -451,7 +451,7 @@ export const getOrderTracking = asyncHandler(async (req, res) => {
 
     const order = await prisma.order.findUnique({
         where: { id: orderId },
-        select: { delhiveryWaybill: true, orderNumber: true },
+        include: { tracking: true },
     });
 
     if (!order) {
@@ -466,8 +466,24 @@ export const getOrderTracking = asyncHandler(async (req, res) => {
         trackingData = await trackByOrderNumber(order.orderNumber);
     }
 
+    // This is also the only place status catches up if Delhivery's webhook
+    // was never configured on their side — checking tracking manually
+    // (this call) now applies whatever status Delhivery reports, the same
+    // way the webhook would, instead of only displaying it.
+    let updated = false;
+    try {
+        const shipment = trackingData?.ShipmentData?.[0]?.Shipment;
+        const status = shipment?.Status?.Status;
+        const statusLocation = shipment?.Status?.StatusLocation || "";
+        if (status) {
+            updated = await applyDelhiveryStatusUpdate(order, status, statusLocation);
+        }
+    } catch (syncError) {
+        console.error("Failed to apply Delhivery status from tracking refresh:", syncError);
+    }
+
     res.status(200).json(
-        new ApiResponsive(200, { tracking: trackingData }, "Tracking info fetched successfully")
+        new ApiResponsive(200, { tracking: trackingData, orderStatusUpdated: updated }, "Tracking info fetched successfully")
     );
 });
 
@@ -627,48 +643,26 @@ export const downloadOrderInvoice = asyncHandler(async (req, res) => {
     res.send(buf);
 });
 
-// Webhook handler for Delhivery tracking updates
-export const handleWebhook = asyncHandler(async (req, res) => {
-    const { Shipment } = req.body || {};
+// Map Delhivery status → internal order status. Cancelled/RTO only updates
+// delhiveryStatus — order stays active for admin to re-sync, matching the
+// Shiprocket webhook's cancellation handling.
+const DELHIVERY_STATUS_MAP = {
+    "In Transit": "SHIPPED",
+    Dispatched: "SHIPPED",
+    "Out for Delivery": "SHIPPED",
+    Delivered: "DELIVERED",
+};
 
-    // Delhivery's webhook payload nests the update under a "Shipment" key.
-    const waybill = Shipment?.AWB || req.body?.waybill;
-    const status = Shipment?.Status?.Status || req.body?.status;
-    const statusLocation = Shipment?.Status?.StatusLocation || "";
-    const statusDateTime = Shipment?.Status?.StatusDateTime || null;
-    const referenceNo = Shipment?.ReferenceNo || req.body?.order_id;
-
-    console.log("Delhivery webhook received:", { waybill, status, referenceNo });
-
-    let order = null;
-
-    if (waybill) {
-        order = await prisma.order.findFirst({ where: { delhiveryWaybill: waybill } });
-    }
-
-    if (!order && referenceNo) {
-        order = await prisma.order.findUnique({ where: { orderNumber: referenceNo } });
-    }
-
-    if (!order) {
-        console.log("Order not found for Delhivery webhook:", { waybill, referenceNo });
-        return res.status(200).json({ status: "ok" });
-    }
+// Apply a Delhivery status onto our order/tracking rows — shared by the
+// webhook (push, if Delhivery has been configured to call it) and the
+// manual "Refresh Tracking" action (pull, works regardless of webhook
+// setup). Returns true if anything changed.
+async function applyDelhiveryStatusUpdate(order, status, statusLocation = "") {
+    if (!status) return false;
 
     const updateData = { delhiveryStatus: status };
-
-    // Map Delhivery status → internal order status. Cancelled/RTO only
-    // updates delhiveryStatus — order stays active for admin to re-sync,
-    // matching the Shiprocket webhook's cancellation handling.
-    const statusMapping = {
-        "In Transit": "SHIPPED",
-        Dispatched: "SHIPPED",
-        "Out for Delivery": "SHIPPED",
-        Delivered: "DELIVERED",
-    };
-
-    if (statusMapping[status]) {
-        updateData.status = statusMapping[status];
+    if (DELHIVERY_STATUS_MAP[status]) {
+        updateData.status = DELHIVERY_STATUS_MAP[status];
     }
 
     await prisma.order.update({ where: { id: order.id }, data: updateData });
@@ -691,6 +685,38 @@ export const handleWebhook = asyncHandler(async (req, res) => {
             },
         });
     }
+
+    return true;
+}
+
+// Webhook handler for Delhivery tracking updates
+export const handleWebhook = asyncHandler(async (req, res) => {
+    const { Shipment } = req.body || {};
+
+    // Delhivery's webhook payload nests the update under a "Shipment" key.
+    const waybill = Shipment?.AWB || req.body?.waybill;
+    const status = Shipment?.Status?.Status || req.body?.status;
+    const statusLocation = Shipment?.Status?.StatusLocation || "";
+    const referenceNo = Shipment?.ReferenceNo || req.body?.order_id;
+
+    console.log("Delhivery webhook received:", { waybill, status, referenceNo });
+
+    let order = null;
+
+    if (waybill) {
+        order = await prisma.order.findFirst({ where: { delhiveryWaybill: waybill }, include: { tracking: true } });
+    }
+
+    if (!order && referenceNo) {
+        order = await prisma.order.findUnique({ where: { orderNumber: referenceNo }, include: { tracking: true } });
+    }
+
+    if (!order) {
+        console.log("Order not found for Delhivery webhook:", { waybill, referenceNo });
+        return res.status(200).json({ status: "ok" });
+    }
+
+    await applyDelhiveryStatusUpdate(order, status, statusLocation);
 
     res.status(200).json({ status: "ok" });
 });

@@ -383,6 +383,7 @@ export default function OrderDetailsPage() {
   const [availableCouriers, setAvailableCouriers] = useState<CourierPartner[]>([]);
   const [isFetchingCouriers, setIsFetchingCouriers] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  const [isRefreshingTracking, setIsRefreshingTracking] = useState(false);
 
   // Warehouse (pickup location) options for this order — Shiprocket
   const [warehouseOptions, setWarehouseOptions] = useState<
@@ -1492,6 +1493,38 @@ export default function OrderDetailsPage() {
                     <div className="flex flex-wrap gap-3 pt-2">
                       {orderDetails.delhivery?.status !== "CANCELLED" && orderDetails.status !== "CANCELLED" ? (
                         <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isRefreshingTracking}
+                            onClick={async () => {
+                              if (!id) return;
+                              setIsRefreshingTracking(true);
+                              try {
+                                const response = await orders.getOrderTrackingDelhivery(id);
+                                if (response.data?.success) {
+                                  if (response.data.data?.orderStatusUpdated) {
+                                    toast.success("Tracking refreshed — order status updated");
+                                    await fetchOrderDetails();
+                                  } else {
+                                    toast.success("Tracking refreshed — no status change");
+                                  }
+                                }
+                              } catch (error: any) {
+                                toast.error(error.response?.data?.message || "Failed to refresh tracking");
+                              } finally {
+                                setIsRefreshingTracking(false);
+                              }
+                            }}
+                            className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                          >
+                            {isRefreshingTracking ? (
+                              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                            )}
+                            Refresh Tracking
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
