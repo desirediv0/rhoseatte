@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { orders } from "@/api/adminService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,12 +31,74 @@ export default function OrdersPage() {
   const [ordersList, setOrdersList] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [selectedPayment, setSelectedPayment] = useState("");
+  // True once the first fetch has finished. The full-page spinner is only for
+  // that first load — after it, a search/filter/page change keeps the page
+  // (and the search box) mounted and just refreshes the list in place.
+  const hasLoadedOnce = useRef(false);
+  // Bumped to re-run the fetch with unchanged params (the "try again" button).
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Page, search and filters live in the URL (?page=2&search=abc&status=SHIPPED
+  // &payment=COD) so back/forward, refresh and shared links all restore the
+  // exact same view.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
+  const selectedStatus = searchParams.get("status") || "";
+  const selectedPayment = searchParams.get("payment") || "";
+  const currentPage = Math.max(parseInt(searchParams.get("page") || "1", 10) || 1, 1);
+
+  // Apply several param changes in ONE navigation. Changing a filter/search
+  // also drops back to page 1; going to another page leaves the rest alone.
+  // (Separate setSearchParams calls in a row would each start from the same
+  // stale params and overwrite one another, hence one combined update.)
+  const paramsRef = useRef(searchParams);
+  paramsRef.current = searchParams;
+  const updateParams = (
+    updates: Record<string, string | null>,
+    options: { resetPage?: boolean } = { resetPage: true }
+  ) => {
+    // Built from the latest params (not the render this closure came from),
+    // so a debounced search can't overwrite a filter changed in the meantime.
+    const next = new URLSearchParams(paramsRef.current);
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    }
+    if (options.resetPage) next.delete("page");
+    setSearchParams(next);
+  };
+
+  const setSelectedStatus = (value: string) => updateParams({ status: value || null });
+  const setSelectedPayment = (value: string) => updateParams({ payment: value || null });
+  const goToPage = (page: number) => {
+    updateParams({ page: page > 1 ? String(page) : null }, { resetPage: false });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // The search box is typed into freely; the URL (and so the API call) only
+  // follows 400ms after the last keystroke instead of on every character.
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const lastPushedSearch = useRef(searchQuery);
+  useEffect(() => {
+    // Back/forward or "clear filters" changed the URL — mirror it in the box.
+    // Skipped when the change is our own debounced push, otherwise the box
+    // would snap back and eat characters typed while that push was landing.
+    if (searchQuery === lastPushedSearch.current) return;
+    lastPushedSearch.current = searchQuery;
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+  useEffect(() => {
+    const trimmed = searchInput.trim();
+    if (trimmed === searchQuery) return;
+    const timer = setTimeout(() => {
+      lastPushedSearch.current = trimmed;
+      updateParams({ search: trimmed || null });
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
 
   // Month-wise bulk invoice download (all paid orders in the chosen month)
   const now = new Date();
@@ -79,9 +141,15 @@ export default function OrdersPage() {
 
   // Fetch orders
   useEffect(() => {
+    // If the params change again before this request returns, its response
+    // is stale and must not overwrite the newer results (typing "ab" then
+    // "abc" quickly could otherwise land the "ab" results last).
+    let cancelled = false;
+
     const fetchOrders = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const params = {
           page: currentPage,
           limit: 10,
@@ -91,8 +159,10 @@ export default function OrdersPage() {
         };
 
         const response = await orders.getOrders(params);
+        if (cancelled) return;
 
         if (response && response.data && response.data.success) {
+          hasLoadedOnce.current = true;
           setOrdersList(response.data.data?.orders || []);
           setTotalPages(response.data.data?.pagination?.pages || 1);
           setTotalCount(response.data.data?.pagination?.total || 0);
@@ -100,20 +170,39 @@ export default function OrdersPage() {
           setError(response.data?.message || t('orders.actions.load_error'));
         }
       } catch (error: any) {
+        if (cancelled) return;
         console.error("Error fetching orders:", error);
         setError(t('orders.actions.load_error'));
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchOrders();
-  }, [currentPage, searchQuery, selectedStatus, selectedPayment, t]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPage, searchQuery, selectedStatus, selectedPayment, reloadKey, t]);
 
-  // Handle search
+  // A stale/bookmarked ?page= past the last page (e.g. after a filter shrank
+  // the results) would show an empty list with no pagination to escape it.
+  useEffect(() => {
+    if (!isLoading && totalPages >= 1 && currentPage > totalPages) {
+      goToPage(totalPages);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, totalPages, currentPage]);
+
+  // Enter applies the search immediately instead of waiting for the debounce.
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1);
+    const trimmed = searchInput.trim();
+    if (trimmed !== searchQuery) {
+      lastPushedSearch.current = trimmed;
+      updateParams({ search: trimmed || null });
+    }
   };
 
   // Format date
@@ -198,10 +287,9 @@ export default function OrdersPage() {
   };
 
   const clearFilters = () => {
-    setSelectedStatus("");
-    setSelectedPayment("");
-    setSearchQuery("");
-    setCurrentPage(1);
+    lastPushedSearch.current = "";
+    setSearchInput("");
+    updateParams({ search: null, status: null, payment: null });
   };
 
   // Download invoices (as a ZIP) for every paid order placed in the chosen month
