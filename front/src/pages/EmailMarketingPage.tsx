@@ -262,6 +262,73 @@ const NEWSLETTER_TEMPLATE = `<!DOCTYPE html>
 </body>
 </html>`;
 
+interface EasyFields {
+  heading: string;
+  message: string;
+  imageUrl: string;
+  buttonText: string;
+  buttonLink: string;
+  color: string;
+}
+
+const DEFAULT_EASY: EasyFields = {
+  heading: "",
+  message: "Write your message here...",
+  imageUrl: "",
+  buttonText: "Shop Now",
+  buttonLink: "",
+  color: "#003E29",
+};
+
+const EASY_COLORS = [
+  { name: "Green", value: "#003E29" },
+  { name: "Red", value: "#dc2626" },
+  { name: "Teal", value: "#0f766e" },
+  { name: "Gold", value: "#B8860B" },
+  { name: "Black", value: "#111827" },
+];
+
+const escHtml = (t: string) =>
+  t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+// Builds a complete, email-client-safe HTML email (all styles inline) from the simple form fields.
+const buildEasyHtml = (e: EasyFields) => {
+  const link = e.buttonLink.trim() || "{{SHOP_URL}}";
+  const message = escHtml(e.message).replace(/\n/g, "<br>");
+  const heading = e.heading.trim() ? escHtml(e.heading.trim()) : "{{SUBJECT}}";
+  const image = e.imageUrl.trim()
+    ? `<img src="${escHtml(e.imageUrl.trim())}" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;">`
+    : "";
+  const button = e.buttonText.trim()
+    ? `<div style="text-align:center;margin:32px 0;"><a href="${escHtml(link)}" target="_blank" style="display:inline-block;padding:15px 40px;background-color:${e.color};color:#ffffff;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;font-family:Arial,Helvetica,sans-serif;">${escHtml(e.buttonText.trim())}</a></div>`
+    : "";
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#FAFBF9;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#111827;">
+  <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #E5E7EB;">
+    <div style="background-color:${e.color};color:#ffffff;text-align:center;padding:32px;">
+      <h1 style="margin:0;font-size:26px;font-weight:800;color:#ffffff;">{{STORE_NAME}}</h1>
+    </div>
+    ${image}
+    <div style="padding:40px;">
+      <h2 style="color:${e.color};font-size:22px;margin-top:0;">${heading}</h2>
+      <p style="font-size:15px;color:#4b5563;line-height:1.7;margin:0 0 20px;">Hi {{USER_NAME}},</p>
+      <p style="font-size:15px;color:#4b5563;line-height:1.7;margin:0 0 20px;">${message}</p>
+      ${button}
+    </div>
+    <div style="text-align:center;padding:28px 30px;font-size:12px;color:#9ca3af;background:#FAFBF9;border-top:1px solid #E5E7EB;">
+      &copy; 2026 {{STORE_NAME}}. All rights reserved.<br>
+      <a href="{{UNSUBSCRIBE_URL}}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
 const TEMPLATES = [
   { id: "blank", name: "Blank Template", subject: "", html: DEFAULT_TEMPLATE },
   { id: "welcome", name: "Welcome New User", subject: "Welcome to {{STORE_NAME}} - 10% Off Inside!", html: WELCOME_TEMPLATE },
@@ -288,7 +355,9 @@ export default function EmailMarketingPage() {
 
   // Form state
   const [formSubject, setFormSubject] = useState("");
-  const [formHtml, setFormHtml] = useState(DEFAULT_TEMPLATE);
+  const [easyMode, setEasyMode] = useState(true);
+  const [easy, setEasy] = useState<EasyFields>(DEFAULT_EASY);
+  const [formHtml, setFormHtml] = useState(() => buildEasyHtml(DEFAULT_EASY));
   const [formEditId, setFormEditId] = useState<string | null>(null);
   const [savedTemplates, setSavedTemplates] = useState<
     { id: string; name: string; subject: string; htmlContent: string }[]
@@ -565,9 +634,17 @@ export default function EmailMarketingPage() {
     }
   };
 
+  const updateEasy = (patch: Partial<EasyFields>) => {
+    const next = { ...easy, ...patch };
+    setEasy(next);
+    setFormHtml(buildEasyHtml(next));
+  };
+
   const resetForm = () => {
     setFormSubject("");
-    setFormHtml(DEFAULT_TEMPLATE);
+    setEasy(DEFAULT_EASY);
+    setEasyMode(true);
+    setFormHtml(buildEasyHtml(DEFAULT_EASY));
     setFormEditId(null);
     setTestEmail("");
   };
@@ -575,6 +652,7 @@ export default function EmailMarketingPage() {
   const startEdit = (campaign: Campaign) => {
     setFormSubject(campaign.subject);
     setFormHtml(campaign.htmlContent || "");
+    setEasyMode(false);
     setFormEditId(campaign.id);
     setView("edit");
   };
@@ -760,6 +838,7 @@ export default function EmailMarketingPage() {
                           onClick={() => {
                             setFormSubject(tpl.subject);
                             setFormHtml(tpl.html);
+                            setEasyMode(false);
                           }}
                           className={`p-3 rounded-lg border-2 text-left transition-all text-sm ${
                             formHtml === tpl.html
@@ -789,6 +868,7 @@ export default function EmailMarketingPage() {
                                 onClick={() => {
                                   setFormSubject(tpl.subject);
                                   setFormHtml(tpl.htmlContent);
+                                  setEasyMode(false);
                                 }}
                                 className="w-full p-3 pr-8 text-left"
                               >
@@ -818,18 +898,108 @@ export default function EmailMarketingPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>HTML Content</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Use placeholders: {"{{STORE_NAME}}"}, {"{{USER_NAME}}"}, {"{{SUBJECT}}"}, {"{{SHOP_URL}}"}, {"{{UNSUBSCRIBE_URL}}"}
-                  </p>
-                  <Textarea
-                    className="font-mono text-xs min-h-[500px]"
-                    value={formHtml}
-                    onChange={(e) => setFormHtml(e.target.value)}
-                    placeholder="HTML email content..."
-                  />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={easyMode ? "default" : "outline"}
+                    onClick={() => {
+                      setEasyMode(true);
+                      setFormHtml(buildEasyHtml(easy));
+                    }}
+                  >
+                    Easy Editor
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={!easyMode ? "default" : "outline"}
+                    onClick={() => setEasyMode(false)}
+                  >
+                    HTML (advanced)
+                  </Button>
                 </div>
+
+                {easyMode ? (
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <p className="text-xs text-muted-foreground">
+                      Fill the boxes, the email is made for you (see Preview on the right). Each customer's name is added automatically.
+                    </p>
+                    <div className="space-y-2">
+                      <Label>Heading</Label>
+                      <Input
+                        placeholder="e.g. Big Diwali Sale"
+                        value={easy.heading}
+                        onChange={(e) => updateEasy({ heading: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Message</Label>
+                      <Textarea
+                        className="min-h-[140px]"
+                        placeholder="Write your message..."
+                        value={easy.message}
+                        onChange={(e) => updateEasy({ message: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Image link (optional)</Label>
+                      <Input
+                        placeholder="https://... (link of a banner image)"
+                        value={easy.imageUrl}
+                        onChange={(e) => updateEasy({ imageUrl: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Button text (empty = no button)</Label>
+                        <Input
+                          placeholder="Shop Now"
+                          value={easy.buttonText}
+                          onChange={(e) => updateEasy({ buttonText: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Button link (empty = your shop)</Label>
+                        <Input
+                          placeholder="https://rhoseatte.com/..."
+                          value={easy.buttonLink}
+                          onChange={(e) => updateEasy({ buttonLink: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Colour</Label>
+                      <div className="flex gap-2">
+                        {EASY_COLORS.map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            title={c.name}
+                            onClick={() => updateEasy({ color: c.value })}
+                            style={{ backgroundColor: c.value }}
+                            className={`h-8 w-8 rounded-full border-2 ${
+                              easy.color === c.value ? "border-primary ring-2 ring-primary/30" : "border-white"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>HTML Content</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Use placeholders: {"{{STORE_NAME}}"}, {"{{USER_NAME}}"}, {"{{SUBJECT}}"}, {"{{SHOP_URL}}"}, {"{{UNSUBSCRIBE_URL}}"}
+                    </p>
+                    <Textarea
+                      className="font-mono text-xs min-h-[500px]"
+                      value={formHtml}
+                      onChange={(e) => setFormHtml(e.target.value)}
+                      placeholder="HTML email content..."
+                    />
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <Button onClick={handleSaveCampaign} disabled={loading}>
