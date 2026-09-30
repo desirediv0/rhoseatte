@@ -316,15 +316,36 @@ export const getRateForOrder = asyncHandler(async (req, res) => {
     }
 
     try {
-        const rate = await getRateEstimate({
+        const rateParams = {
             pickupPincode: pickupAddress.pincode,
             deliveryPincode: order.shippingAddress.postalCode,
             weightGrams: Math.round(totalWeight * 1000),
             paymentType: order.paymentMethod === "CASH" ? "COD" : "Pre-paid",
-        });
+        };
+
+        // Fetch both so the admin can compare Surface vs Express and choose.
+        // One failing (e.g. Express not serviceable to that pincode) must not
+        // hide the other, so each is settled independently.
+        const [surface, express] = await Promise.allSettled([
+            getRateEstimate({ ...rateParams, mode: "Surface" }),
+            getRateEstimate({ ...rateParams, mode: "Express" }),
+        ]);
+
+        const rates = {
+            Surface: surface.status === "fulfilled" ? surface.value : null,
+            Express: express.status === "fulfilled" ? express.value : null,
+        };
+
+        if (!rates.Surface && !rates.Express) {
+            throw new Error(surface.reason?.message || express.reason?.message || "No rate available");
+        }
 
         res.status(200).json(
-            new ApiResponsive(200, { rate }, "Rate estimate fetched successfully")
+            new ApiResponsive(
+                200,
+                { rates, defaultMode: settings.shippingMode || "Surface" },
+                "Rate estimate fetched successfully"
+            )
         );
     } catch (error) {
         console.error("Error fetching Delhivery rate:", error);
@@ -381,7 +402,7 @@ export const getOrderWarehouseOptions = asyncHandler(async (req, res) => {
 // Sync order to Delhivery (manual sync)
 export const syncOrderToDelhivery = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
-    const { warehouseId } = req.body || {};
+    const { warehouseId, shippingMode } = req.body || {};
 
     const order = await prisma.order.findUnique({ where: { id: orderId } });
 
@@ -421,7 +442,8 @@ export const syncOrderToDelhivery = asyncHandler(async (req, res) => {
         });
     }
 
-    const result = await processOrderForShipping(orderId, true, warehouseId || null);
+    const chosenMode = shippingMode === "Express" || shippingMode === "Surface" ? shippingMode : null;
+    const result = await processOrderForShipping(orderId, true, warehouseId || null, chosenMode);
 
     if (!result) {
         throw new ApiError(400, "Delhivery is disabled or configuration is missing");

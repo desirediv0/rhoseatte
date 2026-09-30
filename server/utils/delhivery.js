@@ -165,9 +165,12 @@ export async function getRateEstimate({
     deliveryPincode,
     weightGrams,
     paymentType = "Pre-paid",
+    mode = "Surface",
 }) {
     return delhiveryRequest("/api/kinko/v1/invoice/charges/.json", "GET", {
-        md: "E",
+        // md: "S" = Surface, "E" = Express. This was hardcoded to "E", which
+        // is why the estimate shown to admins was always the Express price.
+        md: mode === "Express" ? "E" : "S",
         ss: "Delivered",
         o_pin: pickupPincode,
         d_pin: deliveryPincode,
@@ -341,7 +344,7 @@ const cleanPhone = (phone) => {
  * Build the shipment payload Delhivery's /api/cmu/create.json expects
  * from our Order — mirrors buildShiprocketOrderPayload in shiprocket.js.
  */
-export async function buildDelhiveryShipmentPayload(order, warehouseId = null) {
+export async function buildDelhiveryShipmentPayload(order, warehouseId = null, shippingModeOverride = null) {
     const settings = await getDelhiverySettings();
 
     const { warehouse: pickupAddress, assignedBy } = await pickWarehouseForOrder(
@@ -399,7 +402,8 @@ export async function buildDelhiveryShipmentPayload(order, warehouseId = null) {
         weight: weightGrams,
         shipment_width: settings.defaultBreadth,
         shipment_height: settings.defaultHeight,
-        shipping_mode: settings.shippingMode || "Surface",
+        // Per-order choice from the admin wins; otherwise the account-wide default.
+        shipping_mode: shippingModeOverride || settings.shippingMode || "Surface",
         address_type: "home",
     };
 
@@ -418,7 +422,7 @@ export async function buildDelhiveryShipmentPayload(order, warehouseId = null) {
  * Respects bookingMode the same way processOrderForShipping does in
  * server/utils/shiprocket.js.
  */
-export async function processOrderForShipping(orderId, isManualSync = false, warehouseId = null) {
+export async function processOrderForShipping(orderId, isManualSync = false, warehouseId = null, shippingMode = null) {
     const settings = await getDelhiverySettings();
 
     if (!isManualSync && settings.bookingMode === "MANUAL") {
@@ -450,7 +454,7 @@ export async function processOrderForShipping(orderId, isManualSync = false, war
     }
 
     try {
-        const payload = await buildDelhiveryShipmentPayload(order, warehouseId);
+        const payload = await buildDelhiveryShipmentPayload(order, warehouseId, shippingMode);
         const response = await createDelhiveryShipment(payload);
 
         const packageResult = response?.packages?.[0];

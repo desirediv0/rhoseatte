@@ -574,7 +574,10 @@ export const orders = {
   getOrderWarehouseOptionsDelhivery: (orderId: string) => {
     return api.get(`/api/admin/delhivery/orders/${orderId}/warehouse-options`);
   },
-  syncToDelhivery: (orderId: string, data?: { warehouseId?: string }) => {
+  syncToDelhivery: (
+    orderId: string,
+    data?: { warehouseId?: string; shippingMode?: "Surface" | "Express" }
+  ) => {
     return api.post(`/api/admin/delhivery/orders/${orderId}/sync`, data);
   },
   getOrderTrackingDelhivery: (orderId: string) => {

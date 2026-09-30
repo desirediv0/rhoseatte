@@ -407,7 +407,11 @@ export default function OrderDetailsPage() {
   // defaults to the site-wide default courier, fetched once below.
   const [selectedCourierProvider, setSelectedCourierProvider] = useState<"SHIPROCKET" | "DELHIVERY">("SHIPROCKET");
   const [isSyncingDelhivery, setIsSyncingDelhivery] = useState(false);
-  const [delhiveryRate, setDelhiveryRate] = useState<number | null>(null);
+  // Delhivery service for this order — Surface (slower/cheaper) or Express.
+  // Chosen per order by the admin; starts at the account-wide default from
+  // Delhivery Settings. Rates are keyed by mode so both can be compared.
+  const [delhiveryMode, setDelhiveryMode] = useState<"Surface" | "Express">("Surface");
+  const [delhiveryRates, setDelhiveryRates] = useState<{ Surface: number | null; Express: number | null } | null>(null);
 
   useEffect(() => {
     api
@@ -421,6 +425,18 @@ export default function OrderDetailsPage() {
       .catch(() => {
         /* default courier fetch is optional */
       });
+
+    api
+      .get("/api/admin/delhivery/settings")
+      .then((res) => {
+        const mode = res.data?.data?.settings?.shippingMode;
+        if (mode === "Surface" || mode === "Express") {
+          setDelhiveryMode(mode);
+        }
+      })
+      .catch(() => {
+        /* default Delhivery mode fetch is optional */
+      });
   }, []);
 
   // Handle manual sync to Delhivery
@@ -428,15 +444,14 @@ export default function OrderDetailsPage() {
     if (!id) return;
     try {
       setIsSyncingDelhivery(true);
-      const payload: { warehouseId?: string } = {};
+      const payload: { warehouseId?: string; shippingMode: "Surface" | "Express" } = {
+        shippingMode: delhiveryMode,
+      };
       if (selectedDelhiveryWarehouseId) payload.warehouseId = selectedDelhiveryWarehouseId;
-      const response = await orders.syncToDelhivery(
-        id,
-        Object.keys(payload).length ? payload : undefined
-      );
+      const response = await orders.syncToDelhivery(id, payload);
 
       if (response && response.data && response.data.success) {
-        toast.success("Order synced to Delhivery successfully!");
+        toast.success(`Order synced to Delhivery (${delhiveryMode}) successfully!`);
         await fetchOrderDetails();
       } else {
         toast.error(response.data?.message || "Failed to sync to Delhivery");
@@ -582,13 +597,16 @@ export default function OrderDetailsPage() {
     try {
       const response = await orders.getRateForOrderDelhivery(id);
       if (response.data?.success) {
-        const rateData = response.data.data?.rate;
-        const charge =
-          rateData?.[0]?.total_amount ??
-          rateData?.[0]?.charge_DL ??
-          null;
-        setDelhiveryRate(typeof charge === "number" ? charge : null);
-        toast.success("Delhivery rate estimate fetched!");
+        const rates = response.data.data?.rates || {};
+        const pickCharge = (rateData: any): number | null => {
+          const charge = rateData?.[0]?.total_amount ?? rateData?.[0]?.charge_DL ?? null;
+          return typeof charge === "number" ? charge : null;
+        };
+        setDelhiveryRates({
+          Surface: pickCharge(rates.Surface),
+          Express: pickCharge(rates.Express),
+        });
+        toast.success("Delhivery rate estimates fetched!");
       }
     } catch (error: any) {
       console.error("Error fetching Delhivery rate:", error);
@@ -1949,11 +1967,43 @@ export default function OrderDetailsPage() {
                               </p>
                             </div>
                           )}
-                          {delhiveryRate !== null && (
-                            <p className="text-sm text-[#374151]">
-                              Estimated rate: <span className="font-semibold text-emerald-700">₹{delhiveryRate}</span>
-                            </p>
-                          )}
+                          <div className="w-full max-w-sm text-left">
+                            <label className="block text-xs font-semibold text-[#374151] mb-1.5">
+                              Delivery speed
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {(["Surface", "Express"] as const).map((mode) => {
+                                const rate = delhiveryRates?.[mode];
+                                return (
+                                  <button
+                                    key={mode}
+                                    type="button"
+                                    onClick={() => setDelhiveryMode(mode)}
+                                    className={cn(
+                                      "px-3 py-2.5 text-sm rounded-lg border transition-colors text-left",
+                                      delhiveryMode === mode
+                                        ? "border-[#22C55E] bg-[#ECFDF5]"
+                                        : "border-[#D1D5DB] bg-white hover:border-[#9CA3AF]"
+                                    )}
+                                  >
+                                    <span className={cn("block font-semibold", delhiveryMode === mode ? "text-[#16A34A]" : "text-[#374151]")}>
+                                      {mode}
+                                    </span>
+                                    <span className="block text-[11px] text-[#9CA3AF]">
+                                      {mode === "Surface" ? "Slower, cheaper" : "Faster, costlier"}
+                                    </span>
+                                    <span className="block text-xs font-medium text-emerald-700 mt-0.5">
+                                      {delhiveryRates
+                                        ? rate !== null && rate !== undefined
+                                          ? `₹${rate}`
+                                          : "Not available"
+                                        : "Tap View Rate Estimate"}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                           <div className="flex flex-wrap justify-center gap-3">
                             <Button
                               onClick={handleFetchDelhiveryRate}
@@ -1986,7 +2036,7 @@ export default function OrderDetailsPage() {
                               ) : (
                                 <>
                                   <RefreshCw className="mr-2 h-4 w-4" />
-                                  Sync to Delhivery
+                                  Sync to Delhivery ({delhiveryMode})
                                 </>
                               )}
                             </Button>
