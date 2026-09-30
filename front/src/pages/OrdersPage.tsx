@@ -431,7 +431,7 @@ export default function OrdersPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9CA3AF]" />
               <Input
                 type="search"
-                placeholder={t('orders.filters.search_placeholder')}
+                placeholder="Search all orders — order #, name, phone, email, AWB, product, coupon…"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-10 border-[#E5E7EB] focus:border-primary"

@@ -27,17 +27,37 @@ export const getOrders = asyncHandler(async (req, res, next) => {
 
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
+  // The list shows order numbers as "#ORD-123", so people paste them with the
+  // "#" attached — strip it (and stray spaces) or an exact copy-paste finds
+  // nothing.
+  const term = String(search).trim().replace(/^#/, "").trim();
+  const contains = { contains: term, mode: "insensitive" };
+
   // Build filter conditions
   const filterConditions = {
-    ...(search && {
+    // Searches ALL orders (this runs in the database, not on the current
+    // page): order number, customer name/email/phone, delivery name/phone,
+    // courier tracking numbers, coupon code, product names, payment ids.
+    ...(term && {
       OR: [
-        { orderNumber: { contains: search, mode: "insensitive" } },
+        { orderNumber: contains },
+        { awbCode: contains },
+        { delhiveryWaybill: contains },
+        { couponCode: contains },
         {
           user: {
-            OR: [
-              { name: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
-            ],
+            OR: [{ name: contains }, { email: contains }, { phone: contains }],
+          },
+        },
+        {
+          shippingAddress: {
+            OR: [{ name: contains }, { phone: contains }],
+          },
+        },
+        { items: { some: { product: { name: contains } } } },
+        {
+          razorpayPayment: {
+            OR: [{ razorpayPaymentId: contains }, { razorpayOrderId: contains }],
           },
         },
       ],
