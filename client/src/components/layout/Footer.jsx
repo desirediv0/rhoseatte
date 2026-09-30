@@ -248,41 +248,19 @@ export const Footer = () => {
               &copy; {new Date().getFullYear()} RHOSEATTE — All rights reserved
             </div>
 
-            {/* Credit — gold pill so it stands out against the muted footer text */}
-            <a
-              href="https://desirediv.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Design by Desire Div (opens desirediv.com)"
-              className="group inline-flex items-center gap-2 px-3.5 py-1.5 transition-all duration-300"
-              style={{
-                borderRadius: "999px",
-                border: "1px solid rgba(184,151,106,0.45)",
-                backgroundColor: "rgba(184,151,106,0.08)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#B8976A";
-                e.currentTarget.style.backgroundColor = "rgba(184,151,106,0.16)";
-                e.currentTarget.style.boxShadow = "0 0 18px rgba(184,151,106,0.25)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(184,151,106,0.45)";
-                e.currentTarget.style.backgroundColor = "rgba(184,151,106,0.08)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              <span className="text-[9px] uppercase tracking-[0.2em] font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
-                Design by
-              </span>
-              <span className="text-[11px] uppercase tracking-[0.2em] font-semibold" style={{ color: "#B8976A" }}>
-                Desire Div
-              </span>
-              <IconArrowUpRight
-                className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+            {/* Credit — same type as the copyright line, name picked out in gold */}
+            <div className="text-[10px] tracking-[0.2em] uppercase font-medium" style={{ color: "rgba(255,255,255,0.25)" }}>
+              Design by{" "}
+              <a
+                href="https://desirediv.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors duration-300 hover:underline underline-offset-4"
                 style={{ color: "#B8976A" }}
-                stroke={1.75}
-              />
-            </a>
+              >
+                Desire Div
+              </a>
+            </div>
             <div className="flex items-center gap-2.5">
               <span className="text-[9px] uppercase tracking-[0.15em] font-medium mr-1" style={{ color: "rgba(255,255,255,0.25)" }}>
                 We Accept
