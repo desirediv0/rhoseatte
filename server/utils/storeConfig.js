@@ -27,7 +27,7 @@ export const getStoreConfig = () => {
       "admin@rhoseatte.com",
 
     // Website Information
-    websiteUrl: process.env.WEBSITE_URL || "https://rhoseatte.com",
+    websiteUrl: (process.env.WEBSITE_URL || process.env.FRONTEND_URL || "https://rhoseatte.com").replace(/^["'\s]+|["'\s]+$/g, ""),
     supportEmail:
       process.env.SUPPORT_EMAIL ||
       process.env.STORE_EMAIL ||

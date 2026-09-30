@@ -104,12 +104,12 @@ const DEFAULT_TEMPLATE = `<!DOCTYPE html>
       <p>Hi {{USER_NAME}},</p>
       <p>Write your marketing message here...</p>
       <div style="text-align: center; margin: 32px 0;">
-        <a href="{{SHOP_URL}}" class="button">Shop Now</a>
+        <a href="{{SHOP_URL}}" target="_blank" style="display:inline-block;padding:15px 40px;background-color:#003E29;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;font-family:Arial,Helvetica,sans-serif;">Shop Now</a>
       </div>
     </div>
     <div class="footer">
-      &copy; 2025 {{STORE_NAME}}. All rights reserved.<br>
-      <a href="{{UNSUBSCRIBE_URL}}">Unsubscribe</a>
+      &copy; 2026 {{STORE_NAME}}. All rights reserved.<br>
+      <a href="{{UNSUBSCRIBE_URL}}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>
     </div>
   </div>
 </body>
@@ -152,13 +152,13 @@ const WELCOME_TEMPLATE = `<!DOCTYPE html>
         <li>Priority customer support</li>
       </ul>
       <div style="text-align: center; margin: 32px 0;">
-        <a href="{{SHOP_URL}}" class="button">Start Shopping</a>
+        <a href="{{SHOP_URL}}" target="_blank" style="display:inline-block;padding:15px 40px;background-color:#D4AF37;color:#1a1a2e;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;font-family:Arial,Helvetica,sans-serif;">Start Shopping</a>
       </div>
       <p style="font-size: 13px; color: #9ca3af; text-align: center;">Use code <strong>WELCOME10</strong> for 10% off your first order!</p>
     </div>
     <div class="footer">
-      &copy; 2025 {{STORE_NAME}}. All rights reserved.<br>
-      <a href="{{UNSUBSCRIBE_URL}}">Unsubscribe</a>
+      &copy; 2026 {{STORE_NAME}}. All rights reserved.<br>
+      <a href="{{UNSUBSCRIBE_URL}}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>
     </div>
   </div>
 </body>
@@ -201,13 +201,13 @@ const SALE_TEMPLATE = `<!DOCTYPE html>
         <p style="margin-top: 8px; font-size: 13px; color: #92400e;">50% off on all products</p>
       </div>
       <div style="text-align: center; margin: 32px 0;">
-        <a href="{{SHOP_URL}}" class="button">Shop the Sale</a>
+        <a href="{{SHOP_URL}}" target="_blank" style="display:inline-block;padding:15px 40px;background-color:#dc2626;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;font-family:Arial,Helvetica,sans-serif;">Shop the Sale</a>
       </div>
       <p class="timer">Hurry! Sale ends in 48 hours.</p>
     </div>
     <div class="footer">
-      &copy; 2025 {{STORE_NAME}}. All rights reserved.<br>
-      <a href="{{UNSUBSCRIBE_URL}}">Unsubscribe</a>
+      &copy; 2026 {{STORE_NAME}}. All rights reserved.<br>
+      <a href="{{UNSUBSCRIBE_URL}}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>
     </div>
   </div>
 </body>
@@ -251,12 +251,12 @@ const NEWSLETTER_TEMPLATE = `<!DOCTYPE html>
         <p><strong>🎁 Special Offer:</strong> Enjoy free shipping on orders over ₹999 this week only.</p>
       </div>
       <div style="text-align: center; margin: 32px 0;">
-        <a href="{{SHOP_URL}}" class="button">Read More</a>
+        <a href="{{SHOP_URL}}" target="_blank" style="display:inline-block;padding:15px 40px;background-color:#0f766e;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;font-family:Arial,Helvetica,sans-serif;">Read More</a>
       </div>
     </div>
     <div class="footer">
-      &copy; 2025 {{STORE_NAME}}. All rights reserved.<br>
-      <a href="{{UNSUBSCRIBE_URL}}">Unsubscribe</a>
+      &copy; 2026 {{STORE_NAME}}. All rights reserved.<br>
+      <a href="{{UNSUBSCRIBE_URL}}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>
     </div>
   </div>
 </body>
