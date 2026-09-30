@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Resource, Action } from "@/types/admin";
 import { emailMarketing } from "@/api/adminService";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import JoditEditor from "jodit-react";
 import {
   Dialog,
   DialogContent,
@@ -273,7 +274,7 @@ interface EasyFields {
 
 const DEFAULT_EASY: EasyFields = {
   heading: "",
-  message: "Write your message here...",
+  message: "<p>Write your message here...</p>",
   imageUrl: "",
   buttonText: "Shop Now",
   buttonLink: "",
@@ -294,7 +295,8 @@ const escHtml = (t: string) =>
 // Builds a complete, email-client-safe HTML email (all styles inline) from the simple form fields.
 const buildEasyHtml = (e: EasyFields) => {
   const link = e.buttonLink.trim() || "{{SHOP_URL}}";
-  const message = escHtml(e.message).replace(/\n/g, "<br>");
+  // The message comes from the rich-text editor, so it is already HTML.
+  const message = e.message;
   const heading = e.heading.trim() ? escHtml(e.heading.trim()) : "{{SUBJECT}}";
   const image = e.imageUrl.trim()
     ? `<img src="${escHtml(e.imageUrl.trim())}" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;">`
@@ -307,6 +309,7 @@ const buildEasyHtml = (e: EasyFields) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>p{margin:0 0 14px;} ul,ol{margin:0 0 14px;padding-left:22px;} img{max-width:100%;height:auto;}</style>
 </head>
 <body style="margin:0;padding:0;background-color:#FAFBF9;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#111827;">
   <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #E5E7EB;">
@@ -317,7 +320,7 @@ const buildEasyHtml = (e: EasyFields) => {
     <div style="padding:40px;">
       <h2 style="color:${e.color};font-size:22px;margin-top:0;">${heading}</h2>
       <p style="font-size:15px;color:#4b5563;line-height:1.7;margin:0 0 20px;">Hi {{USER_NAME}},</p>
-      <p style="font-size:15px;color:#4b5563;line-height:1.7;margin:0 0 20px;">${message}</p>
+      <div style="font-size:15px;color:#4b5563;line-height:1.7;margin:0 0 20px;">${message}</div>
       ${button}
     </div>
     <div style="text-align:center;padding:28px 30px;font-size:12px;color:#9ca3af;background:#FAFBF9;border-top:1px solid #E5E7EB;">
@@ -327,6 +330,29 @@ const buildEasyHtml = (e: EasyFields) => {
   </div>
 </body>
 </html>`;
+};
+
+// Rich-text editor for the email message: only email-safe formatting tools.
+const MESSAGE_EDITOR_CONFIG = {
+  height: 300,
+  placeholder: "Write your message... (use the toolbar for bold, colours, lists, links, images)",
+  toolbarAdaptive: false,
+  showCharsCounter: false,
+  showWordsCounter: false,
+  showXPathInStatusbar: false,
+  askBeforePasteHTML: false,
+  askBeforePasteFromWord: false,
+  defaultActionOnPaste: "insert_as_html" as const,
+  enter: "p" as const,
+  spellcheck: true,
+  buttons: [
+    "bold", "italic", "underline", "|",
+    "font", "fontsize", "brush", "|",
+    "align", "ul", "ol", "|",
+    "link", "image", "hr", "|",
+    "eraser", "undo", "redo", "|",
+    "source", "fullsize",
+  ],
 };
 
 const TEMPLATES = [
@@ -634,6 +660,8 @@ export default function EmailMarketingPage() {
     }
   };
 
+  const messageEditorConfig = useMemo(() => MESSAGE_EDITOR_CONFIG, []);
+
   const updateEasy = (patch: Partial<EasyFields>) => {
     const next = { ...easy, ...patch };
     setEasy(next);
@@ -935,12 +963,16 @@ export default function EmailMarketingPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>Message</Label>
-                      <Textarea
-                        className="min-h-[140px]"
-                        placeholder="Write your message..."
-                        value={easy.message}
-                        onChange={(e) => updateEasy({ message: e.target.value })}
-                      />
+                      <div className="border rounded-md overflow-hidden">
+                        <JoditEditor
+                          value={easy.message}
+                          config={messageEditorConfig}
+                          onBlur={(content: string) => updateEasy({ message: content })}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Tip: you can type {"{{USER_NAME}}"} anywhere to add the customer's name.
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>Image link (optional)</Label>
