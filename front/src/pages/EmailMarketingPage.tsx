@@ -8,9 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Mail,
+  Copy,
   Send,
   Loader2,
   CheckCircle,
@@ -30,6 +38,7 @@ import {
 } from "lucide-react";
 
 type View = "list" | "create" | "edit" | "detail";
+type Audience = "ALL" | "ORDERED" | "NOT_ORDERED";
 
 interface SmtpSettings {
   configured: boolean;
@@ -267,9 +276,15 @@ export default function EmailMarketingPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(false);
-  const [userCount, setUserCount] = useState(0);
+  // How many people each audience would reach (unsubscribed users excluded).
+  const [audienceCounts, setAudienceCounts] = useState({ all: 0, ordered: 0, notOrdered: 0 });
   const [testEmail, setTestEmail] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
+
+  // Send dialog: which campaign it is open for, and who it goes to.
+  const [sendTarget, setSendTarget] = useState<string | null>(null);
+  const [audience, setAudience] = useState<Audience>("ALL");
+  const [sending, setSending] = useState(false);
 
   // Form state
   const [formSubject, setFormSubject] = useState("");
@@ -296,10 +311,10 @@ export default function EmailMarketingPage() {
     loadSmtp();
   }, []);
 
-  // Load campaigns
-  const loadCampaigns = useCallback(async () => {
+  // Load campaigns. `silent` refreshes in place (no spinner) for auto-refresh.
+  const loadCampaigns = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await emailMarketing.getCampaigns();
       if (res.data.success) {
         setCampaigns(res.data.data.campaigns);
@@ -307,7 +322,7 @@ export default function EmailMarketingPage() {
     } catch (err) {
       console.error("Failed to load campaigns", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -315,20 +330,39 @@ export default function EmailMarketingPage() {
     if (view === "list") loadCampaigns();
   }, [view, loadCampaigns]);
 
-  // Load user count
+  // Keep the list's sent/failed counts moving while a campaign is sending.
+  const anySending = campaigns.some((c) => c.status === "SENDING");
   useEffect(() => {
-    const loadCount = async () => {
-      try {
-        const res = await emailMarketing.getUserCount();
-        if (res.data.success) {
-          setUserCount(res.data.data.count);
-        }
-      } catch (err) {
-        console.error("Failed to load user count", err);
+    if (view !== "list" || !anySending) return;
+    const timer = setInterval(() => loadCampaigns(true), 5000);
+    return () => clearInterval(timer);
+  }, [view, anySending, loadCampaigns]);
+
+  // Recipient counts per audience
+  const loadAudienceCounts = useCallback(async () => {
+    try {
+      const res = await emailMarketing.getUserCount();
+      if (res.data.success) {
+        const { all, ordered, notOrdered } = res.data.data;
+        setAudienceCounts({ all: all ?? 0, ordered: ordered ?? 0, notOrdered: notOrdered ?? 0 });
       }
-    };
-    loadCount();
+    } catch (err) {
+      console.error("Failed to load recipient counts", err);
+    }
   }, []);
+
+  useEffect(() => {
+    loadAudienceCounts();
+  }, [loadAudienceCounts]);
+
+  // The campaign row only gets its totals when sending finishes, so live
+  // progress comes from the per-email stats the detail endpoint returns.
+  const toCampaignView = (data: any): Campaign => ({
+    ...data.campaign,
+    sentCount: data.stats.sent,
+    failedCount: data.stats.failed,
+    pendingCount: data.stats.pending + data.stats.retrying,
+  });
 
   // Load campaign detail
   const loadCampaignDetail = async (id: string) => {
@@ -336,7 +370,7 @@ export default function EmailMarketingPage() {
       setLoading(true);
       const res = await emailMarketing.getCampaignById(id);
       if (res.data.success) {
-        setSelectedCampaign(res.data.data.campaign);
+        setSelectedCampaign(toCampaignView(res.data.data));
         setView("detail");
       }
     } catch (err) {
@@ -345,6 +379,23 @@ export default function EmailMarketingPage() {
       setLoading(false);
     }
   };
+
+  // Auto-refresh an open campaign while it is still sending.
+  const openId = selectedCampaign?.id;
+  const openStatus = selectedCampaign?.status;
+  useEffect(() => {
+    if (view !== "detail" || !openId || openStatus !== "SENDING") return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await emailMarketing.getCampaignById(openId);
+        if (res.data.success) setSelectedCampaign(toCampaignView(res.data.data));
+      } catch {
+        /* next tick will retry */
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, openId, openStatus]);
 
   // Save campaign
   const handleSaveCampaign = async () => {
@@ -414,16 +465,40 @@ export default function EmailMarketingPage() {
     }
   };
 
-  // Send campaign
-  const handleSendCampaign = async (id: string) => {
-    if (!confirm(`Send this campaign to up to 100 users?`)) return;
+  // Send campaign: opens the audience dialog (nothing is sent until confirmed)
+  const handleSendCampaign = (id: string) => {
+    setAudience("ALL");
+    setSendTarget(id);
+    loadAudienceCounts(); // fresh numbers, not whatever they were at page load
+  };
+
+  const confirmSend = async () => {
+    if (!sendTarget) return;
+    const id = sendTarget;
     try {
-      setLoading(true);
-      const res = await emailMarketing.sendCampaign(id);
+      setSending(true);
+      const res = await emailMarketing.sendCampaign(id, { audience });
       toast.success(res.data.data.message);
+      setSendTarget(null);
       loadCampaignDetail(id);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to send campaign");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // A campaign can only be sent once — duplicate it to send the same
+  // content to another audience.
+  const handleDuplicate = async (id: string) => {
+    try {
+      setLoading(true);
+      await emailMarketing.duplicateCampaign(id);
+      toast.success("Duplicated as a new draft — send it to a different audience");
+      setView("list");
+      loadCampaigns();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to duplicate campaign");
     } finally {
       setLoading(false);
     }
@@ -533,10 +608,10 @@ export default function EmailMarketingPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  <Users className="h-3 w-3 mr-1" /> {userCount} users
+                  <Users className="h-3 w-3 mr-1" /> {audienceCounts.all} users
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  Max 100 per batch
+                  {audienceCounts.ordered} ordered
                 </Badge>
               </div>
             </div>
@@ -585,8 +660,11 @@ export default function EmailMarketingPage() {
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => loadCampaignDetail(campaign.id)}>
+                        <Button variant="outline" size="sm" onClick={() => loadCampaignDetail(campaign.id)} title="View">
                           <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDuplicate(campaign.id)} disabled={loading} title="Duplicate as a new draft">
+                          <Copy className="h-4 w-4" />
                         </Button>
                         {campaign.status === "DRAFT" && (
                           <>
@@ -695,7 +773,8 @@ export default function EmailMarketingPage() {
                   className="border rounded-md overflow-hidden max-h-[400px] overflow-y-auto"
                   dangerouslySetInnerHTML={{
                     __html: formHtml
-                      .replace(/\{\{STORE_NAME\}\}/g, smtpSettings?.storeName || "Your Store")
+                      // Same brand name the real email uses (server-side fromName)
+                      .replace(/\{\{STORE_NAME\}\}/g, smtpSettings?.fromName || smtpSettings?.storeName || "Your Store")
                       .replace(/\{\{USER_NAME\}\}/g, "Customer")
                       .replace(/\{\{SUBJECT\}\}/g, formSubject || "Your Subject")
                       .replace(/\{\{SHOP_URL\}\}/g, "#")
@@ -712,7 +791,7 @@ export default function EmailMarketingPage() {
                   <TestTube className="h-4 w-4" /> Send Test Email
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Send a test email before bulk sending. Max 100 emails per batch.
+                  Sent exactly as recipients will see it (name, store and unsubscribe link filled in). Always test before sending.
                 </p>
                 <Input
                   type="email"
@@ -738,12 +817,14 @@ export default function EmailMarketingPage() {
             {/* Batch Info */}
             <Card>
               <CardContent className="p-4">
-                <h3 className="font-semibold mb-2">Batch Limits</h3>
+                <h3 className="font-semibold mb-2">How sending works</h3>
                 <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>• Max 100 emails per campaign send</li>
-                  <li>• Automatic retry for failed emails (up to 3 times)</li>
-                  <li>• Real-time delivery status tracking</li>
-                  <li>• {userCount} total users with email</li>
+                  <li>• You pick the audience when you press Send</li>
+                  <li>• Everyone in that audience gets it — no cap</li>
+                  <li>• Users who unsubscribed are skipped automatically</li>
+                  <li>• Failed emails can be retried (up to 3 times)</li>
+                  <li>• If the server restarts mid-send, it carries on by itself</li>
+                  <li>• Reach now: {audienceCounts.all} users, {audienceCounts.ordered} have ordered, {audienceCounts.notOrdered} have not</li>
                 </ul>
               </CardContent>
             </Card>
@@ -787,9 +868,12 @@ export default function EmailMarketingPage() {
           <div className="flex gap-2">
             {selectedCampaign.status === "DRAFT" && (
               <Button onClick={() => handleSendCampaign(selectedCampaign.id)} disabled={loading}>
-                <Send className="h-4 w-4 mr-2" /> Send to Users
+                <Send className="h-4 w-4 mr-2" /> Send Campaign
               </Button>
             )}
+            <Button variant="outline" onClick={() => handleDuplicate(selectedCampaign.id)} disabled={loading}>
+              <Copy className="h-4 w-4 mr-2" /> Duplicate
+            </Button>
             {selectedCampaign.failedCount > 0 && (
               <Button variant="outline" onClick={() => handleRetryFailed(selectedCampaign.id)} disabled={loading}>
                 <RotateCcw className="h-4 w-4 mr-2" /> Retry Failed ({selectedCampaign.failedCount})
@@ -799,6 +883,14 @@ export default function EmailMarketingPage() {
               <RefreshCw className="h-4 w-4 mr-2" /> Refresh
             </Button>
           </div>
+
+          {selectedCampaign.status === "SENDING" && (
+            <p className="text-sm text-blue-700 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Sending… {(selectedCampaign.sentCount || 0) + (selectedCampaign.failedCount || 0)} of{" "}
+              {selectedCampaign.totalRecipients} done. This page updates by itself.
+            </p>
+          )}
 
           {/* Email Logs */}
           {selectedCampaign.logs && selectedCampaign.logs.length > 0 && (
@@ -842,6 +934,62 @@ export default function EmailMarketingPage() {
           )}
         </div>
       )}
+
+      {/* Who should this go to? Nothing is sent until "Send" is pressed here. */}
+      <Dialog open={!!sendTarget} onOpenChange={(open) => { if (!open && !sending) setSendTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send campaign</DialogTitle>
+            <DialogDescription>
+              Choose who receives it. Users who have unsubscribed are always skipped. A campaign can be sent only
+              once — to reach another audience with the same email, duplicate it afterwards.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            {([
+              { value: "ALL", label: "All users", hint: "Everyone with an account", count: audienceCounts.all },
+              { value: "ORDERED", label: "Customers who ordered", hint: "Placed at least one order that wasn't cancelled", count: audienceCounts.ordered },
+              { value: "NOT_ORDERED", label: "Haven't ordered yet", hint: "Have an account but no order", count: audienceCounts.notOrdered },
+            ] as { value: Audience; label: string; hint: string; count: number }[]).map((option) => (
+              <label
+                key={option.value}
+                className={`flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  audience === option.value ? "border-primary bg-primary/5" : "hover:bg-gray-50"
+                }`}
+              >
+                <span className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="campaign-audience"
+                    className="mt-1"
+                    checked={audience === option.value}
+                    onChange={() => setAudience(option.value)}
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">{option.label}</span>
+                    <span className="block text-xs text-muted-foreground">{option.hint}</span>
+                  </span>
+                </span>
+                <Badge variant="outline" className="shrink-0">{option.count}</Badge>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setSendTarget(null)} disabled={sending}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmSend}
+              disabled={sending || (audience === "ALL" ? audienceCounts.all : audience === "ORDERED" ? audienceCounts.ordered : audienceCounts.notOrdered) === 0}
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Send to {audience === "ALL" ? audienceCounts.all : audience === "ORDERED" ? audienceCounts.ordered : audienceCounts.notOrdered} people
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

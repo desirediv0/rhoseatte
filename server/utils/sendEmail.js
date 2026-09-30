@@ -86,6 +86,8 @@ const sendEmail = async (options) => {
       subject,
       html: options.html,
       attachments: options.attachments || [],
+      // Optional extra headers (e.g. List-Unsubscribe on marketing emails).
+      ...(options.headers && { headers: options.headers }),
     };
 
     const info = await transporter.sendMail(mailOptions);

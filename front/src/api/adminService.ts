@@ -1603,8 +1603,14 @@ export const emailMarketing = {
   sendTestEmail: (data: { email: string; subject: string; htmlContent: string }) => {
     return api.post("/api/admin/email-marketing/test-email", data);
   },
-  sendCampaign: (campaignId: string) => {
-    return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/send`);
+  sendCampaign: (
+    campaignId: string,
+    data?: { audience?: "ALL" | "ORDERED" | "NOT_ORDERED" }
+  ) => {
+    return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/send`, data);
+  },
+  duplicateCampaign: (campaignId: string) => {
+    return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/duplicate`);
   },
   retryFailedEmails: (campaignId: string) => {
     return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/retry`);

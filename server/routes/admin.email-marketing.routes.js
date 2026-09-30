@@ -10,6 +10,7 @@ import {
   sendCampaign,
   retryFailedEmails,
   getUserCount,
+  duplicateCampaign,
 } from "../controllers/admin.email-marketing.controller.js";
 import {
   verifyAdminJWT,
@@ -68,6 +69,14 @@ router.delete(
   verifyAdminJWT,
   hasPermission("settings", "delete"),
   deleteCampaign
+);
+
+// Copy a campaign into a new draft (to send the same content to another audience)
+router.post(
+  "/email-marketing/campaigns/:campaignId/duplicate",
+  verifyAdminJWT,
+  hasPermission("settings", "create"),
+  duplicateCampaign
 );
 
 // Test email

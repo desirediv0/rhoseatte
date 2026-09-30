@@ -1,6 +1,7 @@
 import app from "./app.js";
 import dotenv from "dotenv";
 import { prisma } from "./config/db.js";
+import { resumeInterruptedCampaigns } from "./utils/emailCampaign.js";
 
 dotenv.config({ path: ".env" });
 
@@ -80,6 +81,11 @@ prisma
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT} 🚀`);
     });
+
+    // Finish any email campaign a previous restart cut off mid-send.
+    resumeInterruptedCampaigns().catch((err) =>
+      console.error("Failed to resume interrupted email campaigns:", err)
+    );
   })
   .catch((error) => {
     console.error("Error connecting to the database:", error);

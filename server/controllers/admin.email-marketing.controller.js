@@ -4,9 +4,21 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import sendEmail from "../utils/sendEmail.js";
 import { getStoreConfig } from "../utils/storeConfig.js";
-
-const BATCH_SIZE = 100;
-const MAX_RETRIES = 3;
+import {
+  renderCampaignTemplate,
+  withUnsubscribeFooter,
+  buildUnsubscribeUrl,
+  makeUnsubscribeToken,
+} from "../utils/campaignTemplate.js";
+import {
+  MAX_RETRIES,
+  AUDIENCE_LABELS,
+  normalizeAudience,
+  getRecipients,
+  getAudienceCounts,
+  processCampaign,
+  retryLogs,
+} from "../utils/emailCampaign.js";
 
 // Get SMTP settings status
 export const getSmtpSettings = asyncHandler(async (req, res, next) => {
@@ -193,7 +205,37 @@ export const deleteCampaign = asyncHandler(async (req, res, next) => {
   );
 });
 
-// Test email - send to a single address
+
+// Copy an existing campaign into a fresh DRAFT — this is how the same
+// content is sent to a second audience (a campaign can only be sent once).
+export const duplicateCampaign = asyncHandler(async (req, res, next) => {
+  const { campaignId } = req.params;
+
+  const source = await prisma.emailCampaign.findUnique({
+    where: { id: campaignId },
+  });
+
+  if (!source) {
+    throw new ApiError(404, "Campaign not found");
+  }
+
+  const campaign = await prisma.emailCampaign.create({
+    data: {
+      subject: source.subject,
+      htmlContent: source.htmlContent,
+      plainText: source.plainText || "",
+      createdById: req.admin.id,
+    },
+  });
+
+  res.status(201).json(
+    new ApiResponsive(201, { campaign }, "Campaign duplicated as a new draft")
+  );
+});
+
+// Test email - send to a single address. Rendered exactly like a real send
+// (placeholders filled, unsubscribe link real) so what arrives is what
+// recipients will see.
 export const sendTestEmail = asyncHandler(async (req, res, next) => {
   const { email, subject, htmlContent } = req.body;
 
@@ -202,10 +244,12 @@ export const sendTestEmail = asyncHandler(async (req, res, next) => {
   }
 
   try {
+    const vars = { name: req.admin?.name || "there", email, subject };
     await sendEmail({
       email,
-      subject: `[TEST] ${subject}`,
-      html: htmlContent,
+      subject: `[TEST] ${renderCampaignTemplate(subject, vars, { html: false })}`,
+      html: renderCampaignTemplate(withUnsubscribeFooter(htmlContent), vars),
+      headers: { "List-Unsubscribe": `<${buildUnsubscribeUrl(email)}>` },
     });
 
     res.status(200).json(
@@ -216,9 +260,12 @@ export const sendTestEmail = asyncHandler(async (req, res, next) => {
   }
 });
 
-// Send campaign to all users (batch processing)
+// Send a campaign to an audience: ALL users, ORDERED (placed at least one
+// non-cancelled order) or NOT_ORDERED. Reaches every matching recipient —
+// there is no cap — minus anyone who has unsubscribed.
 export const sendCampaign = asyncHandler(async (req, res, next) => {
   const { campaignId } = req.params;
+  const audience = normalizeAudience(req.body?.audience);
 
   const campaign = await prisma.emailCampaign.findUnique({
     where: { id: campaignId },
@@ -232,55 +279,63 @@ export const sendCampaign = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "Only DRAFT campaigns can be sent");
   }
 
-  // Get all active users with emails
-  const allUsers = await prisma.user.findMany({
-    where: {
-      isActive: true,
-    },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-    },
-  });
-  const users = allUsers.filter((u) => u.email && u.email.trim().length > 0);
-
-  if (users.length === 0) {
-    throw new ApiError(400, "No users with email addresses found");
+  // Every email carries a signed unsubscribe link; fail now, before anything
+  // is queued, if the server can't sign one.
+  try {
+    makeUnsubscribeToken("check@example.com");
+  } catch (error) {
+    throw new ApiError(500, error.message);
   }
 
-  // Limit to BATCH_SIZE
-  const recipients = users.slice(0, BATCH_SIZE);
+  const recipients = await getRecipients(audience);
 
-  // Update campaign status
-  await prisma.emailCampaign.update({
-    where: { id: campaignId },
+  if (recipients.length === 0) {
+    throw new ApiError(400, `No recipients found for ${AUDIENCE_LABELS[audience]}`);
+  }
+
+  // Claim the campaign atomically so a double-click can't queue it twice.
+  const claimed = await prisma.emailCampaign.updateMany({
+    where: { id: campaignId, status: "DRAFT" },
     data: {
       status: "SENDING",
       totalRecipients: recipients.length,
+      sentCount: 0,
+      failedCount: 0,
     },
   });
+  if (claimed.count === 0) {
+    throw new ApiError(400, "Only DRAFT campaigns can be sent");
+  }
 
-  // Create email logs for all recipients
-  await prisma.emailLog.createMany({
-    data: recipients.map((user) => ({
-      campaignId,
-      email: user.email,
-      userName: user.name,
-      status: "PENDING",
-    })),
-  });
+  try {
+    await prisma.emailLog.createMany({
+      data: recipients.map((user) => ({
+        campaignId,
+        email: user.email,
+        userName: user.name,
+        status: "PENDING",
+      })),
+    });
+  } catch (error) {
+    await prisma.emailCampaign.update({
+      where: { id: campaignId },
+      data: { status: "DRAFT", totalRecipients: 0 },
+    });
+    throw error;
+  }
 
-  // Process first batch immediately (fire and forget)
-  processBatch(campaignId, campaign.subject, campaign.htmlContent).catch(
-    (err) => console.error("Batch processing error:", err)
+  // Runs in the background; if the server restarts mid-way it is picked back
+  // up on boot (see resumeInterruptedCampaigns).
+  processCampaign(campaignId).catch((err) =>
+    console.error("Campaign processing error:", err)
   );
 
   res.status(200).json(
     new ApiResponsive(200, {
       campaignId,
+      audience,
       totalRecipients: recipients.length,
-      message: `Sending started. ${recipients.length} emails will be processed in batches.`,
+      message: `Sending to ${recipients.length} recipient(s) (${AUDIENCE_LABELS[audience]}).`,
     }, "Campaign sending started")
   );
 });
@@ -310,7 +365,6 @@ export const retryFailedEmails = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "No failed emails eligible for retry");
   }
 
-  // Update status to RETRYING
   await prisma.emailLog.updateMany({
     where: {
       id: { in: failedLogs.map((l) => l.id) },
@@ -318,9 +372,8 @@ export const retryFailedEmails = asyncHandler(async (req, res, next) => {
     data: { status: "RETRYING" },
   });
 
-  // Process retries (fire and forget)
-  retryBatch(campaignId, campaign.subject, campaign.htmlContent, failedLogs.map((l) => l.id)).catch(
-    (err) => console.error("Retry processing error:", err)
+  retryLogs(campaignId, failedLogs.map((l) => l.id)).catch((err) =>
+    console.error("Retry processing error:", err)
   );
 
   res.status(200).json(
@@ -331,145 +384,12 @@ export const retryFailedEmails = asyncHandler(async (req, res, next) => {
   );
 });
 
-// Helper: Process a batch of emails
-async function processBatch(campaignId, subject, htmlContent) {
-  const pendingLogs = await prisma.emailLog.findMany({
-    where: {
-      campaignId,
-      status: "PENDING",
-    },
-    take: 10, // Process 10 at a time to avoid overload
-    orderBy: { createdAt: "asc" },
-  });
-
-  for (const log of pendingLogs) {
-    try {
-      await sendEmail({
-        email: log.email,
-        subject,
-        html: htmlContent,
-      });
-
-      await prisma.emailLog.update({
-        where: { id: log.id },
-        data: {
-          status: "SENT",
-          sentAt: new Date(),
-        },
-      });
-    } catch (error) {
-      await prisma.emailLog.update({
-        where: { id: log.id },
-        data: {
-          status: "FAILED",
-          errorMessage: error.message || "Unknown error",
-        },
-      });
-    }
-  }
-
-  // Check if there are more pending logs
-  const remainingCount = await prisma.emailLog.count({
-    where: {
-      campaignId,
-      status: "PENDING",
-    },
-  });
-
-  if (remainingCount > 0) {
-    // Process next batch after a small delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await processBatch(campaignId, subject, htmlContent);
-  } else {
-    // All done - update campaign status
-    const stats = await prisma.emailLog.groupBy({
-      by: ["status"],
-      where: { campaignId },
-      _count: true,
-    });
-
-    const sentCount = stats.find((s) => s.status === "SENT")?._count || 0;
-    const failedCount = stats.find((s) => s.status === "FAILED")?._count || 0;
-
-    await prisma.emailCampaign.update({
-      where: { id: campaignId },
-      data: {
-        status: failedCount > 0 ? "COMPLETED" : "COMPLETED",
-        sentCount,
-        failedCount,
-        sentAt: new Date(),
-      },
-    });
-  }
-}
-
-// Helper: Retry failed emails
-async function retryBatch(campaignId, subject, htmlContent, logIds) {
-  const logs = await prisma.emailLog.findMany({
-    where: {
-      id: { in: logIds },
-      status: "RETRYING",
-    },
-  });
-
-  for (const log of logs) {
-    try {
-      await sendEmail({
-        email: log.email,
-        subject,
-        html: htmlContent,
-      });
-
-      await prisma.emailLog.update({
-        where: { id: log.id },
-        data: {
-          status: "SENT",
-          sentAt: new Date(),
-          retryCount: log.retryCount + 1,
-        },
-      });
-    } catch (error) {
-      const newRetryCount = log.retryCount + 1;
-      await prisma.emailLog.update({
-        where: { id: log.id },
-        data: {
-          status: newRetryCount >= MAX_RETRIES ? "FAILED" : "FAILED",
-          errorMessage: error.message || "Unknown error",
-          retryCount: newRetryCount,
-        },
-      });
-    }
-  }
-
-  // Update campaign stats after retry
-  const stats = await prisma.emailLog.groupBy({
-    by: ["status"],
-    where: { campaignId },
-    _count: true,
-  });
-
-  const sentCount = stats.find((s) => s.status === "SENT")?._count || 0;
-  const failedCount = stats.find((s) => s.status === "FAILED")?._count || 0;
-
-  await prisma.emailCampaign.update({
-    where: { id: campaignId },
-    data: { sentCount, failedCount },
-  });
-}
-
-// Get user count for email marketing
+// Recipient counts per audience, for the send dialog. `count` (= everyone)
+// is kept for older callers.
 export const getUserCount = asyncHandler(async (req, res, next) => {
-  const allUsers = await prisma.user.findMany({
-    where: {
-      isActive: true,
-    },
-    select: {
-      email: true,
-    },
-  });
-  const count = allUsers.filter((u) => u.email && u.email.trim().length > 0).length;
+  const counts = await getAudienceCounts();
 
   res.status(200).json(
-    new ApiResponsive(200, { count }, "User count fetched")
+    new ApiResponsive(200, { count: counts.all, ...counts }, "User count fetched")
   );
 });

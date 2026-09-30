@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import sendEmail from "../utils/sendEmail.js";
 import { getStoreConfig } from "../utils/storeConfig.js";
+import { isValidUnsubscribeToken } from "../utils/campaignTemplate.js";
 
 // Public: Subscribe to newsletter
 export const subscribeNewsletter = asyncHandler(async (req, res, next) => {
@@ -48,6 +49,43 @@ export const subscribeNewsletter = asyncHandler(async (req, res, next) => {
 
   res.status(201).json(
     new ApiResponsive(201, { subscriber }, "Welcome to the Cult! You are now subscribed.")
+  );
+});
+
+// Public: Unsubscribe from marketing emails. Called by the /unsubscribe page
+// with the email and signed token from the link in the email; the token
+// proves the link came from us, so nobody can unsubscribe someone else.
+export const unsubscribeNewsletter = asyncHandler(async (req, res, next) => {
+  const { email, token } = req.body;
+
+  if (!email || !token) {
+    throw new ApiError(400, "This unsubscribe link is incomplete");
+  }
+
+  let valid = false;
+  try {
+    valid = isValidUnsubscribeToken(email, token);
+  } catch (error) {
+    console.error("Unsubscribe token check failed:", error.message);
+    throw new ApiError(500, "Unsubscribe is temporarily unavailable");
+  }
+  if (!valid) {
+    throw new ApiError(400, "This unsubscribe link is invalid or has expired");
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+
+  // Same row the newsletter uses: isActive false = no marketing email. Kept
+  // for existing subscribers (source untouched); created for account holders
+  // who never subscribed so the opt-out is remembered too.
+  await prisma.newsletterSubscriber.upsert({
+    where: { email: normalizedEmail },
+    update: { isActive: false },
+    create: { email: normalizedEmail, source: "unsubscribed", isActive: false },
+  });
+
+  res.status(200).json(
+    new ApiResponsive(200, null, "You have been unsubscribed from marketing emails.")
   );
 });
 
