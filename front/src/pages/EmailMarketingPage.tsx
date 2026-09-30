@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Resource, Action } from "@/types/admin";
-import { emailMarketing } from "@/api/adminService";
+import { emailMarketing, products as productsApi } from "@/api/adminService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -264,7 +264,17 @@ const NEWSLETTER_TEMPLATE = `<!DOCTYPE html>
 </body>
 </html>`;
 
+interface EasyProduct {
+  id: string;
+  name: string;
+  slug: string;
+  image: string;
+  price?: number; // price customers pay
+  mrp?: number; // struck-through price when the product is on sale
+}
+
 interface EasyFields {
+  products: EasyProduct[];
   heading: string;
   message: string;
   imageUrl: string;
@@ -274,6 +284,7 @@ interface EasyFields {
 }
 
 const DEFAULT_EASY: EasyFields = {
+  products: [],
   heading: "",
   message: "<p>Write your message here...</p>",
   imageUrl: "",
@@ -325,6 +336,57 @@ const inlineMessageStyles = (html: string, color: string) => {
   });
 };
 
+const toEasyProduct = (p: any): EasyProduct => {
+  const variants: any[] = Array.isArray(p.variants) ? p.variants : [];
+  const pays = variants
+    .map((v) => Number(v.salePrice ?? v.price))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const price = pays.length ? Math.min(...pays) : undefined;
+  const cheapest = variants.find((v) => Number(v.salePrice ?? v.price) === price);
+  const list = cheapest ? Number(cheapest.price) : undefined;
+  const image =
+    p.images?.find((i: any) => i.isPrimary)?.url ||
+    p.images?.[0]?.url ||
+    variants.find((v) => v.images?.[0]?.url)?.images[0].url ||
+    "";
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    image,
+    price,
+    mrp: price !== undefined && list !== undefined && list > price ? list : undefined,
+  };
+};
+
+const formatRupees = (n: number) => "&#8377;" + n.toLocaleString("en-IN");
+
+// Two products per row, each with image, name, price and a View button (all inline-styled).
+const buildProductsHtml = (items: EasyProduct[], color: string) => {
+  if (!items.length) return "";
+  const card = (p: EasyProduct) => {
+    const url = escHtml(`{{SHOP_URL}}/products/${p.slug}`);
+    const price =
+      p.price !== undefined
+        ? `<div style="font-size:15px;font-weight:700;color:#111827;margin:0 0 10px;">${formatRupees(p.price)}${
+            p.mrp ? ` <span style="font-size:13px;font-weight:400;color:#9ca3af;text-decoration:line-through;">${formatRupees(p.mrp)}</span>` : ""
+          }</div>`
+        : "";
+    return `<td width="50%" valign="top" style="padding:8px;text-align:center;">
+        ${p.image ? `<a href="${url}" target="_blank"><img src="${escHtml(p.image)}" alt="${escHtml(p.name)}" width="240" style="display:block;width:100%;max-width:240px;height:auto;border:0;border-radius:12px;margin:0 auto 10px;"></a>` : ""}
+        <div style="font-size:14px;font-weight:600;color:#111827;margin:0 0 4px;">${escHtml(p.name)}</div>
+        ${price}
+        <a href="${url}" target="_blank" style="display:inline-block;padding:9px 22px;background-color:${color};color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;font-size:13px;font-family:Arial,Helvetica,sans-serif;">View</a>
+      </td>`;
+  };
+  const rows: string[] = [];
+  for (let i = 0; i < items.length; i += 2) {
+    const pair = items.slice(i, i + 2);
+    rows.push(`<tr>${pair.map(card).join("")}${pair.length === 1 ? '<td width="50%"></td>' : ""}</tr>`);
+  }
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">${rows.join("")}</table>`;
+};
+
 // Builds a complete, email-client-safe HTML email (all styles inline) from the simple form fields.
 const buildEasyHtml = (e: EasyFields) => {
   const link = e.buttonLink.trim() || "{{SHOP_URL}}";
@@ -334,6 +396,7 @@ const buildEasyHtml = (e: EasyFields) => {
   const image = e.imageUrl.trim()
     ? `<img src="${escHtml(e.imageUrl.trim())}" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;">`
     : "";
+  const productsHtml = buildProductsHtml(e.products || [], e.color);
   const button = e.buttonText.trim()
     ? `<div style="text-align:center;margin:32px 0;"><a href="${escHtml(link)}" target="_blank" style="display:inline-block;padding:15px 40px;background-color:${e.color};color:#ffffff;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;font-family:Arial,Helvetica,sans-serif;">${escHtml(e.buttonText.trim())}</a></div>`
     : "";
@@ -354,6 +417,7 @@ const buildEasyHtml = (e: EasyFields) => {
       <h2 style="color:${e.color};font-size:22px;margin-top:0;">${heading}</h2>
       <p style="font-size:15px;color:#4b5563;line-height:1.7;margin:0 0 20px;">Hi {{USER_NAME}},</p>
       <div style="font-size:15px;color:#4b5563;line-height:1.7;margin:0 0 20px;">${message}</div>
+      ${productsHtml}
       ${button}
     </div>
     <div style="text-align:center;padding:28px 30px;font-size:12px;color:#9ca3af;background:#FAFBF9;border-top:1px solid #E5E7EB;">
@@ -416,6 +480,10 @@ export default function EmailMarketingPage() {
   // Form state
   const [formSubject, setFormSubject] = useState("");
   const [showHelp, setShowHelp] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerResults, setPickerResults] = useState<any[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
   const [easyMode, setEasyMode] = useState(true);
   const [easy, setEasy] = useState<EasyFields>(DEFAULT_EASY);
   const [formHtml, setFormHtml] = useState(() => buildEasyHtml(DEFAULT_EASY));
@@ -695,6 +763,34 @@ export default function EmailMarketingPage() {
     }
   };
 
+  // Product picker: search the catalogue (debounced) while the dialog is open
+  useEffect(() => {
+    if (!pickerOpen) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        setPickerLoading(true);
+        const res = await productsApi.getProducts({ page: 1, limit: 12, search: pickerSearch.trim() });
+        if (!cancelled && res.data.success) setPickerResults(res.data.data?.products || []);
+      } catch (err) {
+        if (!cancelled) toast.error("Could not load products");
+      } finally {
+        if (!cancelled) setPickerLoading(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [pickerOpen, pickerSearch]);
+
+  const toggleProduct = (p: any) => {
+    const selected = easy.products.some((x) => x.id === p.id);
+    updateEasy({
+      products: selected ? easy.products.filter((x) => x.id !== p.id) : [...easy.products, toEasyProduct(p)],
+    });
+  };
+
   const messageEditorConfig = useMemo(() => MESSAGE_EDITOR_CONFIG, []);
 
   const updateEasy = (patch: Partial<EasyFields>) => {
@@ -777,6 +873,59 @@ export default function EmailMarketingPage() {
         </div>
       </div>
 
+      {/* Product picker */}
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add products to the email</DialogTitle>
+            <DialogDescription>Search and click products to add or remove them.</DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="Search products..."
+            value={pickerSearch}
+            onChange={(e) => setPickerSearch(e.target.value)}
+          />
+          <div className="space-y-2">
+            {pickerLoading && pickerResults.length === 0 ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : pickerResults.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No products found</p>
+            ) : (
+              pickerResults.map((p) => {
+                const chosen = easy.products.some((x) => x.id === p.id);
+                const preview = toEasyProduct(p);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggleProduct(p)}
+                    className={`flex w-full items-center gap-3 rounded-md border-2 p-2 text-left ${
+                      chosen ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    {preview.image ? (
+                      <img src={preview.image} alt="" className="h-12 w-12 rounded object-cover" />
+                    ) : (
+                      <div className="h-12 w-12 rounded bg-gray-100" />
+                    )}
+                    <span className="flex-1 truncate text-sm font-medium">{p.name}</span>
+                    {preview.price !== undefined && (
+                      <span className="text-sm text-muted-foreground">₹{preview.price.toLocaleString("en-IN")}</span>
+                    )}
+                    {chosen && <CheckCircle className="h-4 w-4 text-primary" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => setPickerOpen(false)}>Done ({easy.products.length} selected)</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* How it works */}
       <Dialog open={showHelp} onOpenChange={setShowHelp}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -794,7 +943,8 @@ export default function EmailMarketingPage() {
               <h3 className="font-semibold mb-1">1. Write your email</h3>
               <p className="text-muted-foreground">
                 Click <b>New Campaign</b>. In the <b>Easy Editor</b> fill in the Heading, and write your
-                Message in the editor (bold, colours, lists, links and images are in the toolbar). Add a
+                Message in the editor (bold, colours, lists, links and images are in the toolbar). Add
+                products with <b>Add Products</b> (photo, name, price and link are added for you), and a
                 Button text and Button link if you want a button. Leave the link empty to send customers
                 to your shop. Pick a Colour. The <b>Preview</b> shows exactly how it will look.
               </p>
@@ -1098,6 +1248,40 @@ export default function EmailMarketingPage() {
                         value={easy.imageUrl}
                         onChange={(e) => updateEasy({ imageUrl: e.target.value })}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Products (optional)</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Shows each product with its photo, name, price and a View button linking to your shop.
+                      </p>
+                      {easy.products.length > 0 && (
+                        <div className="space-y-2">
+                          {easy.products.map((p) => (
+                            <div key={p.id} className="flex items-center gap-3 rounded-md border p-2">
+                              {p.image ? (
+                                <img src={p.image} alt="" className="h-10 w-10 rounded object-cover" />
+                              ) : (
+                                <div className="h-10 w-10 rounded bg-gray-100" />
+                              )}
+                              <span className="flex-1 truncate text-sm">{p.name}</span>
+                              {p.price !== undefined && (
+                                <span className="text-sm text-muted-foreground">₹{p.price.toLocaleString("en-IN")}</span>
+                              )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => updateEasy({ products: easy.products.filter((x) => x.id !== p.id) })}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
+                        <Plus className="h-4 w-4 mr-2" /> Add Products
+                      </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
