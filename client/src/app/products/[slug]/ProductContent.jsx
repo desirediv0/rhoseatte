@@ -71,6 +71,17 @@ export default function ProductContent({ slug }) {
   const [initialLoading, setInitialLoading] = useState(true);
   const [priceSettings, setPriceSettings] = useState(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
+
+  // The fixed "Add to bag" bar sits over the bottom of the page and hid the
+  // footer's last lines (payment icons, design credit). Reserve room for it.
+  useEffect(() => {
+    if (!showStickyBar) return;
+    const previous = document.body.style.paddingBottom;
+    document.body.style.paddingBottom = "88px";
+    return () => {
+      document.body.style.paddingBottom = previous;
+    };
+  }, [showStickyBar]);
   const [bundleSelected, setBundleSelected] = useState({});
   const [isAddingBundle, setIsAddingBundle] = useState(false);
   const [activeThumb, setActiveThumb] = useState(0);
