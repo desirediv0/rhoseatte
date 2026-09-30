@@ -35,6 +35,8 @@ import {
   ServerCrash,
   FileText,
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
   TestTube,
   RefreshCw,
 } from "lucide-react";
@@ -833,6 +835,14 @@ export default function EmailMarketingPage() {
     };
   }, [pickerOpen, pickerSearch]);
 
+  const moveProduct = (index: number, dir: -1 | 1) => {
+    const list = [...easy.products];
+    const target = index + dir;
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    updateEasy({ products: list });
+  };
+
   const toggleProduct = (p: any) => {
     const selected = easy.products.some((x) => x.id === p.id);
     updateEasy({
@@ -1314,7 +1324,12 @@ export default function EmailMarketingPage() {
                         </Button>
                       </div>
                       {easy.imageUrl && (
-                        <img src={easy.imageUrl} alt="" className="h-20 rounded border object-cover" />
+                        <div className="flex items-center gap-3">
+                          <img src={easy.imageUrl} alt="" className="h-20 rounded border object-cover" />
+                          <Button type="button" variant="outline" size="sm" onClick={() => updateEasy({ imageUrl: "" })}>
+                            <Trash2 className="h-4 w-4 mr-2" /> Remove banner
+                          </Button>
+                        </div>
                       )}
                     </div>
                     <div className="space-y-2">
@@ -1324,7 +1339,7 @@ export default function EmailMarketingPage() {
                       </p>
                       {easy.products.length > 0 && (
                         <div className="space-y-2">
-                          {easy.products.map((p) => (
+                          {easy.products.map((p, idx) => (
                             <div key={p.id} className="flex items-center gap-3 rounded-md border p-2">
                               {p.image ? (
                                 <img src={p.image} alt="" className="h-10 w-10 rounded object-cover" />
@@ -1339,6 +1354,27 @@ export default function EmailMarketingPage() {
                                 type="button"
                                 variant="ghost"
                                 size="icon"
+                                title="Move up"
+                                disabled={idx === 0}
+                                onClick={() => moveProduct(idx, -1)}
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                title="Move down"
+                                disabled={idx === easy.products.length - 1}
+                                onClick={() => moveProduct(idx, 1)}
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                title="Remove"
                                 onClick={() => updateEasy({ products: easy.products.filter((x) => x.id !== p.id) })}
                               >
                                 <Trash2 className="h-4 w-4" />
