@@ -981,3 +981,47 @@ export const getOrderShippedTemplate = (data, storeConfig = null) => {
 </body>
 </html>`;
 };
+
+
+/* ─── Review Request (sent after an order is delivered) ─────────────── */
+export const getReviewRequestTemplate = (data, storeConfig = null) => {
+    const store = storeConfig || getStoreConfig();
+    const base = String(data.baseUrl || process.env.FRONTEND_URL || store.websiteUrl || "https://rhoseatte.com").replace(/\/+$/, "");
+    const esc = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const rows = (data.products || []).map((p) => {
+        const link = esc(`${base}/products/${p.slug}?review=true#reviews`);
+        return `
+            <tr>
+              <td style="padding:14px 0;border-bottom:1px solid #EAEAEA;width:72px;vertical-align:middle;">
+                ${p.image ? `<img src="${esc(p.image)}" alt="" width="64" height="64" style="display:block;width:64px;height:64px;object-fit:cover;border-radius:8px;border:0;">` : ""}
+              </td>
+              <td style="padding:14px 12px;border-bottom:1px solid #EAEAEA;vertical-align:middle;font-size:15px;color:#111111;font-weight:600;">${esc(p.name)}</td>
+              <td style="padding:14px 0;border-bottom:1px solid #EAEAEA;vertical-align:middle;text-align:right;">
+                <a href="${link}" target="_blank" style="display:inline-block;padding:10px 18px;background-color:#111111;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;font-size:12px;font-family:Arial,Helvetica,sans-serif;border:1px solid #B8976A;">Write a Review</a>
+              </td>
+            </tr>`;
+    }).join("");
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How was your order? - ${esc(store.storeName)}</title>
+    <style>${BASE_STYLES}</style>
+</head>
+<body>
+    <div class="container">
+        ${HEADER_HTML("How Was Your Order?", "Your Feedback Matters", store)}
+        <div class="content">
+            <p>Dear ${esc(data.userName)},</p>
+            <p>Your order <strong>#${esc(data.orderNumber)}</strong> has been delivered. We hope you love it! Would you take a minute to tell us and other customers what you think?</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 8px;">${rows}</table>
+            <p style="font-size:13px;color:#777777;margin-top:20px;">You will be asked to sign in with the email you ordered with. Thank you for shopping with us.</p>
+        </div>
+        ${FOOTER_HTML(store)}
+    </div>
+</body>
+</html>`;
+};

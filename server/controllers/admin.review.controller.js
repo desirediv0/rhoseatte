@@ -110,6 +110,59 @@ export const getReviews = async (req, res, next) => {
 };
 
 /**
+ * Add a review from the admin panel on behalf of a customer
+ * (reviewer name instead of a user account).
+ */
+export const createAdminReview = async (req, res, next) => {
+  try {
+    const { productId, reviewerName, rating, title, comment, createdAt } = req.body;
+    const status = ["APPROVED", "PENDING", "REJECTED"].includes(req.body.status)
+      ? req.body.status
+      : "APPROVED";
+
+    const name = String(reviewerName || "").trim();
+    const ratingNum = parseInt(rating, 10);
+    if (!productId) throw new ApiError(400, "Product is required");
+    if (!name) throw new ApiError(400, "Reviewer name is required");
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      throw new ApiError(400, "Rating must be between 1 and 5");
+    }
+    if (!String(comment || "").trim()) throw new ApiError(400, "Review text is required");
+
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw new ApiError(404, "Product not found");
+
+    let date;
+    if (createdAt) {
+      date = new Date(createdAt);
+      if (Number.isNaN(date.getTime())) throw new ApiError(400, "Invalid review date");
+      if (date.getTime() > Date.now()) throw new ApiError(400, "Review date cannot be in the future");
+    }
+
+    const review = await prisma.review.create({
+      data: {
+        productId,
+        reviewerName: name.slice(0, 80),
+        isAdminCreated: true,
+        rating: ratingNum,
+        title: String(title || "").trim().slice(0, 150) || null,
+        comment: String(comment).trim(),
+        status,
+        ...(date && { createdAt: date }),
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: { review },
+      message: "Review added successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get review stats for dashboard
  */
 export const getReviewStats = async (req, res, next) => {

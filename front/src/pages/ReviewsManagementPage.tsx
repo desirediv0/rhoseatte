@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { reviews } from "@/api/adminService";
+import { reviews, products as productsApi } from "@/api/adminService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -49,6 +49,7 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 
 export default function ReviewsManagementPage() {
@@ -83,6 +84,72 @@ export default function ReviewsManagementPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [replyText, setReplyText] = useState("");
+
+  // "Add review" (on behalf of a customer)
+  const EMPTY_ADD_FORM = {
+    productId: "",
+    productName: "",
+    reviewerName: "",
+    rating: 5,
+    title: "",
+    comment: "",
+    date: "",
+    status: "APPROVED",
+  };
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState(EMPTY_ADD_FORM);
+  const [addSaving, setAddSaving] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [productResults, setProductResults] = useState<any[]>([]);
+  const [productSearching, setProductSearching] = useState(false);
+
+  useEffect(() => {
+    if (!addOpen) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        setProductSearching(true);
+        const res = await productsApi.getProducts({ page: 1, limit: 8, search: productSearch.trim() });
+        if (!cancelled && res.data.success) setProductResults(res.data.data?.products || []);
+      } catch {
+        if (!cancelled) setProductResults([]);
+      } finally {
+        if (!cancelled) setProductSearching(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [addOpen, productSearch]);
+
+  const submitAddReview = async () => {
+    if (!addForm.productId) return toast.error("Please choose a product");
+    if (!addForm.reviewerName.trim()) return toast.error("Please enter the reviewer's name");
+    if (!addForm.comment.trim()) return toast.error("Please write the review text");
+    setAddSaving(true);
+    try {
+      await reviews.createReview({
+        productId: addForm.productId,
+        reviewerName: addForm.reviewerName.trim(),
+        rating: addForm.rating,
+        title: addForm.title.trim(),
+        comment: addForm.comment.trim(),
+        status: addForm.status as "APPROVED" | "PENDING" | "REJECTED",
+        ...(addForm.date && { createdAt: new Date(addForm.date).toISOString() }),
+      });
+      toast.success("Review added");
+      setAddOpen(false);
+      setAddForm(EMPTY_ADD_FORM);
+      setProductSearch("");
+      fetchReviews();
+      fetchStats();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to add review");
+    } finally {
+      setAddSaving(false);
+    }
+  };
   const [adminComment, setAdminComment] = useState("");
 
   // Fetch reviews data
@@ -361,13 +428,18 @@ export default function ReviewsManagementPage() {
     <div className="space-y-8">
       {/* Premium Page Header */}
       <div className="space-y-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-[#1F2937] tracking-tight">
-            {t("reviews.title")}
-          </h1>
-          <p className="text-[#9CA3AF] text-sm mt-1.5">
-            {t("reviews.description")}
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold text-[#1F2937] tracking-tight">
+              {t("reviews.title")}
+            </h1>
+            <p className="text-[#9CA3AF] text-sm mt-1.5">
+              {t("reviews.description")}
+            </p>
+          </div>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Add Review
+          </Button>
         </div>
         <div className="h-px bg-[#E5E7EB]" />
       </div>
@@ -606,7 +678,12 @@ export default function ReviewsManagementPage() {
                           {review.comment}
                         </p>
                         <div className="flex items-center gap-4 text-xs text-[#9CA3AF]">
-                          <span>{review.user?.name || t("reviews.table.anonymous")}</span>
+                          <span>
+                            {review.reviewerName || review.user?.name || t("reviews.table.anonymous")}
+                            {review.isAdminCreated && (
+                              <span className="ml-1 text-[10px] text-[#9CA3AF]">(added by admin)</span>
+                            )}
+                          </span>
                           <span>•</span>
                           <span>{formatDate(review.createdAt)}</span>
                         </div>
@@ -688,6 +765,137 @@ export default function ReviewsManagementPage() {
         </CardContent>
       </Card>
 
+      {/* Add Review Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add a Review</DialogTitle>
+            <DialogDescription>
+              Add a review on behalf of a customer. Only add genuine feedback that customers have actually given you
+              (for example by WhatsApp or in store). Made-up reviews mislead shoppers and are not allowed under Indian
+              consumer rules.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Product</Label>
+              {addForm.productId ? (
+                <div className="flex items-center justify-between rounded-md border p-2 text-sm">
+                  <span className="truncate">{addForm.productName}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAddForm({ ...addForm, productId: "", productName: "" })}
+                  >
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    placeholder="Search product..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                  />
+                  <div className="max-h-40 overflow-y-auto rounded-md border">
+                    {productSearching && productResults.length === 0 ? (
+                      <div className="flex justify-center p-3">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    ) : productResults.length === 0 ? (
+                      <p className="p-3 text-sm text-muted-foreground">No products found</p>
+                    ) : (
+                      productResults.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className="w-full border-b p-2 text-left text-sm last:border-b-0 hover:bg-gray-50"
+                          onClick={() => setAddForm({ ...addForm, productId: p.id, productName: p.name })}
+                        >
+                          {p.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Customer name (shown on the website)</Label>
+              <Input
+                placeholder="e.g. Priya S."
+                value={addForm.reviewerName}
+                onChange={(e) => setAddForm({ ...addForm, reviewerName: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Rating</Label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button key={n} type="button" onClick={() => setAddForm({ ...addForm, rating: n })}>
+                    <Star
+                      className={`h-7 w-7 ${n <= addForm.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Title (optional)</Label>
+              <Input value={addForm.title} onChange={(e) => setAddForm({ ...addForm, title: e.target.value })} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Review</Label>
+              <Textarea
+                className="min-h-[110px]"
+                value={addForm.comment}
+                onChange={(e) => setAddForm({ ...addForm, comment: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date (optional)</Label>
+                <Input
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={addForm.date}
+                  onChange={(e) => setAddForm({ ...addForm, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Show on website</Label>
+                <Select value={addForm.status} onValueChange={(v) => setAddForm({ ...addForm, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="APPROVED">Yes (approved)</SelectItem>
+                    <SelectItem value="PENDING">Not yet (pending)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={submitAddReview} disabled={addSaving}>
+              {addSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Add Review
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* View/Edit Review Dialog */}
       {selectedReview && (
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
@@ -727,8 +935,8 @@ export default function ReviewsManagementPage() {
 
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>
-                  {t("reviews.dialog.by")}: {selectedReview.user?.name || t("reviews.table.anonymous")} (
-                  {selectedReview.user?.email || "No email"})
+                  {t("reviews.dialog.by")}: {selectedReview.reviewerName || selectedReview.user?.name || t("reviews.table.anonymous")} (
+                  {selectedReview.user?.email || (selectedReview.isAdminCreated ? "Added by admin" : "No email")})
                 </span>
                 <span>{t("reviews.dialog.posted")}: {formatDate(selectedReview.createdAt)}</span>
               </div>
@@ -839,7 +1047,7 @@ export default function ReviewsManagementPage() {
                 </div>
                 <p className="text-sm">{selectedReview.comment}</p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  By {selectedReview.user?.name || "Anonymous"} on{" "}
+                  By {selectedReview.reviewerName || selectedReview.user?.name || "Anonymous"} on{" "}
                   {formatDate(selectedReview.createdAt)}
                 </p>
               </div>
@@ -888,7 +1096,7 @@ export default function ReviewsManagementPage() {
               <p>
                 Are you sure you want to delete this review from{" "}
                 <span className="font-medium">
-                  {selectedReview.user?.name || "Anonymous"}
+                  {selectedReview.reviewerName || selectedReview.user?.name || "Anonymous"}
                 </span>
                 ?
               </p>

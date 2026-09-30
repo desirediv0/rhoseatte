@@ -6,6 +6,7 @@ import {
   deleteReview,
   replyToReview,
   getReviewStats,
+  createAdminReview,
 } from "../controllers/admin.review.controller.js";
 import {
   verifyAdminJWT,
@@ -21,6 +22,14 @@ router.get(
   verifyAdminJWT,
   hasPermission("reviews", "read"),
   getReviews
+);
+
+// POST: add a review from the admin panel (on behalf of a customer)
+router.post(
+  "/reviews",
+  verifyAdminJWT,
+  hasPermission("reviews", "create"),
+  createAdminReview
 );
 
 // GET review stats for dashboard

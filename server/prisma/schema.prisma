@@ -387,7 +387,9 @@ model CartItem {
 
 model Review {
   id             String       @id @default(uuid())
-  userId         String
+  userId         String?
+  reviewerName   String?
+  isAdminCreated Boolean      @default(false)
   productId      String
   rating         Int          @db.SmallInt
   title          String?
@@ -400,7 +402,7 @@ model Review {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
 }
@@ -418,6 +420,7 @@ model WishlistItem {
 
 model Order {
   id                           String               @id @default(uuid())
+  reviewRequestSentAt          DateTime?
   orderNumber                  String               @unique
   userId                       String
   status                       OrderStatus          @default(PENDING)

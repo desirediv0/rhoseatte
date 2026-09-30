@@ -19,6 +19,7 @@ import {
   RefreshCw,
   ExternalLink,
   Download,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency, debugData, cn } from "@/lib/utils";
@@ -383,6 +384,7 @@ export default function OrderDetailsPage() {
   const [availableCouriers, setAvailableCouriers] = useState<CourierPartner[]>([]);
   const [isFetchingCouriers, setIsFetchingCouriers] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  const [isSendingReviewRequest, setIsSendingReviewRequest] = useState(false);
   const [isRefreshingTracking, setIsRefreshingTracking] = useState(false);
 
   // Warehouse (pickup location) options for this order — Shiprocket
@@ -616,6 +618,19 @@ export default function OrderDetailsPage() {
     }
   };
 
+  const handleSendReviewRequest = async () => {
+    if (!id) return;
+    setIsSendingReviewRequest(true);
+    try {
+      await orders.sendReviewRequest(id);
+      toast.success("Review request email sent to the customer");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to send review request");
+    } finally {
+      setIsSendingReviewRequest(false);
+    }
+  };
+
   // Download the first-party invoice — works regardless of courier-sync
   // state, unlike the courier-specific "Print Invoice" buttons below.
   const handleDownloadInvoice = async () => {
@@ -815,6 +830,23 @@ export default function OrderDetailsPage() {
                 )}
                 Download Invoice
               </Button>
+              {orderDetails.status === "DELIVERED" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendReviewRequest}
+                  disabled={isSendingReviewRequest}
+                  className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                  title="Email the customer a link to review the products they received"
+                >
+                  {isSendingReviewRequest ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Star className="mr-1 h-4 w-4" />
+                  )}
+                  Send Review Request
+                </Button>
+              )}
             </div>
             <h1 className="text-3xl font-semibold text-[#1F2937] tracking-tight">
               {t('orders.details.title', { number: orderDetails.orderNumber })}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { IconStar, IconAlertCircle } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,13 @@ export default function ReviewSection({ product }) {
   });
   const [showForm, setShowForm] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+
+  // Arriving from the "review your order" email (?review=true): open the form
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("review") === "true") setShowForm(true);
+  }, [isAuthenticated]);
 
   const handleRatingClick = (rating) => {
     setReviewForm((prev) => ({ ...prev, rating }));
@@ -185,7 +192,7 @@ export default function ReviewSection({ product }) {
                 <div key={review.id} className="pb-8" style={{ borderBottom: "1px solid #EAEAEA" }}>
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="font-medium text-[14px]" style={{ color: "#111111" }}>{review.user.name}</p>
+                      <p className="font-medium text-[14px]" style={{ color: "#111111" }}>{review.user?.name || review.reviewerName || "Customer"}</p>
                       <div className="flex mt-1">
                         {[...Array(5)].map((_, i) => <IconStar key={i} className="h-3.5 w-3.5" style={{ color: i < review.rating ? "#B8976A" : "#EAEAEA" }} fill={i < review.rating ? "#B8976A" : "none"} stroke={0} />)}
                       </div>

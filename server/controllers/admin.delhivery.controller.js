@@ -7,6 +7,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
+import { queueReviewRequest } from "../utils/reviewRequest.js";
 import { encrypt } from "../utils/encryption.js";
 import {
     getDelhiverySettings,
@@ -707,6 +708,8 @@ async function applyDelhiveryStatusUpdate(order, status, statusLocation = "") {
             },
         });
     }
+
+    if (status === "Delivered") queueReviewRequest(order.id);
 
     return true;
 }

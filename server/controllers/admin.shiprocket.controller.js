@@ -7,6 +7,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
+import { queueReviewRequest } from "../utils/reviewRequest.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
 import {
     authenticate,
@@ -980,6 +981,8 @@ export const handleWebhook = asyncHandler(async (req, res) => {
             });
         }
     }
+
+    if (current_status === "DELIVERED") queueReviewRequest(order.id);
 
     res.status(200).json({ status: "ok" });
 });

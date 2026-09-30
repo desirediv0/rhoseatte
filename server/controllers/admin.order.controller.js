@@ -7,6 +7,7 @@ import { cancelShiprocketOrder, getShiprocketSettings } from "../utils/shiprocke
 import { cancelDelhiveryShipment, getDelhiverySettings } from "../utils/delhivery.js";
 import { dispatchOrderForShipping } from "../utils/shipping.js";
 import sendEmail from "../utils/sendEmail.js";
+import { queueReviewRequest, sendReviewRequestForOrder } from "../utils/reviewRequest.js";
 import { getOrderCancelledTemplate, getAdminOrderCancelledTemplate, getOrderConfirmationTemplate, getAdminNewOrderTemplate } from "../email/temp/EmailTemplate.js";
 import archiver from "archiver";
 import { streamInvoicePdf, buildInvoiceBuffer, getCompanyInvoiceSettings } from "../utils/invoice.js";
@@ -906,6 +907,9 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // Delivered: email the customer a link to review what they received
+  if (status === "DELIVERED") queueReviewRequest(orderId);
+
   res
     .status(200)
     .json(
@@ -915,6 +919,24 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
         "Order status updated successfully"
       )
     );
+});
+
+// Manually (re)send the "review your order" email for a delivered order
+export const sendReviewRequestEmail = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, status: true },
+  });
+  if (!order) throw new ApiError(404, "Order not found");
+  if (order.status !== "DELIVERED") {
+    throw new ApiError(400, "Review requests can only be sent for delivered orders");
+  }
+  const result = await sendReviewRequestForOrder(orderId, { force: true });
+  if (!result.sent) throw new ApiError(400, result.reason || "Could not send the review email");
+  return res
+    .status(200)
+    .json(new ApiResponsive(200, null, "Review request email sent"));
 });
 
 // Update tracking information
@@ -1006,6 +1028,7 @@ export const updateTracking = asyncHandler(async (req, res, next) => {
         status: "DELIVERED",
       },
     });
+    queueReviewRequest(orderId);
   }
 
   const updatedTracking = await prisma.tracking.findUnique({

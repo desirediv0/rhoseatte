@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import sendEmail from "../utils/sendEmail.js";
+import { queueReviewRequest } from "../utils/reviewRequest.js";
 
 // Get tracking info by order ID (admin & user)
 export const getTrackingByOrderId = asyncHandler(async (req, res) => {
@@ -221,6 +222,8 @@ export const updateTrackingStatus = asyncHandler(async (req, res) => {
 
     return { tracking: updatedTracking, update };
   });
+
+  if (status === "DELIVERED") queueReviewRequest(tracking.orderId);
 
   // Send status update notification email to customer
   try {

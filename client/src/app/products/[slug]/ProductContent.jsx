@@ -48,7 +48,7 @@ const getImageUrl = (img) => {
 };
 
 // Toggle to bring reviews back in the future — set to true to show ratings + review section.
-const SHOW_REVIEWS = false;
+const SHOW_REVIEWS = true;
 
 export default function ProductContent({ slug }) {
   const [product, setProduct] = useState(null);
@@ -904,7 +904,7 @@ export default function ProductContent({ slug }) {
 
         {/* Reviews — hidden for now, see SHOW_REVIEWS */}
         {SHOW_REVIEWS && (
-          <div className="mt-16 max-w-4xl">
+          <div id="reviews" className="mt-16 max-w-4xl scroll-mt-24">
             <ReviewSection product={product} />
           </div>
         )}

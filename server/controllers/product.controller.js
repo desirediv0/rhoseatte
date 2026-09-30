@@ -5,6 +5,13 @@ import { prisma } from "../config/db.js";
 import { getFileUrl } from "../utils/deleteFromS3.js";
 import { formatVariantWithAttributes } from "../utils/variant-attributes.js";
 
+// Reviews added from the admin panel have no user account — show the name the
+// admin entered so the storefront never sees a null user.
+const publicReview = (review) => ({
+  ...review,
+  user: review.user || { id: null, name: review.reviewerName || "Customer" },
+});
+
 // Get all products with filtering, pagination and sorting
 export const getAllProducts = asyncHandler(async (req, res) => {
   const {
@@ -651,6 +658,7 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
         ).toFixed(1)
         : null,
     reviewCount: product._count.reviews,
+    reviews: product.reviews.map(publicReview),
     // Include SEO fields
     metaTitle: product.metaTitle || product.name,
     metaDescription: product.metaDescription || product.description,
@@ -1734,10 +1742,7 @@ export const getSecretProductBySlug = asyncHandler(async (req, res) => {
     variants: formattedVariants,
     avgRating,
     reviewCount: product._count.reviews,
-    reviews: product.reviews.map((review) => ({
-      ...review,
-      user: review.user,
-    })),
+    reviews: product.reviews.map(publicReview),
   };
 
   res.status(200).json(

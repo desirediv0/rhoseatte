@@ -601,6 +601,9 @@ export const orders = {
   },
   // First-party invoice (courier-agnostic — works even if the order was
   // never synced to Shiprocket or Delhivery).
+  sendReviewRequest: (orderId: string) => {
+    return api.post(`/api/admin/orders/${orderId}/send-review-request`);
+  },
   downloadOrderInvoice: (orderId: string) => {
     return api.get(`/api/admin/orders/${orderId}/invoice/download`, {
       responseType: "blob",
@@ -740,6 +743,17 @@ export const reviews = {
     } = {}
   ) => {
     return api.get("/api/admin/reviews", { params });
+  },
+  createReview: (data: {
+    productId: string;
+    reviewerName: string;
+    rating: number;
+    title?: string;
+    comment: string;
+    status?: "APPROVED" | "PENDING" | "REJECTED";
+    createdAt?: string;
+  }) => {
+    return api.post("/api/admin/reviews", data);
   },
   getReviewById: (reviewId: string) => {
     return api.get(`/api/admin/reviews/${reviewId}`);

@@ -14,6 +14,7 @@ import {
   recoverOrphanedPayment,
   getOrderStats,
   cleanupInvalidPartnerEarnings,
+  sendReviewRequestEmail,
 } from "../controllers/admin.order.controller.js";
 import {
   verifyAdminJWT,
@@ -88,6 +89,14 @@ router.get(
   verifyAdminJWT,
   hasPermission("orders", "read"),
   getOrderById
+);
+
+// Manually (re)send the review-request email for a delivered order
+router.post(
+  "/orders/:orderId/send-review-request",
+  verifyAdminJWT,
+  hasPermission("orders", "update"),
+  sendReviewRequestEmail
 );
 
 router.get(
