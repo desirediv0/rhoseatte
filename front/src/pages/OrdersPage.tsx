@@ -348,8 +348,10 @@ export default function OrdersPage() {
     }
   };
 
-  // Loading state
-  if (isLoading && ordersList.length === 0) {
+  // Full-page spinner only for the very first load. Afterwards a search,
+  // filter or page change refreshes the list in place — swapping the whole
+  // page for a spinner would unmount the search box mid-typing.
+  if (isLoading && !hasLoadedOnce.current) {
     return (
       <div className="flex h-full w-full items-center justify-center py-20">
         <div className="flex flex-col items-center">
@@ -360,8 +362,9 @@ export default function OrdersPage() {
     );
   }
 
-  // Error state
-  if (error && ordersList.length === 0) {
+  // Full-page error only if the first load never succeeded; later failures
+  // are shown as an inline banner above the list instead.
+  if (error && !hasLoadedOnce.current) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center py-20">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FEF2F2] mb-4">
@@ -376,8 +379,8 @@ export default function OrdersPage() {
           className="border-[#4CAF50] text-[#2E7D32] hover:bg-[#E8F5E9]"
           onClick={() => {
             setError(null);
-            setCurrentPage(1);
             setIsLoading(true);
+            setReloadKey((k) => k + 1);
           }}
         >
           {t('reviews.messages.try_again')}
@@ -429,18 +432,15 @@ export default function OrdersPage() {
               <Input
                 type="search"
                 placeholder={t('orders.filters.search_placeholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-10 border-[#E5E7EB] focus:border-primary"
               />
             </form>
             <div className="flex gap-3">
               <select
                 value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setSelectedStatus(e.target.value)}
                 className="flex-1 md:flex-none px-3 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
               >
                 <option value="">{t('orders.filters.all_status')}</option>
@@ -455,10 +455,7 @@ export default function OrdersPage() {
               </select>
               <select
                 value={selectedPayment}
-                onChange={(e) => {
-                  setSelectedPayment(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setSelectedPayment(e.target.value)}
                 className="flex-1 md:flex-none px-3 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
               >
                 <option value="">{t('orders.filters.all_payments')}</option>
@@ -466,7 +463,7 @@ export default function OrdersPage() {
                 <option value="PREPAID">{t('orders.filters.prepaid')}</option>
               </select>
             </div>
-            {(searchQuery || selectedStatus || selectedPayment) && (
+            {(searchInput || searchQuery || selectedStatus || selectedPayment) && (
               <Button
                 variant="ghost"
                 onClick={clearFilters}
@@ -495,10 +492,7 @@ export default function OrdersPage() {
                     ? ""
                     : "border-[#E5E7EB] hover:bg-[#F3F7F6]"
                 )}
-                onClick={() => {
-                  setSelectedStatus(selectedStatus === status ? "" : status);
-                  setCurrentPage(1);
-                }}
+                onClick={() => setSelectedStatus(selectedStatus === status ? "" : status)}
               >
                 {label} ({count})
               </Button>
@@ -518,10 +512,7 @@ export default function OrdersPage() {
                     ? ""
                     : "border-[#E5E7EB] hover:bg-[#F3F7F6]"
                 )}
-                onClick={() => {
-                  setSelectedPayment(selectedPayment === value ? "" : value);
-                  setCurrentPage(1);
-                }}
+                onClick={() => setSelectedPayment(selectedPayment === value ? "" : value)}
               >
                 {label} ({count})
               </Button>
@@ -660,6 +651,32 @@ export default function OrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Later fetch failures (search/filter/page) show here rather than
+          replacing the whole page, so the search box stays usable. */}
+      {error && hasLoadedOnce.current && (
+        <div className="flex items-center justify-between gap-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {error}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-red-300 text-red-700 hover:bg-red-100 shrink-0"
+            onClick={() => setReloadKey((k) => k + 1)}
+          >
+            {t('reviews.messages.try_again')}
+          </Button>
+        </div>
+      )}
+
+      {isLoading && hasLoadedOnce.current && (
+        <div className="flex items-center gap-2 text-xs text-[#9CA3AF]">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Updating results…
+        </div>
+      )}
 
       {/* Orders List */}
       {ordersList.length === 0 ? (
@@ -957,24 +974,46 @@ export default function OrdersPage() {
           <div className="text-sm text-[#9CA3AF]">
             {t("common.pagination", { current: currentPage, total: totalPages })}
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
               size="sm"
               className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              onClick={() => goToPage(Math.max(currentPage - 1, 1))}
               disabled={currentPage === 1}
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
+            {/* Numbered pages: a window of up to 5 around the current page */}
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const start = Math.min(
+                Math.max(currentPage - 2, 1),
+                Math.max(totalPages - 4, 1)
+              );
+              return start + i;
+            }).map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "h-9 min-w-9 px-2 text-xs hidden sm:inline-flex",
+                  page !== currentPage && "border-[#E5E7EB] hover:bg-[#F3F7F6]"
+                )}
+                onClick={() => goToPage(page)}
+                aria-current={page === currentPage ? "page" : undefined}
+              >
+                {page}
+              </Button>
+            ))}
             <Button
               variant="outline"
               size="sm"
               className="border-[#E5E7EB] hover:bg-[#F3F7F6]"
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
+              onClick={() => goToPage(Math.min(currentPage + 1, totalPages))}
               disabled={currentPage === totalPages}
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
