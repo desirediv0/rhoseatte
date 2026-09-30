@@ -293,11 +293,43 @@ const EASY_COLORS = [
 const escHtml = (t: string) =>
   t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+// Mail clients ignore most editor formatting unless it is inline, so give every
+// element the editor can produce (headings, lists, tables, quotes, links) an explicit style.
+const inlineMessageStyles = (html: string, color: string) => {
+  const heading = (size: number) =>
+    `font-size:${size}px;font-weight:700;line-height:1.3;color:#111827;margin:0 0 12px;`;
+  const styles: Record<string, string> = {
+    h1: heading(28),
+    h2: heading(24),
+    h3: heading(20),
+    h4: heading(18),
+    h5: heading(16),
+    h6: heading(14),
+    p: "margin:0 0 14px;",
+    ul: "margin:0 0 14px;padding-left:22px;",
+    ol: "margin:0 0 14px;padding-left:22px;",
+    li: "margin:0 0 6px;",
+    blockquote: `border-left:4px solid ${color};margin:0 0 14px;padding:4px 16px;color:#6b7280;`,
+    table: "border-collapse:collapse;width:100%;margin:0 0 14px;",
+    td: "border:1px solid #d1d5db;padding:8px;",
+    th: "border:1px solid #d1d5db;padding:8px;background-color:#f3f4f6;",
+    a: `color:${color};text-decoration:underline;`,
+  };
+  return html.replace(/<(h[1-6]|p|ul|ol|li|blockquote|table|td|th|a)(\s[^>]*)?>/gi, (_m, tag, attrs = "") => {
+    const base = styles[tag.toLowerCase()];
+    if (/\sstyle="/i.test(attrs)) {
+      // our defaults first, the editor's own style after it so the user's choice wins
+      return `<${tag}${attrs.replace(/\sstyle="/i, ` style="${base}`)}>`;
+    }
+    return `<${tag}${attrs} style="${base}">`;
+  });
+};
+
 // Builds a complete, email-client-safe HTML email (all styles inline) from the simple form fields.
 const buildEasyHtml = (e: EasyFields) => {
   const link = e.buttonLink.trim() || "{{SHOP_URL}}";
   // The message comes from the rich-text editor, so it is already HTML.
-  const message = e.message;
+  const message = inlineMessageStyles(e.message, e.color);
   const heading = e.heading.trim() ? escHtml(e.heading.trim()) : "{{SUBJECT}}";
   const image = e.imageUrl.trim()
     ? `<img src="${escHtml(e.imageUrl.trim())}" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;">`
@@ -347,11 +379,12 @@ const MESSAGE_EDITOR_CONFIG = {
   enter: "p" as const,
   spellcheck: true,
   buttons: [
-    "bold", "italic", "underline", "|",
+    "paragraph", "|",
+    "bold", "italic", "underline", "strikethrough", "|",
     "font", "fontsize", "brush", "|",
-    "align", "ul", "ol", "|",
-    "link", "image", "hr", "|",
-    "eraser", "undo", "redo", "|",
+    "align", "ul", "ol", "outdent", "indent", "|",
+    "link", "image", "table", "hr", "symbol", "|",
+    "copyformat", "eraser", "undo", "redo", "|",
     "source", "fullsize",
   ],
 };
@@ -1050,6 +1083,7 @@ export default function EmailMarketingPage() {
                         <JoditEditor
                           value={easy.message}
                           config={messageEditorConfig}
+                          onChange={(content: string) => updateEasy({ message: content })}
                           onBlur={(content: string) => updateEasy({ message: content })}
                         />
                       </div>
