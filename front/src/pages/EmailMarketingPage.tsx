@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
+  HelpCircle,
   Mail,
   Copy,
   Send,
@@ -381,6 +382,7 @@ export default function EmailMarketingPage() {
 
   // Form state
   const [formSubject, setFormSubject] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
   const [easyMode, setEasyMode] = useState(true);
   const [easy, setEasy] = useState<EasyFields>(DEFAULT_EASY);
   const [formHtml, setFormHtml] = useState(() => buildEasyHtml(DEFAULT_EASY));
@@ -730,12 +732,93 @@ export default function EmailMarketingPage() {
             <p className="text-muted-foreground text-sm">Send marketing emails to your users</p>
           </div>
         </div>
-        {view === "list" && (
-          <Button onClick={() => { resetForm(); setView("create"); }}>
-            <Plus className="h-4 w-4 mr-2" /> New Campaign
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowHelp(true)}>
+            <HelpCircle className="h-4 w-4 mr-2" /> How it works
           </Button>
-        )}
+          {view === "list" && (
+            <Button onClick={() => { resetForm(); setView("create"); }}>
+              <Plus className="h-4 w-4 mr-2" /> New Campaign
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* How it works */}
+      <Dialog open={showHelp} onOpenChange={setShowHelp}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5" /> How Email Marketing works
+            </DialogTitle>
+            <DialogDescription>
+              Send an email to your customers in 4 simple steps. No coding needed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 text-sm">
+            <section>
+              <h3 className="font-semibold mb-1">1. Write your email</h3>
+              <p className="text-muted-foreground">
+                Click <b>New Campaign</b>. In the <b>Easy Editor</b> fill in the Heading, and write your
+                Message in the editor (bold, colours, lists, links and images are in the toolbar). Add a
+                Button text and Button link if you want a button. Leave the link empty to send customers
+                to your shop. Pick a Colour. The <b>Preview</b> shows exactly how it will look.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold mb-1">2. Add a subject and save</h3>
+              <p className="text-muted-foreground">
+                The subject is the line people see in their inbox. Click <b>Save as Draft</b>. To reuse the
+                design later, click <b>Save as Template</b>, give it a name, and it will appear under{" "}
+                <b>My Templates</b>. Ready-made designs (Welcome, Sale, Newsletter) are at the top.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold mb-1">3. Send a test to yourself</h3>
+              <p className="text-muted-foreground">
+                Enter your own email and click <b>Send Test</b>. Open it in your inbox and click the button
+                to check that the link works. Always do this before sending to customers.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold mb-1">4. Send to customers</h3>
+              <p className="text-muted-foreground mb-2">Click <b>Send</b> on the campaign and choose who gets it:</p>
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                <li><b>All customers</b></li>
+                <li><b>Customers who have ordered</b> (cancelled orders do not count)</li>
+                <li><b>Customers who have not ordered yet</b></li>
+              </ul>
+              <p className="text-muted-foreground mt-2">
+                To email both groups with the same design, send once, then click <b>Duplicate</b> and send
+                the copy to the other group. A campaign can only be sent once, so check the number of
+                customers shown before confirming.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="font-semibold mb-1">Good to know</h3>
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                <li>
+                  Each customer's name is added automatically ({"{{USER_NAME}}"}). You can also type{" "}
+                  {"{{USER_NAME}}"} inside your message.
+                </li>
+                <li>Every email has an Unsubscribe link. People who unsubscribe are never emailed again.</li>
+                <li>Emails are sent in small batches, so a big list can take a few minutes. Progress updates on this page.</li>
+                <li>If some emails fail, open the campaign and click <b>Retry</b>.</li>
+                <li>Use full links that start with <b>https://</b> (for example https://rhoseatte.com).</li>
+              </ul>
+            </section>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => setShowHelp(false)}>Got it</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* SMTP Settings Card */}
       {view === "list" && smtpSettings && (
