@@ -393,3 +393,36 @@ export const getUserCount = asyncHandler(async (req, res, next) => {
     new ApiResponsive(200, { count: counts.all, ...counts }, "User count fetched")
   );
 });
+
+// Saved (admin-made) templates: reusable starting points for campaigns
+export const getEmailTemplates = asyncHandler(async (req, res) => {
+  const templates = await prisma.emailTemplate.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  return res
+    .status(200)
+    .json(new ApiResponsive(200, { templates }, "Templates fetched successfully"));
+});
+
+export const createEmailTemplate = asyncHandler(async (req, res) => {
+  const name = String(req.body.name || "").trim();
+  const subject = String(req.body.subject || "");
+  const htmlContent = String(req.body.htmlContent || "");
+  if (!name) throw new ApiError(400, "Template name is required");
+  if (!htmlContent.trim()) throw new ApiError(400, "Template content is required");
+
+  const template = await prisma.emailTemplate.create({
+    data: { name: name.slice(0, 80), subject, htmlContent, createdById: req.admin.id },
+  });
+  return res
+    .status(201)
+    .json(new ApiResponsive(201, { template }, "Template saved"));
+});
+
+export const deleteEmailTemplate = asyncHandler(async (req, res) => {
+  const { templateId } = req.params;
+  const existing = await prisma.emailTemplate.findUnique({ where: { id: templateId } });
+  if (!existing) throw new ApiError(404, "Template not found");
+  await prisma.emailTemplate.delete({ where: { id: templateId } });
+  return res.status(200).json(new ApiResponsive(200, null, "Template deleted"));
+});

@@ -1679,6 +1679,18 @@ model EmailCampaign {
   @@index([createdAt])
 }
 
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  subject     String
+  htmlContent String   @db.Text
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
 model EmailLog {
   id          String      @id @default(uuid())
   campaignId  String

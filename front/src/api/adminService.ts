@@ -1609,6 +1609,15 @@ export const emailMarketing = {
   ) => {
     return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/send`, data);
   },
+  getTemplates: () => {
+    return api.get("/api/admin/email-marketing/templates");
+  },
+  createTemplate: (data: { name: string; subject: string; htmlContent: string }) => {
+    return api.post("/api/admin/email-marketing/templates", data);
+  },
+  deleteTemplate: (templateId: string) => {
+    return api.delete(`/api/admin/email-marketing/templates/${templateId}`);
+  },
   duplicateCampaign: (campaignId: string) => {
     return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/duplicate`);
   },

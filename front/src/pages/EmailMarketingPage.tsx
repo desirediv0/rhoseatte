@@ -290,6 +290,53 @@ export default function EmailMarketingPage() {
   const [formSubject, setFormSubject] = useState("");
   const [formHtml, setFormHtml] = useState(DEFAULT_TEMPLATE);
   const [formEditId, setFormEditId] = useState<string | null>(null);
+  const [savedTemplates, setSavedTemplates] = useState<
+    { id: string; name: string; subject: string; htmlContent: string }[]
+  >([]);
+
+  const loadTemplates = useCallback(async () => {
+    try {
+      const res = await emailMarketing.getTemplates();
+      if (res.data.success) setSavedTemplates(res.data.data.templates);
+    } catch (err) {
+      console.error("Failed to load templates", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (view === "create" || view === "edit") loadTemplates();
+  }, [view, loadTemplates]);
+
+  const handleSaveTemplate = async () => {
+    if (!formHtml.trim()) {
+      toast.error("Template content is empty");
+      return;
+    }
+    const name = window.prompt("Template name (e.g. Diwali Offer)");
+    if (!name || !name.trim()) return;
+    try {
+      await emailMarketing.createTemplate({
+        name: name.trim(),
+        subject: formSubject,
+        htmlContent: formHtml,
+      });
+      toast.success("Template saved. Find it under 'My Templates'");
+      loadTemplates();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to save template");
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string, name: string) => {
+    if (!window.confirm(`Delete template "${name}"? Campaigns already made from it are not affected.`)) return;
+    try {
+      await emailMarketing.deleteTemplate(id);
+      toast.success("Template deleted");
+      loadTemplates();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete template");
+    }
+  };
 
   const hasPermission =
     admin?.role === "SUPER_ADMIN" ||
@@ -724,6 +771,42 @@ export default function EmailMarketingPage() {
                         </button>
                       ))}
                     </div>
+                    {savedTemplates.length > 0 && (
+                      <>
+                        <Label className="block pt-2">My Templates</Label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {savedTemplates.map((tpl) => (
+                            <div
+                              key={tpl.id}
+                              className={`relative rounded-lg border-2 transition-all ${
+                                formHtml === tpl.htmlContent
+                                  ? "border-primary bg-primary/5"
+                                  : "border-gray-200 hover:border-gray-300"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormSubject(tpl.subject);
+                                  setFormHtml(tpl.htmlContent);
+                                }}
+                                className="w-full p-3 pr-8 text-left"
+                              >
+                                <p className="font-medium text-xs truncate">{tpl.name}</p>
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete template"
+                                onClick={() => handleDeleteTemplate(tpl.id, tpl.name)}
+                                className="absolute top-2 right-2 text-gray-400 hover:text-red-600"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                 <div className="space-y-2">
@@ -752,6 +835,9 @@ export default function EmailMarketingPage() {
                   <Button onClick={handleSaveCampaign} disabled={loading}>
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     {formEditId ? "Update Campaign" : "Save as Draft"}
+                  </Button>
+                  <Button variant="outline" onClick={handleSaveTemplate} disabled={loading}>
+                    Save as Template
                   </Button>
                   <Button variant="outline" onClick={() => { setView("list"); resetForm(); }}>
                     Cancel

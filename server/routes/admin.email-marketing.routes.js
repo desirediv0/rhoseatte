@@ -11,6 +11,9 @@ import {
   retryFailedEmails,
   getUserCount,
   duplicateCampaign,
+  getEmailTemplates,
+  createEmailTemplate,
+  deleteEmailTemplate,
 } from "../controllers/admin.email-marketing.controller.js";
 import {
   verifyAdminJWT,
@@ -101,6 +104,26 @@ router.post(
   verifyAdminJWT,
   hasPermission("settings", "update"),
   retryFailedEmails
+);
+
+// Saved templates
+router.get(
+  "/email-marketing/templates",
+  verifyAdminJWT,
+  hasPermission("settings", "read"),
+  getEmailTemplates
+);
+router.post(
+  "/email-marketing/templates",
+  verifyAdminJWT,
+  hasPermission("settings", "create"),
+  createEmailTemplate
+);
+router.delete(
+  "/email-marketing/templates/:templateId",
+  verifyAdminJWT,
+  hasPermission("settings", "delete"),
+  deleteEmailTemplate
 );
 
 export default router;
