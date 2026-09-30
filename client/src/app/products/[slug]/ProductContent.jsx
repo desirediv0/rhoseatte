@@ -73,13 +73,18 @@ export default function ProductContent({ slug }) {
   const [showStickyBar, setShowStickyBar] = useState(false);
 
   // The fixed "Add to bag" bar sits over the bottom of the page and hid the
-  // footer's last lines (payment icons, design credit). Reserve room for it.
+  // footer's last lines (payment icons, design credit) and the WhatsApp
+  // button. Reserve room inside the (dark) footer, and flag the body so the
+  // floating WhatsApp button can lift itself above the bar.
   useEffect(() => {
     if (!showStickyBar) return;
-    const previous = document.body.style.paddingBottom;
-    document.body.style.paddingBottom = "88px";
+    const footer = document.querySelector("footer");
+    const previous = footer ? footer.style.paddingBottom : "";
+    if (footer) footer.style.paddingBottom = "88px";
+    document.body.classList.add("has-sticky-bar");
     return () => {
-      document.body.style.paddingBottom = previous;
+      if (footer) footer.style.paddingBottom = previous;
+      document.body.classList.remove("has-sticky-bar");
     };
   }, [showStickyBar]);
   const [bundleSelected, setBundleSelected] = useState({});
