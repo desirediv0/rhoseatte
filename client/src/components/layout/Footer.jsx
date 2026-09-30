@@ -243,10 +243,46 @@ export const Footer = () => {
       {/* Bottom Bar */}
       <div className="relative z-10 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
         <div className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-5">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
             <div className="text-[10px] tracking-[0.2em] uppercase font-medium" style={{ color: "rgba(255,255,255,0.25)" }}>
               &copy; {new Date().getFullYear()} RHOSEATTE — All rights reserved
             </div>
+
+            {/* Credit — gold pill so it stands out against the muted footer text */}
+            <a
+              href="https://desirediv.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Design by Desire Div (opens desirediv.com)"
+              className="group inline-flex items-center gap-2 px-3.5 py-1.5 transition-all duration-300"
+              style={{
+                borderRadius: "999px",
+                border: "1px solid rgba(184,151,106,0.45)",
+                backgroundColor: "rgba(184,151,106,0.08)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#B8976A";
+                e.currentTarget.style.backgroundColor = "rgba(184,151,106,0.16)";
+                e.currentTarget.style.boxShadow = "0 0 18px rgba(184,151,106,0.25)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "rgba(184,151,106,0.45)";
+                e.currentTarget.style.backgroundColor = "rgba(184,151,106,0.08)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <span className="text-[9px] uppercase tracking-[0.2em] font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
+                Design by
+              </span>
+              <span className="text-[11px] uppercase tracking-[0.2em] font-semibold" style={{ color: "#B8976A" }}>
+                Desire Div
+              </span>
+              <IconArrowUpRight
+                className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                style={{ color: "#B8976A" }}
+                stroke={1.75}
+              />
+            </a>
             <div className="flex items-center gap-2.5">
               <span className="text-[9px] uppercase tracking-[0.15em] font-medium mr-1" style={{ color: "rgba(255,255,255,0.25)" }}>
                 We Accept
