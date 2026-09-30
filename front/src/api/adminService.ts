@@ -1609,6 +1609,13 @@ export const emailMarketing = {
   ) => {
     return api.post(`/api/admin/email-marketing/campaigns/${campaignId}/send`, data);
   },
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    return api.post("/api/admin/email-marketing/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
   getTemplates: () => {
     return api.get("/api/admin/email-marketing/templates");
   },

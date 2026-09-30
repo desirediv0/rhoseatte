@@ -325,8 +325,10 @@ const inlineMessageStyles = (html: string, color: string) => {
     td: "border:1px solid #d1d5db;padding:8px;",
     th: "border:1px solid #d1d5db;padding:8px;background-color:#f3f4f6;",
     a: `color:${color};text-decoration:underline;`,
+    img: "max-width:100%;height:auto;border:0;",
   };
-  return html.replace(/<(h[1-6]|p|ul|ol|li|blockquote|table|td|th|a)(\s[^>]*)?>/gi, (_m, tag, attrs = "") => {
+  return html.replace(/<(h[1-6]|p|ul|ol|li|blockquote|table|td|th|a|img)(\s[^>]*)?>/gi, (_m, tag, attrs = "") => {
+    attrs = attrs.replace(/\s*\/$/, "");
     const base = styles[tag.toLowerCase()];
     if (/\sstyle="/i.test(attrs)) {
       // our defaults first, the editor's own style after it so the user's choice wins
@@ -429,6 +431,40 @@ const buildEasyHtml = (e: EasyFields) => {
 </html>`;
 };
 
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
+
+// Uploads a picture and returns its public URL (shows a toast on any problem).
+const uploadEmailImage = async (file: File): Promise<string | null> => {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    toast.error("Please choose a JPG, PNG or GIF image");
+    return null;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error("Image is too large (max 5 MB)");
+    return null;
+  }
+  const toastId = toast.loading("Uploading image...");
+  try {
+    const res = await emailMarketing.uploadImage(file);
+    toast.success("Image uploaded", { id: toastId });
+    return res.data.data.url as string;
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || "Image upload failed", { id: toastId });
+    return null;
+  }
+};
+
+const pickImageFile = (onPick: (file: File) => void) => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/png,image/jpeg,image/gif";
+  input.onchange = () => {
+    const file = input.files?.[0];
+    if (file) onPick(file);
+  };
+  input.click();
+};
+
 // Rich-text editor for the email message: only email-safe formatting tools.
 const MESSAGE_EDITOR_CONFIG = {
   height: 300,
@@ -442,12 +478,25 @@ const MESSAGE_EDITOR_CONFIG = {
   defaultActionOnPaste: "insert_as_html" as const,
   enter: "p" as const,
   spellcheck: true,
+  extraButtons: [
+    {
+      name: "uploadImage",
+      tooltip: "Upload image from your computer",
+      icon: "image",
+      exec: (editor: any) => {
+        pickImageFile(async (file) => {
+          const url = await uploadEmailImage(file);
+          if (url) editor.selection.insertImage(url, null, "100%");
+        });
+      },
+    },
+  ],
   buttons: [
     "paragraph", "|",
     "bold", "italic", "underline", "strikethrough", "|",
     "font", "fontsize", "brush", "|",
     "align", "ul", "ol", "outdent", "indent", "|",
-    "link", "image", "table", "hr", "symbol", "|",
+    "link", "uploadImage", "image", "table", "hr", "symbol", "|",
     "copyformat", "eraser", "undo", "redo", "|",
     "source", "fullsize",
   ],
@@ -944,7 +993,8 @@ export default function EmailMarketingPage() {
               <p className="text-muted-foreground">
                 Click <b>New Campaign</b>. In the <b>Easy Editor</b> fill in the Heading, and write your
                 Message in the editor (bold, colours, lists, links and images are in the toolbar). Add
-                products with <b>Add Products</b> (photo, name, price and link are added for you), and a
+                products with <b>Add Products</b> (photo, name, price and link are added for you). For pictures use the{" "}
+                <b>Upload</b> button (banner) or the upload icon in the editor toolbar (JPG, PNG or GIF, up to 5 MB), and a
                 Button text and Button link if you want a button. Leave the link empty to send customers
                 to your shop. Pick a Colour. The <b>Preview</b> shows exactly how it will look.
               </p>
@@ -1242,12 +1292,30 @@ export default function EmailMarketingPage() {
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label>Image link (optional)</Label>
-                      <Input
-                        placeholder="https://... (link of a banner image)"
-                        value={easy.imageUrl}
-                        onChange={(e) => updateEasy({ imageUrl: e.target.value })}
-                      />
+                      <Label>Banner image (optional)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Upload a picture, or paste an https:// image link"
+                          value={easy.imageUrl}
+                          onChange={(e) => updateEasy({ imageUrl: e.target.value })}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="shrink-0"
+                          onClick={() =>
+                            pickImageFile(async (file) => {
+                              const url = await uploadEmailImage(file);
+                              if (url) updateEasy({ imageUrl: url });
+                            })
+                          }
+                        >
+                          Upload
+                        </Button>
+                      </div>
+                      {easy.imageUrl && (
+                        <img src={easy.imageUrl} alt="" className="h-20 rounded border object-cover" />
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label>Products (optional)</Label>

@@ -4,6 +4,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import sendEmail from "../utils/sendEmail.js";
 import { getStoreConfig } from "../utils/storeConfig.js";
+import { processAndUploadImage } from "../middlewares/multer.middlerware.js";
+import { getFileUrl } from "../utils/deleteFromS3.js";
 import {
   renderCampaignTemplate,
   withUnsubscribeFooter,
@@ -425,4 +427,23 @@ export const deleteEmailTemplate = asyncHandler(async (req, res) => {
   if (!existing) throw new ApiError(404, "Template not found");
   await prisma.emailTemplate.delete({ where: { id: templateId } });
   return res.status(200).json(new ApiResponsive(200, null, "Template deleted"));
+});
+
+// Upload an image for use inside an email. Returns a public, absolute URL.
+const EMAIL_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
+const EMAIL_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+export const uploadEmailImage = asyncHandler(async (req, res) => {
+  const file = req.file;
+  if (!file) throw new ApiError(400, "Please choose an image");
+  if (!EMAIL_IMAGE_TYPES.includes(file.mimetype)) {
+    throw new ApiError(400, "Only JPG, PNG or GIF images can be used in emails");
+  }
+  if (file.size > EMAIL_IMAGE_MAX_BYTES) {
+    throw new ApiError(400, "Image is too large (max 5 MB)");
+  }
+  const key = await processAndUploadImage(file, "email-images");
+  return res
+    .status(201)
+    .json(new ApiResponsive(201, { url: getFileUrl(key) }, "Image uploaded"));
 });

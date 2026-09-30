@@ -14,7 +14,9 @@ import {
   getEmailTemplates,
   createEmailTemplate,
   deleteEmailTemplate,
+  uploadEmailImage,
 } from "../controllers/admin.email-marketing.controller.js";
+import { uploadFiles } from "../middlewares/multer.middlerware.js";
 import {
   verifyAdminJWT,
   hasPermission,
@@ -124,6 +126,15 @@ router.delete(
   verifyAdminJWT,
   hasPermission("settings", "delete"),
   deleteEmailTemplate
+);
+
+// Image upload for email content
+router.post(
+  "/email-marketing/upload-image",
+  verifyAdminJWT,
+  hasPermission("settings", "create"),
+  uploadFiles.single("image"),
+  uploadEmailImage
 );
 
 export default router;
