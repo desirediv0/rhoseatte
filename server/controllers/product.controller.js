@@ -4,11 +4,13 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import { getFileUrl } from "../utils/deleteFromS3.js";
 import { formatVariantWithAttributes } from "../utils/variant-attributes.js";
+import { reviewImageUrls } from "../utils/reviewImages.js";
 
 // Reviews added from the admin panel have no user account — show the name the
 // admin entered so the storefront never sees a null user.
 const publicReview = (review) => ({
   ...review,
+  images: reviewImageUrls(review.images),
   user: review.user || { id: null, name: review.reviewerName || "Customer" },
 });
 

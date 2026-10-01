@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { IconStar, IconAlertCircle } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,28 @@ export default function ReviewSection({ product }) {
   });
   const [showForm, setShowForm] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [photos, setPhotos] = useState([]); // File[] (max 5)
+  const previews = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos]);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
+
+  const handlePhotos = (e) => {
+    const chosen = Array.from(e.target.files || []);
+    e.target.value = "";
+    const ok = chosen.filter((f) => {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
+        toast.error(`${f.name}: only JPG, PNG or WEBP photos`);
+        return false;
+      }
+      if (f.size > 5 * 1024 * 1024) {
+        toast.error(`${f.name}: photo must be under 5 MB`);
+        return false;
+      }
+      return true;
+    });
+    const merged = [...photos, ...ok];
+    if (merged.length > 5) toast.error("You can add up to 5 photos");
+    setPhotos(merged.slice(0, 5));
+  };
 
   // Arriving from the "review your order" email (?review=true): open the form
   useEffect(() => {
@@ -79,17 +101,21 @@ export default function ReviewSection({ product }) {
       const response = await fetchApi(`/users/reviews`, {
         method: "POST",
         credentials: "include",
-        body: JSON.stringify({
-          productId: product.id,
-          rating: reviewForm.rating,
-          title: reviewForm.title.trim() || "Review",
-          comment: reviewForm.comment.trim(),
-        }),
+        body: (() => {
+          const fd = new FormData();
+          fd.append("productId", product.id);
+          fd.append("rating", String(reviewForm.rating));
+          fd.append("title", reviewForm.title.trim() || "Review");
+          fd.append("comment", reviewForm.comment.trim());
+          photos.forEach((f) => fd.append("images", f));
+          return fd;
+        })(),
       });
 
       if (response.success) {
         toast.success("Review submitted successfully!");
         setReviewForm({ rating: 0, title: "", comment: "" });
+        setPhotos([]);
         setShowForm(false);
         window.location.reload();
       } else {
@@ -152,6 +178,26 @@ export default function ReviewSection({ product }) {
         {formErrors.comment && <p className="text-[12px] mt-1" style={{ color: "#C24B42" }}>{formErrors.comment}</p>}
       </div>
 
+      <div>
+        <label className="block text-[11px] font-medium uppercase tracking-[0.2em] mb-2" style={{ color: "#111111" }}>Photos (optional, up to 5)</label>
+        <div className="flex flex-wrap gap-2">
+          {previews.map((src, i) => (
+            <div key={src} className="relative h-16 w-16">
+              <img src={src} alt="" className="h-16 w-16 object-cover" style={{ borderRadius: "6px", border: "1px solid #EAEAEA" }} />
+              <button type="button" aria-label="Remove photo" onClick={() => setPhotos((p) => p.filter((_, idx) => idx !== i))}
+                className="absolute -top-2 -right-2 h-5 w-5 rounded-full text-[11px] leading-none flex items-center justify-center"
+                style={{ backgroundColor: "#111111", color: "#fff" }}>×</button>
+            </div>
+          ))}
+          {photos.length < 5 && (
+            <label className="h-16 w-16 flex items-center justify-center cursor-pointer text-[22px]" style={{ border: "1px dashed #B8976A", color: "#B8976A", borderRadius: "6px" }}>
+              +
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handlePhotos} />
+            </label>
+          )}
+        </div>
+      </div>
+
       <div className="flex gap-3 justify-center pt-2">
         <button type="submit" disabled={isSubmitting}
           className="px-8 py-3 text-[11px] uppercase tracking-[0.18em] font-medium transition-colors duration-300 disabled:opacity-40"
@@ -163,7 +209,7 @@ export default function ReviewSection({ product }) {
             </div>
           ) : "Submit Review"}
         </button>
-        <button type="button" onClick={() => { setShowForm(false); setFormErrors({}); setReviewForm({ rating: 0, title: "", comment: "" }); }}
+        <button type="button" onClick={() => { setShowForm(false); setFormErrors({}); setPhotos([]); setReviewForm({ rating: 0, title: "", comment: "" }); }}
           className="px-6 py-3 text-[11px] uppercase tracking-[0.18em] font-medium transition-colors duration-300"
           style={{ border: "1px solid #EAEAEA", color: "#666666", borderRadius: "8px" }}>
           Cancel
@@ -202,6 +248,15 @@ export default function ReviewSection({ product }) {
 
                   <h4 className="font-medium text-[14px] mt-3" style={{ color: "#111111" }}>{review.title}</h4>
                   <p className="mt-2 text-[13px] leading-relaxed font-light" style={{ color: "#666666" }}>{review.comment}</p>
+                  {review.images?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {review.images.map((src, i) => (
+                        <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+                          <img src={src} alt="Customer photo" loading="lazy" className="h-16 w-16 object-cover" style={{ borderRadius: "6px", border: "1px solid #EAEAEA" }} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
 
                   {review.adminReply && (
                     <div className="mt-4 p-4" style={{ backgroundColor: "#FAFAFA", border: "1px solid #EAEAEA", borderRadius: "8px" }}>

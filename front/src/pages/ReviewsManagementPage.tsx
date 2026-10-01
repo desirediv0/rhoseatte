@@ -95,6 +95,7 @@ export default function ReviewsManagementPage() {
     comment: "",
     date: "",
     status: "APPROVED",
+    images: [] as File[],
   };
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState(EMPTY_ADD_FORM);
@@ -137,6 +138,7 @@ export default function ReviewsManagementPage() {
         comment: addForm.comment.trim(),
         status: addForm.status as "APPROVED" | "PENDING" | "REJECTED",
         ...(addForm.date && { createdAt: new Date(addForm.date).toISOString() }),
+        images: addForm.images,
       });
       toast.success("Review added");
       setAddOpen(false);
@@ -859,6 +861,42 @@ export default function ReviewsManagementPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>Photos (optional, up to 5)</Label>
+              <div className="flex flex-wrap gap-2">
+                {addForm.images.map((f, i) => (
+                  <div key={i} className="relative h-16 w-16">
+                    <img src={URL.createObjectURL(f)} alt="" className="h-16 w-16 rounded border object-cover" />
+                    <button
+                      type="button"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-black text-xs leading-none text-white"
+                      onClick={() => setAddForm({ ...addForm, images: addForm.images.filter((_, idx) => idx !== i) })}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {addForm.images.length < 5 && (
+                  <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded border border-dashed text-xl text-muted-foreground">
+                    +
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const picked = Array.from(e.target.files || []).filter(
+                          (f) => ["image/jpeg", "image/png", "image/webp"].includes(f.type) && f.size <= 5 * 1024 * 1024
+                        );
+                        e.target.value = "";
+                        setAddForm({ ...addForm, images: [...addForm.images, ...picked].slice(0, 5) });
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Date (optional)</Label>
@@ -931,6 +969,15 @@ export default function ReviewsManagementPage() {
               <div>
                 <h4 className="text-sm font-medium mb-1">{t("reviews.dialog.review_content")}</h4>
                 <p className="whitespace-pre-line">{selectedReview.comment}</p>
+                {selectedReview.images?.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedReview.images.map((src: string, i: number) => (
+                      <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+                        <img src={src} alt="Review photo" className="h-20 w-20 rounded border object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between text-sm text-muted-foreground">

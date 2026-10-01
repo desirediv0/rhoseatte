@@ -1,5 +1,8 @@
 import { prisma } from "../config/db.js";
 import ApiError from "../utils/ApiError.js";
+import { uploadReviewImages, reviewImageUrls } from "../utils/reviewImages.js";
+
+const withImageUrls = (r) => ({ ...r, images: reviewImageUrls(r.images) });
 
 /**
  * Get all reviews with pagination, filtering and sorting
@@ -96,7 +99,7 @@ export const getReviews = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: {
-        reviews,
+        reviews: reviews.map(withImageUrls),
         total,
         totalPages,
         currentPage: parseInt(page),
@@ -139,9 +142,12 @@ export const createAdminReview = async (req, res, next) => {
       if (date.getTime() > Date.now()) throw new ApiError(400, "Review date cannot be in the future");
     }
 
+    const images = await uploadReviewImages(req.files || []);
+
     const review = await prisma.review.create({
       data: {
         productId,
+        images,
         reviewerName: name.slice(0, 80),
         isAdminCreated: true,
         rating: ratingNum,
@@ -254,7 +260,7 @@ export const getReviewById = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      data: { review },
+      data: { review: withImageUrls(review) },
       message: "Review fetched successfully",
     });
   } catch (error) {

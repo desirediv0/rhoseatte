@@ -389,6 +389,7 @@ model Review {
   id             String       @id @default(uuid())
   userId         String?
   reviewerName   String?
+  images         String[]     @default([])
   isAdminCreated Boolean      @default(false)
   productId      String
   rating         Int          @db.SmallInt

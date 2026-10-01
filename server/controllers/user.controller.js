@@ -19,6 +19,7 @@ import {
 import { validatePassword } from "../helper/validatePassword.js";
 import { deleteFromS3, getFileUrl } from "../utils/deleteFromS3.js";
 import { processAndUploadImage } from "../middlewares/multer.middlerware.js";
+import { uploadReviewImages } from "../utils/reviewImages.js";
 import {
   generateOTP,
   isValidOTP,
@@ -1885,10 +1886,11 @@ export const getUserReviews = asyncHandler(async (req, res, next) => {
 
 // Add review
 export const addReview = asyncHandler(async (req, res, next) => {
-  const { productId, rating, title, comment } = req.body;
+  const { productId, title, comment } = req.body;
+  const rating = parseInt(req.body.rating, 10);
 
   // Validate required fields
-  if (!productId || !rating) {
+  if (!productId || !Number.isInteger(rating) || rating < 1 || rating > 5) {
     throw new ApiError(400, "Product ID and rating are required");
   }
 
@@ -1930,6 +1932,9 @@ export const addReview = asyncHandler(async (req, res, next) => {
     throw new ApiError(403, "You can only review products you have purchased");
   }
 
+  // Photos (max 5) — uploaded only after all checks above passed
+  const images = await uploadReviewImages(req.files || []);
+
   // Add review
   const review = await prisma.review.create({
     data: {
@@ -1938,6 +1943,7 @@ export const addReview = asyncHandler(async (req, res, next) => {
       rating,
       title,
       comment,
+      images,
       status: "PENDING", // Reviews need approval before display
     },
   });

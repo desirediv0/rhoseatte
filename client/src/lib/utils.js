@@ -64,6 +64,10 @@ async function performFetch(url, options) {
     ...options.headers,
   };
 
+  if (typeof FormData !== "undefined" && options.body instanceof FormData) {
+    delete headers["Content-Type"];
+  }
+
   const config = {
     ...options,
     headers,

@@ -89,7 +89,7 @@ router.post("/orders/:orderId/cancel", verifyJWTToken, cancelOrder);
 
 // Review routes
 router.get("/reviews", verifyJWTToken, getUserReviews);
-router.post("/reviews", verifyJWTToken, addReview);
+router.post("/reviews", verifyJWTToken, uploadFiles.array("images", 5), addReview);
 router.patch("/reviews/:reviewId", verifyJWTToken, updateReview);
 router.delete("/reviews/:reviewId", verifyJWTToken, deleteReview);
 

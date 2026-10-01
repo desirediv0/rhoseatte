@@ -8,6 +8,7 @@ import {
   getReviewStats,
   createAdminReview,
 } from "../controllers/admin.review.controller.js";
+import { uploadFiles } from "../middlewares/multer.middlerware.js";
 import {
   verifyAdminJWT,
   hasPermission,
@@ -29,6 +30,7 @@ router.post(
   "/reviews",
   verifyAdminJWT,
   hasPermission("reviews", "create"),
+  uploadFiles.array("images", 5),
   createAdminReview
 );
 

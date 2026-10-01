@@ -752,8 +752,17 @@ export const reviews = {
     comment: string;
     status?: "APPROVED" | "PENDING" | "REJECTED";
     createdAt?: string;
+    images?: File[];
   }) => {
-    return api.post("/api/admin/reviews", data);
+    const { images, ...rest } = data;
+    const fd = new FormData();
+    Object.entries(rest).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) fd.append(k, String(v));
+    });
+    (images || []).forEach((f) => fd.append("images", f));
+    return api.post("/api/admin/reviews", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
   },
   getReviewById: (reviewId: string) => {
     return api.get(`/api/admin/reviews/${reviewId}`);
