@@ -104,6 +104,7 @@ export default function OrdersPage() {
   const now = new Date();
   const [invoiceMonth, setInvoiceMonth] = useState(now.getMonth() + 1);
   const [invoiceYear, setInvoiceYear] = useState(now.getFullYear());
+  const [invoiceDeliveredOnly, setInvoiceDeliveredOnly] = useState(false);
   const [isDownloadingBulkInvoices, setIsDownloadingBulkInvoices] = useState(false);
 
   // Reconciliation: find Razorpay payments that were captured but have no
@@ -296,12 +297,12 @@ export default function OrdersPage() {
   const handleDownloadBulkInvoices = async () => {
     setIsDownloadingBulkInvoices(true);
     try {
-      const response = await orders.downloadBulkInvoices(invoiceMonth, invoiceYear);
+      const response = await orders.downloadBulkInvoices(invoiceMonth, invoiceYear, invoiceDeliveredOnly);
       const blob = new Blob([response.data], { type: "application/zip" });
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `invoices-${invoiceYear}-${String(invoiceMonth).padStart(2, "0")}.zip`;
+      a.download = `invoices-${invoiceYear}-${String(invoiceMonth).padStart(2, "0")}${invoiceDeliveredOnly ? "-delivered" : ""}.zip`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -550,6 +551,14 @@ export default function OrdersPage() {
                 {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
+              </select>
+              <select
+                value={invoiceDeliveredOnly ? "delivered" : "paid"}
+                onChange={(e) => setInvoiceDeliveredOnly(e.target.value === "delivered")}
+                className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-[#F3F7F6] text-sm text-[#4B5563] focus:border-primary focus:outline-none"
+              >
+                <option value="paid">All paid orders</option>
+                <option value="delivered">Delivered only</option>
               </select>
             </div>
             <Button

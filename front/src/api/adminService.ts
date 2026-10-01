@@ -609,9 +609,9 @@ export const orders = {
       responseType: "blob",
     });
   },
-  downloadBulkInvoices: (month: number, year: number) => {
+  downloadBulkInvoices: (month: number, year: number, deliveredOnly = false) => {
     return api.get(`/api/admin/orders/invoices/bulk`, {
-      params: { month, year },
+      params: { month, year, ...(deliveredOnly && { deliveredOnly: "true" }) },
       responseType: "blob",
     });
   },

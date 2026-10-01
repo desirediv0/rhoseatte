@@ -468,6 +468,7 @@ export const downloadOrderInvoice = asyncHandler(async (req, res, next) => {
 // already see counted as revenue elsewhere in this app.
 export const downloadBulkInvoices = asyncHandler(async (req, res, next) => {
   const { month, year } = req.query;
+  const deliveredOnly = req.query.deliveredOnly === "true";
 
   const monthNum = parseInt(month, 10);
   const yearNum = parseInt(year, 10);
@@ -487,7 +488,9 @@ export const downloadBulkInvoices = asyncHandler(async (req, res, next) => {
   const orders = await prisma.order.findMany({
     where: {
       createdAt: { gte: startOfMonth, lt: startOfNextMonth },
-      status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] },
+      status: deliveredOnly
+        ? "DELIVERED"
+        : { notIn: ["PENDING", "CANCELLED", "REFUNDED"] },
     },
     include: {
       user: { select: { id: true, name: true, email: true, phone: true } },
@@ -498,14 +501,14 @@ export const downloadBulkInvoices = asyncHandler(async (req, res, next) => {
   });
 
   if (orders.length === 0) {
-    throw new ApiError(404, "No paid orders found for that month");
+    throw new ApiError(404, deliveredOnly ? "No delivered orders found for that month" : "No paid orders found for that month");
   }
 
   const companySettings = await getCompanyInvoiceSettings();
 
   const monthLabel = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
   res.setHeader("Content-Type", "application/zip");
-  res.setHeader("Content-Disposition", `attachment; filename="invoices-${monthLabel}.zip"`);
+  res.setHeader("Content-Disposition", `attachment; filename="invoices-${monthLabel}${deliveredOnly ? "-delivered" : ""}.zip"`);
 
   const archive = archiver("zip", { zlib: { level: 9 } });
   archive.on("error", (err) => {
