@@ -98,20 +98,36 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
         }
     };
 
-    const handleSearchProducts = async () => {
-        if (!productSearch.trim()) return;
-        setIsSearchingProducts(true);
-        try {
-            const response = await productsApi.getProducts({ search: productSearch.trim(), limit: 10 });
-            if (response.data?.success) {
-                setProductResults(response.data.data?.products || []);
-            }
-        } catch (error) {
-            toast.error("Failed to search products");
-        } finally {
-            setIsSearchingProducts(false);
+    const [productSearched, setProductSearched] = useState(false);
+
+    // Debounced product search: runs 400ms after the admin stops typing
+    useEffect(() => {
+        const term = productSearch.trim();
+        if (term.length < 2) {
+            setProductResults([]);
+            setProductSearched(false);
+            return;
         }
-    };
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            setIsSearchingProducts(true);
+            try {
+                const response = await productsApi.getProducts({ search: term, limit: 10 });
+                if (!cancelled && response.data?.success) {
+                    setProductResults(response.data.data?.products || []);
+                    setProductSearched(true);
+                }
+            } catch (error: any) {
+                if (!cancelled) toast.error(error?.response?.data?.message || "Failed to search products");
+            } finally {
+                if (!cancelled) setIsSearchingProducts(false);
+            }
+        }, 400);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [productSearch]);
 
     const addItem = (variant: any, productName: string) => {
         const attrs = (variant.attributes || [])
@@ -321,18 +337,23 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
                                     value={productSearch}
                                     onChange={(e) => setProductSearch(e.target.value)}
                                     placeholder="Search products"
-                                    onKeyDown={(e) => e.key === "Enter" && handleSearchProducts()}
                                 />
-                                <Button variant="outline" onClick={handleSearchProducts} disabled={isSearchingProducts}>
+                                <div className="flex w-10 items-center justify-center text-[#9CA3AF]">
                                     {isSearchingProducts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                </Button>
+                                </div>
                             </div>
+                            {productSearched && !isSearchingProducts && productResults.length === 0 && (
+                                <p className="text-sm text-[#9CA3AF]">No products found for "{productSearch.trim()}".</p>
+                            )}
                             {productResults.length > 0 && (
                                 <div className="border border-[#E5E7EB] rounded-lg divide-y divide-[#F3F4F6] max-h-48 overflow-y-auto">
                                     {productResults.map((p) => (
                                         <div key={p.id} className="p-2.5">
                                             <p className="text-sm font-medium mb-1">{p.name}</p>
                                             <div className="flex flex-wrap gap-1.5">
+                                                {(p.variants || []).length === 0 && (
+                                                    <span className="text-xs text-[#9CA3AF]">No variants for this product</span>
+                                                )}
                                                 {(p.variants || []).map((v: any) => (
                                                     <button
                                                         key={v.id}
