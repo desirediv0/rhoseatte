@@ -746,7 +746,7 @@ export const getUserAddressesAdmin = asyncHandler(async (req, res) => {
 
   const addresses = await prisma.address.findMany({
     where: { userId },
-    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    orderBy: { isDefault: "desc" },
   });
 
   res
