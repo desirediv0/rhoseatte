@@ -1126,9 +1126,9 @@ export const createOrder = asyncHandler(async (req, res, next) => {
       throw new ApiError(404, `Product variant not found: ${item.variantId}`);
     }
 
-    if (variant.quantity < item.quantity) {
-      throw new ApiError(400, `Insufficient stock for ${variant.product.name}`);
-    }
+    // The customer has already paid, so low stock must not block recovery —
+    // just never take stock below zero.
+    item._decrement = Math.max(0, Math.min(variant.quantity, item.quantity));
 
     // Get base price (sale price if exists, otherwise regular price)
     const basePrice = variant.salePrice || variant.price;
@@ -1444,20 +1444,27 @@ export const recoverOrphanedPayment = asyncHandler(async (req, res, next) => {
   const {
     razorpayPaymentId,
     razorpayOrderId,
-    userId,
     items,
-    shippingAddressId,
     shippingCost,
     discount,
     couponCode,
     couponId,
     notes,
+    newCustomer,
+    newAddress,
   } = req.body;
+  let { userId, shippingAddressId } = req.body;
 
-  if (!razorpayPaymentId || !userId || !items || items.length === 0 || !shippingAddressId) {
+  if (
+    !razorpayPaymentId ||
+    (!userId && !newCustomer?.email) ||
+    !items ||
+    items.length === 0 ||
+    (!shippingAddressId && !newAddress)
+  ) {
     throw new ApiError(
       400,
-      "razorpayPaymentId, userId, shippingAddressId, and at least one item are required"
+      "Payment, customer, shipping address and at least one item are required"
     );
   }
 
@@ -1468,16 +1475,55 @@ export const recoverOrphanedPayment = asyncHandler(async (req, res, next) => {
     throw new ApiError(400, "This payment already has an order — it is not orphaned");
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  // The customer may never have had an account (guest checkout that failed
+  // before the account was created) — create it from the details given.
+  let user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
+  if (!user && newCustomer?.email) {
+    const email = String(newCustomer.email).trim().toLowerCase();
+    user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: String(newCustomer.name || "").trim() || null,
+          phone: String(newCustomer.phone || "").trim() || null,
+        },
+      });
+    }
+    userId = user.id;
+  }
   if (!user) {
     throw new ApiError(404, "User not found");
   }
 
-  const address = await prisma.address.findFirst({
-    where: { id: shippingAddressId, userId },
-  });
-  if (!address) {
-    throw new ApiError(404, "Shipping address not found for this user");
+  let address;
+  if (shippingAddressId) {
+    address = await prisma.address.findFirst({
+      where: { id: shippingAddressId, userId },
+    });
+    if (!address) {
+      throw new ApiError(404, "Shipping address not found for this user");
+    }
+  } else {
+    const a = newAddress || {};
+    const required = ["street", "city", "state", "postalCode"];
+    if (required.some((k) => !String(a[k] || "").trim())) {
+      throw new ApiError(400, "Address needs street, city, state and pincode");
+    }
+    address = await prisma.address.create({
+      data: {
+        userId,
+        name: String(a.name || user.name || "").trim() || null,
+        phone: String(a.phone || user.phone || "").trim() || null,
+        street: String(a.street).trim(),
+        city: String(a.city).trim(),
+        state: String(a.state).trim(),
+        postalCode: String(a.postalCode).trim(),
+        country: String(a.country || "India").trim(),
+        isDefault: false,
+      },
+    });
+    shippingAddressId = address.id;
   }
 
   let finalCouponId = couponId;
@@ -1554,19 +1600,20 @@ export const recoverOrphanedPayment = asyncHandler(async (req, res, next) => {
     });
 
     for (const item of items) {
+      if (!item._decrement) continue;
       await tx.productVariant.update({
         where: { id: item.variantId },
-        data: { quantity: { decrement: item.quantity } },
+        data: { quantity: { decrement: item._decrement } },
       });
       await tx.inventoryLog.create({
         data: {
           variantId: item.variantId,
-          quantityChange: -item.quantity,
+          quantityChange: -item._decrement,
           reason: "sale",
           referenceId: order.id,
           previousQuantity: await tx.productVariant
             .findUnique({ where: { id: item.variantId }, select: { quantity: true } })
-            .then((v) => v.quantity + item.quantity),
+            .then((v) => v.quantity + item._decrement),
           newQuantity: await tx.productVariant
             .findUnique({ where: { id: item.variantId }, select: { quantity: true } })
             .then((v) => v.quantity),

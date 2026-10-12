@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
@@ -49,6 +49,16 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
     >([]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [searched, setSearched] = useState(false);
+    const [newCustomerName, setNewCustomerName] = useState("");
+    const [useNewAddress, setUseNewAddress] = useState(false);
+    const [addr, setAddr] = useState({ name: "", phone: payment.contact || "", street: "", city: "", state: "", postalCode: "" });
+
+    // Look the customer up straight away using the email Razorpay captured
+    useEffect(() => {
+        if (open && payment.email) handleSearchUsers();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
 
     const handleSearchUsers = async () => {
         if (!userSearch.trim()) return;
@@ -58,6 +68,7 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
             if (response.data?.success) {
                 setUserResults(response.data.data?.users || []);
             }
+            setSearched(true);
         } catch (error) {
             toast.error("Failed to search users");
         } finally {
@@ -69,6 +80,7 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
         setSelectedUser(user);
         setUserResults([]);
         setSelectedAddressId("");
+        setUseNewAddress(false);
         setIsLoadingAddresses(true);
         try {
             const response = await customerUsers.getUserAddresses(user.id);
@@ -77,6 +89,7 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
                 setAddresses(list);
                 const def = list.find((a: any) => a.isDefault) || list[0];
                 if (def) setSelectedAddressId(def.id);
+                else setUseNewAddress(true);
             }
         } catch (error) {
             toast.error("Failed to load this customer's addresses");
@@ -131,15 +144,35 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
     };
 
     const itemsTotal = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    // Customer paid `payment.amount`: any gap below the items total was a
+    // discount (coupon / prepaid offer); any gap above it was shipping.
     const shippingCost = Math.max(0, payment.amount - itemsTotal);
+    const discount = Math.max(0, itemsTotal - payment.amount);
+    const addressReady = useNewAddress
+        ? !!(addr.street.trim() && addr.city.trim() && addr.state.trim() && addr.postalCode.trim())
+        : !!selectedAddressId;
+
+    const startNewCustomer = () => {
+        const email = (payment.email || userSearch).trim();
+        if (!email) {
+            toast.error("Enter the customer's email first");
+            return;
+        }
+        setSelectedUser({ id: "", name: newCustomerName.trim() || email, email, isNew: true });
+        setUserResults([]);
+        setAddresses([]);
+        setSelectedAddressId("");
+        setUseNewAddress(true);
+        setAddr((a) => ({ ...a, name: newCustomerName.trim() }));
+    };
 
     const handleSubmit = async () => {
         if (!selectedUser) {
             toast.error("Select the customer first");
             return;
         }
-        if (!selectedAddressId) {
-            toast.error("Select a shipping address");
+        if (!addressReady) {
+            toast.error(useNewAddress ? "Fill street, city, state and pincode" : "Select a shipping address");
             return;
         }
         if (selectedItems.length === 0) {
@@ -151,8 +184,11 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
         try {
             const response = await orders.recoverOrphanedPayment({
                 razorpayPaymentId: payment.paymentId,
-                userId: selectedUser.id,
-                shippingAddressId: selectedAddressId,
+                ...(selectedUser.isNew
+                    ? { newCustomer: { name: newCustomerName.trim(), email: selectedUser.email, phone: payment.contact } }
+                    : { userId: selectedUser.id }),
+                ...(useNewAddress ? { newAddress: addr } : { shippingAddressId: selectedAddressId }),
+                discount,
                 items: selectedItems.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
                 shippingCost: shippingCost > 0 ? shippingCost : 0,
                 notes: `Recovered via admin tool from payment ${payment.paymentId}`,
@@ -209,6 +245,17 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
                                         {isSearchingUsers ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                                     </Button>
                                 </div>
+                                {searched && userResults.length === 0 && (
+                                    <div className="p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm space-y-2">
+                                        <p>No customer found. You can create one from the Razorpay details ({payment.email || "email needed"}).</p>
+                                        <Input
+                                            value={newCustomerName}
+                                            onChange={(e) => setNewCustomerName(e.target.value)}
+                                            placeholder="Customer name"
+                                        />
+                                        <Button size="sm" onClick={startNewCustomer}>Create customer &amp; continue</Button>
+                                    </div>
+                                )}
                                 {userResults.length > 0 && (
                                     <div className="border border-[#E5E7EB] rounded-lg divide-y divide-[#F3F4F6] max-h-48 overflow-y-auto">
                                         {userResults.map((u) => (
@@ -234,8 +281,18 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
                             <Label>2. Shipping address</Label>
                             {isLoadingAddresses ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : addresses.length === 0 ? (
-                                <p className="text-sm text-[#9CA3AF]">This customer has no saved addresses.</p>
+                            ) : useNewAddress ? (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input placeholder="Name" value={addr.name} onChange={(e) => setAddr({ ...addr, name: e.target.value })} />
+                                    <Input placeholder="Phone" value={addr.phone} onChange={(e) => setAddr({ ...addr, phone: e.target.value })} />
+                                    <Input className="col-span-2" placeholder="Street / house / area" value={addr.street} onChange={(e) => setAddr({ ...addr, street: e.target.value })} />
+                                    <Input placeholder="City" value={addr.city} onChange={(e) => setAddr({ ...addr, city: e.target.value })} />
+                                    <Input placeholder="State" value={addr.state} onChange={(e) => setAddr({ ...addr, state: e.target.value })} />
+                                    <Input placeholder="Pincode" value={addr.postalCode} onChange={(e) => setAddr({ ...addr, postalCode: e.target.value })} />
+                                    {addresses.length > 0 && (
+                                        <Button variant="outline" size="sm" onClick={() => setUseNewAddress(false)}>Use a saved address</Button>
+                                    )}
+                                </div>
                             ) : (
                                 <select
                                     value={selectedAddressId}
@@ -249,11 +306,14 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
                                     ))}
                                 </select>
                             )}
+                            {!useNewAddress && addresses.length > 0 && (
+                                <Button variant="outline" size="sm" onClick={() => setUseNewAddress(true)}>Enter a different address</Button>
+                            )}
                         </div>
                     )}
 
                     {/* Step 3: Items */}
-                    {selectedUser && selectedAddressId && (
+                    {selectedUser && addressReady && (
                         <div className="space-y-2">
                             <Label>3. What did they order?</Label>
                             <div className="flex gap-2">
@@ -315,7 +375,10 @@ export default function RecoverPaymentModal({ payment, open, onClose, onRecovere
                             {selectedItems.length > 0 && (
                                 <div className="text-sm p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg space-y-1">
                                     <div className="flex justify-between"><span>Items total</span><span>{formatCurrency(itemsTotal)}</span></div>
-                                    <div className="flex justify-between"><span>Shipping (remainder)</span><span>{formatCurrency(shippingCost)}</span></div>
+                                    <div className="flex justify-between"><span>Shipping</span><span>{formatCurrency(shippingCost)}</span></div>
+                                    {discount > 0 && (
+                                        <div className="flex justify-between"><span>Discount (prepaid / coupon)</span><span>-{formatCurrency(discount)}</span></div>
+                                    )}
                                     <div className="flex justify-between font-semibold border-t border-[#E5E7EB] pt-1">
                                         <span>Order total</span><span>{formatCurrency(payment.amount)}</span>
                                     </div>

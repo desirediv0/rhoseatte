@@ -521,10 +521,19 @@ export const orders = {
     return api.get("/api/admin/orders/reconcile-payments", { params: { days } });
   },
   recoverOrphanedPayment: (data: {
+    newCustomer?: { name: string; email: string; phone?: string };
+    newAddress?: {
+      name?: string;
+      phone?: string;
+      street: string;
+      city: string;
+      state: string;
+      postalCode: string;
+    };
     razorpayPaymentId: string;
     razorpayOrderId?: string;
-    userId: string;
-    shippingAddressId: string;
+    userId?: string;
+    shippingAddressId?: string;
     items: { variantId: string; quantity: number }[];
     shippingCost?: number;
     discount?: number;
