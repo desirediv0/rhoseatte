@@ -54,7 +54,7 @@ const NAV_LINKS = [
 ];
 
 const ANNOUNCEMENTS = [
-  "Complimentary Shipping on orders above \u20B9999 | Proudly handcrafted in India \uD83C\uDDEE\uD83C\uDDF3",
+  "\uD83C\uDF81 Get Freebies + Extra 5% OFF on Prepaid Orders!",
 ];
 
 function AvatarCircle({ name, size = "sm" }) {
