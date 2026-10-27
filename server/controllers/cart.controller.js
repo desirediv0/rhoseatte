@@ -260,36 +260,9 @@ export const getUserCart = asyncHandler(async (req, res) => {
     })
   );
 
-  // Calculate shipping
   let shippingTotal = 0;
   let freeShippingThreshold = 0;
   let shippingMessage = "";
-
-  const shiprocketSettings = await prisma.shiprocketSettings.findFirst();
-
-  if (shiprocketSettings) {
-    const charge = parseFloat(shiprocketSettings.shippingCharge) || 0;
-    // Only set threshold if there is a charge, otherwise it's always free (threshold irrelevant)
-    freeShippingThreshold = charge > 0 ? (parseFloat(shiprocketSettings.freeShippingThreshold) || 0) : 0;
-
-    if (charge > 0) {
-      if (freeShippingThreshold > 0) {
-        if (subtotal >= freeShippingThreshold) {
-          shippingTotal = 0;
-          shippingMessage = "Eligible for Free Shipping";
-        } else {
-          shippingTotal = charge;
-          // Format message in frontend usually, but providing data here helps
-          shippingMessage = "Add more for free shipping";
-        }
-      } else {
-        shippingTotal = charge;
-      }
-    } else {
-      shippingTotal = 0;
-      shippingMessage = "Free Shipping";
-    }
-  }
 
   // Format bundle items with re-validation
   let bundleSubtotal = 0;
@@ -401,6 +374,35 @@ export const getUserCart = asyncHandler(async (req, res) => {
 
   const allItems = [...formattedNormalItems, ...formattedBundleItems];
   const combinedSubtotal = subtotal + bundleSubtotal;
+
+  // Calculate shipping on the COMBINED subtotal (products + bundles), otherwise a
+  // bundle-only cart is charged shipping even above the free-shipping threshold.
+  const shiprocketSettings = await prisma.shiprocketSettings.findFirst();
+
+  if (shiprocketSettings) {
+    const charge = parseFloat(shiprocketSettings.shippingCharge) || 0;
+    // Only set threshold if there is a charge, otherwise it's always free (threshold irrelevant)
+    freeShippingThreshold = charge > 0 ? (parseFloat(shiprocketSettings.freeShippingThreshold) || 0) : 0;
+
+    if (charge > 0) {
+      if (freeShippingThreshold > 0) {
+        if (combinedSubtotal >= freeShippingThreshold) {
+          shippingTotal = 0;
+          shippingMessage = "Eligible for Free Shipping";
+        } else {
+          shippingTotal = charge;
+          // Format message in frontend usually, but providing data here helps
+          shippingMessage = "Add more for free shipping";
+        }
+      } else {
+        shippingTotal = charge;
+      }
+    } else {
+      shippingTotal = 0;
+      shippingMessage = "Free Shipping";
+    }
+  }
+
 
   res.status(200).json(
     new ApiResponsive(
