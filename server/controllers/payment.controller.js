@@ -344,12 +344,17 @@ export const checkout = asyncHandler(async (req, res) => {
       // Check bundle products
       const bundleProducts = await prisma.product.findMany({
         where: { id: { in: selectedProductIds } },
+        include: { variants: { take: 1, select: { quantity: true, isActive: true } } },
       });
       for (const pid of selectedProductIds) {
         const p = bundleProducts.find((bp) => bp.id === pid);
         if (!p) throw new ApiError(400, "A product in a bundle no longer exists");
         if (p.isDeleted) throw new ApiError(400, `"${p.name}" in a bundle has been removed`);
         if (!p.isActive) throw new ApiError(400, `"${p.name}" in a bundle is unavailable`);
+        const v = p.variants[0];
+        if (v && (!v.isActive || v.quantity < 1)) {
+          throw new ApiError(400, `"${p.name}" in a bundle is out of stock`);
+        }
       }
 
       const matchingSlab = campaign.pricingSlabs.find((s) => s.itemCount === itemCount);
@@ -1969,7 +1974,7 @@ export const phonePeCallback = asyncHandler(async (req, res) => {
         const products = await prisma.product.findMany({
           where: { id: { in: selectedProductIds } },
           include: {
-            variants: { take: 1, select: { price: true, salePrice: true, id: true } },
+            variants: { take: 1, select: { price: true, salePrice: true, id: true, quantity: true } },
           },
         });
 
@@ -1977,6 +1982,9 @@ export const phonePeCallback = asyncHandler(async (req, res) => {
         for (const product of products) {
           const variant = product.variants[0];
           if (variant) {
+            if (variant.quantity < 1) {
+              throw new ApiError(400, `"${product.name}" in a bundle is out of stock`);
+            }
             actualPrice += parseFloat(variant.salePrice || variant.price);
           }
         }
