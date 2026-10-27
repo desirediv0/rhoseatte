@@ -326,7 +326,11 @@ export const getUserCart = asyncHandler(async (req, res) => {
           id: true,
           name: true,
           slug: true,
-          image: true,
+          images: {
+            orderBy: { order: "asc" },
+            take: 1,
+            select: { url: true },
+          },
           variants: {
             take: 1,
             select: {
@@ -346,7 +350,7 @@ export const getUserCart = asyncHandler(async (req, res) => {
         if (!product) return null;
         const variant = product.variants[0];
         const price = parseFloat(variant?.salePrice || variant?.price || 0);
-        const imageUrl = variant?.images?.[0]?.url || product.image;
+        const imageUrl = variant?.images?.[0]?.url || product.images?.[0]?.url;
         return {
           id: product.id,
           name: product.name,
