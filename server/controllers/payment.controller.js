@@ -745,7 +745,7 @@ export const paymentVerification = asyncHandler(async (req, res) => {
       const products = await prisma.product.findMany({
         where: { id: { in: selectedProductIds } },
         include: {
-          variants: { take: 1, select: { price: true, salePrice: true, id: true } },
+          variants: { take: 1, select: { price: true, salePrice: true, id: true, quantity: true } },
         },
       });
 
@@ -2433,7 +2433,7 @@ export const createCashOrder = asyncHandler(async (req, res) => {
       const products = await prisma.product.findMany({
         where: { id: { in: selectedProductIds } },
         include: {
-          variants: { take: 1, select: { price: true, salePrice: true, id: true } },
+          variants: { take: 1, select: { price: true, salePrice: true, id: true, quantity: true } },
         },
       });
 
