@@ -93,7 +93,12 @@ export function CartProvider({ children }) {
                     setMergeProgress("Adding guest items to your cart...");
                     const result = await mergeGuestCartWithUserCart();
                     if (result.success) {
-                        toast.success(result.message);
+                        if (result.skippedItems > 0) {
+                            // Show WHY (server's reason) and keep it on screen long enough to read
+                            toast.error(result.message, { duration: 20000 });
+                        } else {
+                            toast.success(result.message);
+                        }
                         // Fetch updated cart from server to show the merged result
                         setMergeProgress("Updating cart display...");
                         await fetchCart();
