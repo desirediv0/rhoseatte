@@ -997,13 +997,22 @@ export const addBundleToCart = asyncHandler(async (req, res) => {
   const savings = actualPrice - bundlePrice;
 
   // Check if user already has this bundle in cart
-  const existingBundle = await prisma.cartItem.findFirst({
+  // Same campaign with a DIFFERENT product selection is a separate bundle
+  // line; only an identical selection updates the existing one.
+  const sameSelection = (ids) =>
+    Array.isArray(ids) &&
+    ids.length === selectedProductIds.length &&
+    [...ids].sort().join(",") === [...selectedProductIds].sort().join(",");
+  const campaignBundles = await prisma.cartItem.findMany({
     where: {
       userId,
       cartItemType: "BUNDLE",
       bundleCampaignId,
     },
   });
+  const existingBundle = campaignBundles.find((b) =>
+    sameSelection(b.bundleData?.selectedProductIds)
+  );
 
   let cartItem;
 

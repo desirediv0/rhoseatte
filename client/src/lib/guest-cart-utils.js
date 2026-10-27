@@ -206,8 +206,19 @@ export const addToGuestCart = async (productVariantId, quantity = 1, variantHint
         const currentCart = getGuestCart();
 
         // Check if item already exists in cart
-        const existingItemIndex = currentCart.items.findIndex(
-            (item) => item.productVariantId === newItem.productVariantId
+        // Bundles are matched by their exact product selection, so two different
+        // bundles from the same campaign stay as two separate lines.
+        const sameBundleSelection = (x, y) => {
+            const p = x.selectedProductIds, q = y.selectedProductIds;
+            return Array.isArray(p) && Array.isArray(q) && p.length === q.length &&
+                [...p].sort().join(",") === [...q].sort().join(",");
+        };
+        const existingItemIndex = currentCart.items.findIndex((item) =>
+            newItem.isBundle
+                ? item.isBundle &&
+                  item.bundleCampaignId === newItem.bundleCampaignId &&
+                  sameBundleSelection(item, newItem)
+                : item.productVariantId === newItem.productVariantId
         );
 
         if (existingItemIndex !== -1) {
@@ -320,7 +331,7 @@ export const mergeGuestCartWithUserCart = async () => {
         clearGuestCart();
 
         // Process all items in parallel for faster merging
-        const mergePromises = guestItemsToMerge.map(async (guestItem) => {
+        const mergeOne = async (guestItem) => {
             try {
                 const quantity = Math.max(1, parseInt(guestItem.quantity) || 1);
                 const apiBase = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://localhost:4004/api" : "https://api.rhoseatte.com/api");
@@ -375,10 +386,14 @@ export const mergeGuestCartWithUserCart = async () => {
                 );
                 return { success: false, item: guestItem, error: error.message };
             }
-        });
+        };
 
-        // Wait for all merge operations to complete
-        const results = await Promise.all(mergePromises);
+        // One at a time: parallel requests raced each other on the server and
+        // dropped bundles when several were merged together.
+        const results = [];
+        for (const guestItem of guestItemsToMerge) {
+            results.push(await mergeOne(guestItem));
+        }
 
         // Count successful and failed merges
         // Put back anything that failed to merge so it is not silently lost
