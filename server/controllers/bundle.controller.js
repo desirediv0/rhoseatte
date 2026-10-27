@@ -158,7 +158,7 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
     filterConditions.push({
       variants: {
         some: {
-          attributeValues: {
+          attributes: {
             some: { attributeValueId: { in: rule.attributeValueIds } },
           },
         },

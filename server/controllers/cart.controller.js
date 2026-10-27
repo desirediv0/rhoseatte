@@ -922,7 +922,7 @@ export const addBundleToCart = asyncHandler(async (req, res) => {
     conditions.push({
       variants: {
         some: {
-          attributeValues: {
+          attributes: {
             some: { attributeValueId: { in: rule.attributeValueIds } },
           },
         },

@@ -686,7 +686,7 @@ export const previewBundleProducts = asyncHandler(async (req, res, next) => {
     conditions.push({
       variants: {
         some: {
-          attributeValues: {
+          attributes: {
             some: { attributeValueId: { in: rule.attributeValueIds } },
           },
         },

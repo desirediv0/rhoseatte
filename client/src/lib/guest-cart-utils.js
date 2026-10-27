@@ -374,6 +374,19 @@ export const mergeGuestCartWithUserCart = async () => {
         const results = await Promise.all(mergePromises);
 
         // Count successful and failed merges
+        // Put back anything that failed to merge so it is not silently lost
+        const failedItems = results.filter((r) => !r.success).map((r) => r.item);
+        if (failedItems.length > 0) {
+            const restored = getGuestCart();
+            restored.items.push(...failedItems);
+            restored.itemCount = restored.items.length;
+            restored.totalQuantity = restored.items.reduce((s, i) => s + (i.quantity || 1), 0);
+            restored.subtotal = restored.items
+                .reduce((s, i) => s + (parseFloat(i.subtotal) || parseFloat(i.price || 0) * (i.quantity || 1) || 0), 0)
+                .toFixed(2);
+            saveGuestCart(restored);
+        }
+
         const mergedCount = results.filter((result) => result.success).length;
         const skippedCount = results.filter((result) => !result.success).length;
 
