@@ -352,13 +352,20 @@ export const mergeGuestCartWithUserCart = async () => {
                 if (addResponse.ok) {
                     return { success: true, item: guestItem };
                 } else {
+                    let serverMessage = addResponse.statusText;
+                    try {
+                        const body = await addResponse.json();
+                        if (body?.message) serverMessage = body.message;
+                    } catch (_) {
+                        /* keep status text */
+                    }
                     console.warn(
-                        `Failed to merge item ${guestItem.productVariantId}: ${addResponse.statusText}`
+                        `Failed to merge item ${guestItem.productVariantId}: ${serverMessage}`
                     );
                     return {
                         success: false,
                         item: guestItem,
-                        error: addResponse.statusText,
+                        error: serverMessage,
                     };
                 }
             } catch (error) {
@@ -392,7 +399,8 @@ export const mergeGuestCartWithUserCart = async () => {
 
         let message = `Successfully merged ${mergedCount} items from guest cart`;
         if (skippedCount > 0) {
-            message += `. ${skippedCount} items could not be merged.`;
+            const reason = results.find((r) => !r.success && r.error)?.error;
+            message += `. ${skippedCount} items could not be merged${reason ? `: ${reason}` : "."}`;
         }
 
         if (mergedCount > 0) {

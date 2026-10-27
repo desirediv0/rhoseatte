@@ -671,7 +671,7 @@ export const previewBundleProducts = asyncHandler(async (req, res, next) => {
   if (rule.subcategoryIds && rule.subcategoryIds.length > 0) {
     conditions.push({
       subCategories: {
-        some: { subcategoryId: { in: rule.subcategoryIds } },
+        some: { subCategoryId: { in: rule.subcategoryIds } },
       },
     });
   }

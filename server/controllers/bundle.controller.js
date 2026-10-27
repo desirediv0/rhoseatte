@@ -145,7 +145,7 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
   if (rule.subcategoryIds && rule.subcategoryIds.length > 0) {
     filterConditions.push({
       subCategories: {
-        some: { subcategoryId: { in: rule.subcategoryIds } },
+        some: { subCategoryId: { in: rule.subcategoryIds } },
       },
     });
   }
