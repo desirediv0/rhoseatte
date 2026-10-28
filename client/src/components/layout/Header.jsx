@@ -54,7 +54,7 @@ const NAV_LINKS = [
 ];
 
 const ANNOUNCEMENTS = [
-  "\uD83C\uDF81 Get Freebies + Extra 5% OFF on Prepaid Orders!",
+  "\uD83C\uDF81 Get Freebies + Extra 5% OFF on Prepaid Orders! \uD83D\uDCE6 Free shipping above \u20B9699.",
 ];
 
 function AvatarCircle({ name, size = "sm" }) {
