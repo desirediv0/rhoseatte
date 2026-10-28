@@ -1886,12 +1886,48 @@ export const getUserReviews = asyncHandler(async (req, res, next) => {
 
 // Add review
 export const addReview = asyncHandler(async (req, res, next) => {
-  const { productId, title, comment } = req.body;
+  const { productId, bundleCampaignId, title, comment } = req.body;
   const rating = parseInt(req.body.rating, 10);
 
   // Validate required fields
-  if (!productId || !Number.isInteger(rating) || rating < 1 || rating > 5) {
-    throw new ApiError(400, "Product ID and rating are required");
+  if ((!productId && !bundleCampaignId) || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new ApiError(400, "Product (or bundle) and rating are required");
+  }
+
+  // Reviewing a bundle: same rules as a product — must have bought it
+  // (order shipped/delivered) and only one review each.
+  if (bundleCampaignId) {
+    const bundle = await prisma.bundleCampaign.findUnique({ where: { id: bundleCampaignId } });
+    if (!bundle) throw new ApiError(404, "Bundle not found");
+
+    const already = await prisma.review.findFirst({
+      where: { userId: req.user.id, bundleCampaignId },
+    });
+    if (already) throw new ApiError(409, "You have already reviewed this bundle");
+
+    const boughtBundle = await prisma.orderBundle.findFirst({
+      where: {
+        bundleCampaignId,
+        order: { userId: req.user.id, status: { in: ["DELIVERED", "SHIPPED"] } },
+      },
+    });
+    if (!boughtBundle) throw new ApiError(403, "You can only review bundles you have purchased");
+
+    const bundleImages = await uploadReviewImages(req.files || []);
+    const bundleReview = await prisma.review.create({
+      data: {
+        userId: req.user.id,
+        bundleCampaignId,
+        rating,
+        title,
+        comment,
+        images: bundleImages,
+        status: "PENDING",
+      },
+    });
+    return res
+      .status(201)
+      .json(new ApiResponsive(201, { review: bundleReview }, "Review submitted successfully"));
   }
 
   // Check if product exists

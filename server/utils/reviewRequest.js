@@ -22,6 +22,7 @@ export async function sendReviewRequestForOrder(orderId, { force = false } = {})
       include: {
         user: { select: { id: true, name: true, email: true } },
         items: { select: { productId: true } },
+        orderBundles: { select: { bundleCampaignId: true, bundleName: true, selectedProducts: true } },
       },
     });
     if (!order) return { sent: false, reason: "Order not found" };
@@ -39,14 +40,49 @@ export async function sendReviewRequestForOrder(orderId, { force = false } = {})
       claimed = true;
     }
 
-    const productIds = [...new Set(order.items.map((i) => i.productId).filter(Boolean))];
+    // Products that only came inside a bundle are reviewed through the bundle,
+    // not one by one. A product also bought on its own (more order rows than
+    // bundle appearances) still gets its own link.
+    const bundleProductCount = new Map();
+    for (const b of order.orderBundles) {
+      const sel = Array.isArray(b.selectedProducts) ? b.selectedProducts : [];
+      for (const s of sel) {
+        if (s?.productId) bundleProductCount.set(s.productId, (bundleProductCount.get(s.productId) || 0) + 1);
+      }
+    }
+    const rowCount = new Map();
+    for (const i of order.items) {
+      if (i.productId) rowCount.set(i.productId, (rowCount.get(i.productId) || 0) + 1);
+    }
+    const productIds = [...rowCount.keys()].filter(
+      (id) => rowCount.get(id) > (bundleProductCount.get(id) || 0)
+    );
     const alreadyReviewed = await prisma.review.findMany({
       where: { userId: order.user.id, productId: { in: productIds } },
       select: { productId: true },
     });
     const reviewedSet = new Set(alreadyReviewed.map((r) => r.productId));
     const toReview = productIds.filter((id) => !reviewedSet.has(id));
-    if (toReview.length === 0) return { sent: false, reason: "All products already reviewed" };
+
+    // Bundles in this order that the customer has not reviewed yet
+    const bundleIds = [...new Set(order.orderBundles.map((b) => b.bundleCampaignId).filter(Boolean))];
+    const reviewedBundles = bundleIds.length
+      ? await prisma.review.findMany({
+          where: { userId: order.user.id, bundleCampaignId: { in: bundleIds } },
+          select: { bundleCampaignId: true },
+        })
+      : [];
+    const reviewedBundleSet = new Set(reviewedBundles.map((r) => r.bundleCampaignId));
+    const bundlesToReview = bundleIds.length
+      ? await prisma.bundleCampaign.findMany({
+          where: { id: { in: bundleIds.filter((id) => !reviewedBundleSet.has(id)) } },
+          select: { title: true, slug: true, banner: true },
+        })
+      : [];
+
+    if (toReview.length === 0 && bundlesToReview.length === 0) {
+      return { sent: false, reason: "All products already reviewed" };
+    }
 
     const products = await prisma.product.findMany({
       where: { id: { in: toReview } },
@@ -56,10 +92,17 @@ export async function sendReviewRequestForOrder(orderId, { force = false } = {})
         images: { orderBy: { order: "asc" }, take: 3, select: { url: true, isPrimary: true } },
       },
     });
-    const emailProducts = products.map((p) => {
-      const img = p.images.find((i) => i.isPrimary) || p.images[0];
-      return { name: p.name, slug: p.slug, image: img ? getFileUrl(img.url) : null };
-    });
+    const emailProducts = [
+      ...bundlesToReview.map((b) => ({
+        name: b.title,
+        path: `/bundles/${b.slug}`,
+        image: b.banner ? getFileUrl(b.banner) : null,
+      })),
+      ...products.map((p) => {
+        const img = p.images.find((i) => i.isPrimary) || p.images[0];
+        return { name: p.name, path: `/products/${p.slug}`, image: img ? getFileUrl(img.url) : null };
+      }),
+    ];
 
     const store = getStoreConfig();
     await sendEmail({

@@ -6,6 +6,7 @@ import { fetchApi } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
 import { IconCheck, IconShoppingCart, IconX, IconStar } from "@tabler/icons-react";
+import BundleReviewForm from "./BundleReviewForm";
 
 export default function BundleDetailPage({ params }) {
   const slug = params?.slug;
@@ -396,8 +397,13 @@ export default function BundleDetailPage({ params }) {
         </div>
 
         {/* Customer reviews */}
+        <div id="reviews" className="mt-14 max-w-3xl scroll-mt-24">
+          <div className="mb-8">
+            <BundleReviewForm bundle={bundle} />
+          </div>
+        </div>
         {bundle.reviews?.length > 0 && (
-          <div className="mt-14 max-w-3xl">
+          <div className="mt-2 max-w-3xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-medium">Customer Reviews</h2>
               <div className="flex items-center gap-2 text-sm text-gray-600">

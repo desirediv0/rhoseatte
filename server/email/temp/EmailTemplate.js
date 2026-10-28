@@ -989,7 +989,7 @@ export const getReviewRequestTemplate = (data, storeConfig = null) => {
     const base = String(data.baseUrl || process.env.FRONTEND_URL || store.websiteUrl || "https://rhoseatte.com").replace(/\/+$/, "");
     const esc = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     const rows = (data.products || []).map((p) => {
-        const link = esc(`${base}/products/${p.slug}?review=true#reviews`);
+        const link = esc(`${base}${p.path || `/products/${p.slug}`}?review=true#reviews`);
         return `
             <tr>
               <td style="padding:14px 0;border-bottom:1px solid #EAEAEA;width:72px;vertical-align:middle;">
