@@ -439,7 +439,7 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
           },
         },
         orderBy: { createdAt: "desc" },
-        take: 5,
+        take: 50,
       },
       _count: {
         select: {
@@ -485,6 +485,12 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
   }
 
   // Format the response
+  // Average over ALL approved reviews (the list below is capped)
+  const ratingAgg = await prisma.review.aggregate({
+    where: { productId: product.id, status: "APPROVED" },
+    _avg: { rating: true },
+  });
+
   const formattedProduct = {
     ...product,
     // Add primary category
@@ -652,13 +658,7 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
       }));
     })(),
     // Average rating
-    avgRating:
-      product.reviews.length > 0
-        ? (
-          product.reviews.reduce((sum, review) => sum + review.rating, 0) /
-          product.reviews.length
-        ).toFixed(1)
-        : null,
+    avgRating: ratingAgg._avg.rating ? ratingAgg._avg.rating.toFixed(1) : null,
     reviewCount: product._count.reviews,
     reviews: product.reviews.map(publicReview),
     // Include SEO fields
