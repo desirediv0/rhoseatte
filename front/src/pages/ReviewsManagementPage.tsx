@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { reviews, products as productsApi } from "@/api/adminService";
+import { reviews, products as productsApi, bundles as bundlesApi } from "@/api/adminService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -87,6 +87,8 @@ export default function ReviewsManagementPage() {
 
   // "Add review" (on behalf of a customer)
   const EMPTY_ADD_FORM = {
+    target: "product" as "product" | "bundle",
+    bundleCampaignId: "",
     productId: "",
     productName: "",
     reviewerName: "",
@@ -110,8 +112,17 @@ export default function ReviewsManagementPage() {
     const timer = setTimeout(async () => {
       try {
         setProductSearching(true);
-        const res = await productsApi.getProducts({ page: 1, limit: 8, search: productSearch.trim() });
-        if (!cancelled && res.data.success) setProductResults(res.data.data?.products || []);
+        if (addForm.target === "bundle") {
+          const res = await bundlesApi.getBundles({ page: 1, limit: 8, search: productSearch.trim() });
+          if (!cancelled) {
+            setProductResults(
+              (res.data.data?.campaigns || []).map((b: any) => ({ id: b.id, name: b.title }))
+            );
+          }
+        } else {
+          const res = await productsApi.getProducts({ page: 1, limit: 8, search: productSearch.trim() });
+          if (!cancelled && res.data.success) setProductResults(res.data.data?.products || []);
+        }
       } catch {
         if (!cancelled) setProductResults([]);
       } finally {
@@ -122,16 +133,19 @@ export default function ReviewsManagementPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [addOpen, productSearch]);
+  }, [addOpen, productSearch, addForm.target]);
 
   const submitAddReview = async () => {
-    if (!addForm.productId) return toast.error("Please choose a product");
+    if (!addForm.productId && !addForm.bundleCampaignId)
+      return toast.error(addForm.target === "bundle" ? "Please choose a bundle" : "Please choose a product");
     if (!addForm.reviewerName.trim()) return toast.error("Please enter the reviewer's name");
     if (!addForm.comment.trim()) return toast.error("Please write the review text");
     setAddSaving(true);
     try {
       await reviews.createReview({
-        productId: addForm.productId,
+        ...(addForm.target === "bundle"
+          ? { bundleCampaignId: addForm.bundleCampaignId }
+          : { productId: addForm.productId }),
         reviewerName: addForm.reviewerName.trim(),
         rating: addForm.rating,
         title: addForm.title.trim(),
@@ -669,7 +683,7 @@ export default function ReviewsManagementPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold text-[#1F2937] truncate">
-                            {review.product?.name || t("reviews.table.unknown_product")}
+                            {review.product?.name || (review.bundleCampaign?.title ? `Bundle: ${review.bundleCampaign.title}` : t("reviews.table.unknown_product"))}
                           </h3>
                           {renderStars(review.rating)}
                         </div>
@@ -781,15 +795,38 @@ export default function ReviewsManagementPage() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Product</Label>
-              {addForm.productId ? (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={addForm.target === "product" ? "default" : "outline"}
+                  onClick={() => {
+                    setAddForm({ ...addForm, target: "product", productId: "", bundleCampaignId: "", productName: "" });
+                    setProductResults([]);
+                  }}
+                >
+                  Product
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={addForm.target === "bundle" ? "default" : "outline"}
+                  onClick={() => {
+                    setAddForm({ ...addForm, target: "bundle", productId: "", bundleCampaignId: "", productName: "" });
+                    setProductResults([]);
+                  }}
+                >
+                  Bundle
+                </Button>
+              </div>
+              {addForm.productId || addForm.bundleCampaignId ? (
                 <div className="flex items-center justify-between rounded-md border p-2 text-sm">
                   <span className="truncate">{addForm.productName}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setAddForm({ ...addForm, productId: "", productName: "" })}
+                    onClick={() => setAddForm({ ...addForm, productId: "", bundleCampaignId: "", productName: "" })}
                   >
                     Change
                   </Button>
@@ -797,7 +834,7 @@ export default function ReviewsManagementPage() {
               ) : (
                 <>
                   <Input
-                    placeholder="Search product..."
+                    placeholder={addForm.target === "bundle" ? "Search bundle..." : "Search product..."}
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                   />
@@ -814,7 +851,13 @@ export default function ReviewsManagementPage() {
                           key={p.id}
                           type="button"
                           className="w-full border-b p-2 text-left text-sm last:border-b-0 hover:bg-gray-50"
-                          onClick={() => setAddForm({ ...addForm, productId: p.id, productName: p.name })}
+                          onClick={() =>
+                            setAddForm(
+                              addForm.target === "bundle"
+                                ? { ...addForm, bundleCampaignId: p.id, productName: p.name }
+                                : { ...addForm, productId: p.id, productName: p.name }
+                            )
+                          }
                         >
                           {p.name}
                         </button>
@@ -949,7 +992,7 @@ export default function ReviewsManagementPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-medium">
-                    {selectedReview.product?.name}
+                    {selectedReview.product?.name || (selectedReview.bundleCampaign?.title ? `Bundle: ${selectedReview.bundleCampaign.title}` : "")}
                   </h3>
                   <div className="flex items-center mt-1">
                     {renderStars(selectedReview.rating)}

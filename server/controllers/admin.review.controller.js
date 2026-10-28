@@ -84,6 +84,9 @@ export const getReviews = async (req, res, next) => {
               },
             },
           },
+          bundleCampaign: {
+            select: { id: true, title: true, slug: true },
+          },
         },
         orderBy: {
           [sortBy]: order,
@@ -118,22 +121,28 @@ export const getReviews = async (req, res, next) => {
  */
 export const createAdminReview = async (req, res, next) => {
   try {
-    const { productId, reviewerName, rating, title, comment, createdAt } = req.body;
+    const { productId, bundleCampaignId, reviewerName, rating, title, comment, createdAt } = req.body;
     const status = ["APPROVED", "PENDING", "REJECTED"].includes(req.body.status)
       ? req.body.status
       : "APPROVED";
 
     const name = String(reviewerName || "").trim();
     const ratingNum = parseInt(rating, 10);
-    if (!productId) throw new ApiError(400, "Product is required");
+    if (!productId && !bundleCampaignId) throw new ApiError(400, "Choose a product or a bundle");
+    if (productId && bundleCampaignId) throw new ApiError(400, "Choose either a product or a bundle, not both");
     if (!name) throw new ApiError(400, "Reviewer name is required");
     if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
       throw new ApiError(400, "Rating must be between 1 and 5");
     }
     if (!String(comment || "").trim()) throw new ApiError(400, "Review text is required");
 
-    const product = await prisma.product.findUnique({ where: { id: productId } });
-    if (!product) throw new ApiError(404, "Product not found");
+    if (productId) {
+      const product = await prisma.product.findUnique({ where: { id: productId } });
+      if (!product) throw new ApiError(404, "Product not found");
+    } else {
+      const bundle = await prisma.bundleCampaign.findUnique({ where: { id: bundleCampaignId } });
+      if (!bundle) throw new ApiError(404, "Bundle not found");
+    }
 
     let date;
     if (createdAt) {
@@ -146,7 +155,8 @@ export const createAdminReview = async (req, res, next) => {
 
     const review = await prisma.review.create({
       data: {
-        productId,
+        productId: productId || null,
+        bundleCampaignId: bundleCampaignId || null,
         images,
         reviewerName: name.slice(0, 80),
         isAdminCreated: true,

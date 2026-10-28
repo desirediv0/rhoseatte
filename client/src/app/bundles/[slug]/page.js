@@ -5,7 +5,7 @@ import Image from "next/image";
 import { fetchApi } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
-import { IconCheck, IconShoppingCart, IconX } from "@tabler/icons-react";
+import { IconCheck, IconShoppingCart, IconX, IconStar } from "@tabler/icons-react";
 
 export default function BundleDetailPage({ params }) {
   const slug = params?.slug;
@@ -394,6 +394,57 @@ export default function BundleDetailPage({ params }) {
             </div>
           </div>
         </div>
+
+        {/* Customer reviews */}
+        {bundle.reviews?.length > 0 && (
+          <div className="mt-14 max-w-3xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-medium">Customer Reviews</h2>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <IconStar key={i} size={16} stroke={0} fill={i < Math.round(bundle.avgRating || 0) ? "#B8976A" : "#EAEAEA"} />
+                  ))}
+                </div>
+                <span>{bundle.avgRating} · {bundle.reviewCount} {bundle.reviewCount === 1 ? "review" : "reviews"}</span>
+              </div>
+            </div>
+            <div className="space-y-6">
+              {bundle.reviews.map((r) => (
+                <div key={r.id} className="pb-6 border-b border-gray-200">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{r.user?.name || "Customer"}</p>
+                      <div className="flex mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <IconStar key={i} size={14} stroke={0} fill={i < r.rating ? "#B8976A" : "#EAEAEA"} />
+                        ))}
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-500">{new Date(r.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  {r.title && <h3 className="text-sm font-medium mt-3">{r.title}</h3>}
+                  <p className="mt-2 text-sm text-gray-600 leading-relaxed">{r.comment}</p>
+                  {r.images?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {r.images.map((src, i) => (
+                        <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+                          <img src={src} alt="Customer photo" loading="lazy" className="h-16 w-16 object-cover rounded border border-gray-200" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {r.adminReply && (
+                    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-gold-dark">Response from RHOSEATTE</p>
+                      <p className="mt-1 text-gray-600">{r.adminReply}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

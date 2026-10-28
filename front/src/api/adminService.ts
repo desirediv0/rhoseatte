@@ -754,7 +754,8 @@ export const reviews = {
     return api.get("/api/admin/reviews", { params });
   },
   createReview: (data: {
-    productId: string;
+    productId?: string;
+    bundleCampaignId?: string;
     reviewerName: string;
     rating: number;
     title?: string;

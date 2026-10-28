@@ -3,6 +3,7 @@ import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../config/db.js";
 import { getFileUrl } from "../utils/deleteFromS3.js";
+import { reviewImageUrls } from "../utils/reviewImages.js";
 
 // Get all active bundles for website
 export const getActiveBundles = asyncHandler(async (req, res, next) => {
@@ -78,11 +79,38 @@ export const getBundleBySlug = asyncHandler(async (req, res, next) => {
     throw new ApiError(404, "Bundle has expired");
   }
 
+  const [bundleReviews, ratingAgg, reviewCount] = await Promise.all([
+    prisma.review.findMany({
+      where: { bundleCampaignId: bundle.id, status: "APPROVED" },
+      include: { user: { select: { id: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.review.aggregate({
+      where: { bundleCampaignId: bundle.id, status: "APPROVED" },
+      _avg: { rating: true },
+    }),
+    prisma.review.count({ where: { bundleCampaignId: bundle.id, status: "APPROVED" } }),
+  ]);
+
   res.status(200).json(
     new ApiResponsive(
       200,
       {
         id: bundle.id,
+        reviews: bundleReviews.map((r) => ({
+          id: r.id,
+          rating: r.rating,
+          title: r.title,
+          comment: r.comment,
+          createdAt: r.createdAt,
+          adminReply: r.adminReply,
+          adminReplyDate: r.adminReplyDate,
+          images: reviewImageUrls(r.images),
+          user: r.user || { id: null, name: r.reviewerName || "Customer" },
+        })),
+        avgRating: ratingAgg._avg.rating ? ratingAgg._avg.rating.toFixed(1) : null,
+        reviewCount,
         title: bundle.title,
         slug: bundle.slug,
         description: bundle.description,

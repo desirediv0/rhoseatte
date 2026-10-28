@@ -391,7 +391,8 @@ model Review {
   reviewerName   String?
   images         String[]     @default([])
   isAdminCreated Boolean      @default(false)
-  productId      String
+  productId      String?
+  bundleCampaignId String?
   rating         Int          @db.SmallInt
   title          String?
   comment        String?
@@ -402,10 +403,12 @@ model Review {
   adminReplyDate DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product        Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bundleCampaign BundleCampaign? @relation(fields: [bundleCampaignId], references: [id], onDelete: Cascade)
   user           User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([bundleCampaignId, status])
 }
 
 model WishlistItem {
@@ -1407,6 +1410,7 @@ model BundleCampaign {
   pricingSlabs    BundlePricingSlab[]
   cartItems       CartItem[]
   orderBundles    OrderBundle[]
+  reviews         Review[]
 
   @@index([isActive, showOnWebsite, displayOrder])
   @@index([slug])
