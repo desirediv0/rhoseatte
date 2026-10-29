@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { fetchApi } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
@@ -39,11 +40,20 @@ export default function BundleDetailPage({ params }) {
         setProductsLoading(true);
         const res = await fetchApi(`/bundles/${slug}/products?limit=100`);
         const allProducts = res.data?.products || [];
-        setProducts(allProducts.filter((p) => {
+        const inStock = allProducts.filter((p) => {
           const variant = p.variants?.[0];
           const stock = variant?.quantity ?? 0;
           return stock > 0;
-        }));
+        });
+        setProducts(inStock);
+        // Picks made earlier (e.g. added from a product page) come back
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(`bundle_sel_${slug}`) || "[]");
+          const valid = saved.filter((id) => inStock.some((p) => p.id === id));
+          if (valid.length > 0) setSelectedProducts(valid);
+        } catch (_) {
+          /* no saved selection */
+        }
       } catch (err) {
         console.error("Failed to fetch products:", err);
       } finally {
@@ -52,6 +62,15 @@ export default function BundleDetailPage({ params }) {
     };
     fetchProducts();
   }, [slug, bundle]);
+
+  // Keep the selection while the customer visits product pages
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(`bundle_sel_${slug}`, JSON.stringify(selectedProducts));
+    } catch (_) {
+      /* storage unavailable */
+    }
+  }, [selectedProducts, slug]);
 
   const toggleProduct = (productId) => {
     setSelectedProducts((prev) => {
@@ -218,9 +237,8 @@ export default function BundleDetailPage({ params }) {
                   const price = variant?.salePrice || variant?.price || 0;
 
                   return (
-                    <button
+                    <div
                       key={product.id}
-                      onClick={() => toggleProduct(product.id)}
                       className={`relative bg-white overflow-hidden text-left transition-all ${isSelected
                         ? "ring-2 ring-gold-dark shadow-md"
                         : "hover:shadow-md"
@@ -232,7 +250,7 @@ export default function BundleDetailPage({ params }) {
                     >
                       {/* Selection Indicator */}
                       <div
-                        className={`absolute top-2 right-2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isSelected
+                        className={`absolute top-2 right-2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-colors pointer-events-none ${isSelected
                           ? "bg-gold-dark text-white"
                           : "bg-white/80 text-gray-400"
                           }`}
@@ -244,7 +262,8 @@ export default function BundleDetailPage({ params }) {
                         )}
                       </div>
 
-                      {/* Product Image */}
+                      {/* Product Image (opens the product page) */}
+                      <Link href={`/products/${product.slug}?bundle=${slug}`} className="block">
                       <div className="relative aspect-square overflow-hidden">
                         {product.images?.[0]?.url ? (
                           <Image
@@ -262,14 +281,26 @@ export default function BundleDetailPage({ params }) {
                         )}
                       </div>
 
+                      </Link>
+
                       {/* Product Info */}
                       <div className="p-3">
                         <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
                           {product.brand?.name || product.categories?.[0]?.name}
                         </p>
-                        <h3 className="text-sm font-medium text-[#111111] line-clamp-2">
-                          {product.name}
-                        </h3>
+                        <Link href={`/products/${product.slug}?bundle=${slug}`}>
+                          <h3 className="text-sm font-medium text-[#111111] line-clamp-2 hover:underline">
+                            {product.name}
+                          </h3>
+                        </Link>
+                        {product.reviewCount > 0 && (
+                          <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-600">
+                            <IconStar size={14} stroke={0} fill="#B8976A" />
+                            <span className="font-medium">{product.avgRating}</span>
+                            <span className="text-gray-400">|</span>
+                            <span>({product.reviewCount} {product.reviewCount === 1 ? "Review" : "Reviews"})</span>
+                          </div>
+                        )}
                         {variant && variant.attributes && variant.attributes.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {variant.attributes.map((attr, idx) => (
@@ -282,8 +313,18 @@ export default function BundleDetailPage({ params }) {
                         <p className="text-sm text-gold-dark font-medium mt-1">
                           ₹{parseFloat(price).toLocaleString()}
                         </p>
+                        <button
+                          type="button"
+                          onClick={() => toggleProduct(product.id)}
+                          className={`mt-3 w-full py-2 text-xs uppercase tracking-wider font-medium transition-colors rounded ${isSelected
+                            ? "bg-gold-dark text-white"
+                            : "border border-gray-300 text-[#111111] hover:border-black"
+                            }`}
+                        >
+                          {isSelected ? "Added to bundle ✓" : "Add to bundle"}
+                        </button>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

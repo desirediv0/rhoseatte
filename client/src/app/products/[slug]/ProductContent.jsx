@@ -140,6 +140,26 @@ export default function ProductContent({ slug }) {
   const { addVariantToCart } = useAddVariantToCart();
   const { addToCart } = useCart();
 
+  // Opened from a bundle page (?bundle=<slug>): offer "Add to bundle" here
+  const [fromBundle, setFromBundle] = useState(null);
+  useEffect(() => {
+    const b = new URLSearchParams(window.location.search).get("bundle");
+    if (b) setFromBundle(b);
+  }, []);
+
+  const handleAddToBundle = () => {
+    try {
+      const key = `bundle_sel_${fromBundle}`;
+      const saved = JSON.parse(sessionStorage.getItem(key) || "[]");
+      if (!saved.includes(product.id)) saved.push(product.id);
+      sessionStorage.setItem(key, JSON.stringify(saved));
+    } catch (_) {
+      /* storage unavailable: bundle page still opens */
+    }
+    toast.success("Added to your bundle");
+    router.push(`/bundles/${fromBundle}`);
+  };
+
   const getEffectivePrice = (variant, qty) => {
     if (!variant) return null;
     const salePrice = variant.salePrice ? parseFloat(variant.salePrice) : null;
@@ -683,6 +703,27 @@ export default function ProductContent({ slug }) {
                 {isAddingToCart ? <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : outOfStock ? "Sold Out" : "Add to Bag"}
               </button>
             </div>
+
+            {fromBundle && (
+              <div className="mb-6 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddToBundle}
+                  disabled={outOfStock}
+                  className="w-full h-14 text-[10px] font-semibold uppercase tracking-[0.25em] disabled:opacity-40"
+                  style={{ backgroundColor: "#B8976A", color: "#fff", borderRadius: "8px" }}
+                >
+                  Add to Bundle
+                </button>
+                <Link
+                  href={`/bundles/${fromBundle}`}
+                  className="text-center text-[11px] uppercase tracking-[0.18em] underline underline-offset-4"
+                  style={{ color: "#666666" }}
+                >
+                  Back to bundle
+                </Link>
+              </div>
+            )}
 
             {/* Delivery */}
             <div className="mb-7">

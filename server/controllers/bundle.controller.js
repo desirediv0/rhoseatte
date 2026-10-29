@@ -261,10 +261,25 @@ export const getBundleProducts = asyncHandler(async (req, res, next) => {
     orderBy: { [sort]: order },
   });
 
+  // Average rating + review count (approved reviews) for the products shown
+  const ratingRows = products.length
+    ? await prisma.review.groupBy({
+        by: ["productId"],
+        where: { productId: { in: products.map((p) => p.id) }, status: "APPROVED" },
+        _avg: { rating: true },
+        _count: { _all: true },
+      })
+    : [];
+  const ratingByProduct = new Map(ratingRows.map((r) => [r.productId, r]));
+
   const formattedProducts = products.map((p) => ({
     id: p.id,
     name: p.name,
     slug: p.slug,
+    avgRating: ratingByProduct.get(p.id)?._avg.rating
+      ? Number(ratingByProduct.get(p.id)._avg.rating.toFixed(1))
+      : null,
+    reviewCount: ratingByProduct.get(p.id)?._count._all || 0,
     description: p.description,
     images: p.images.map((img) => ({
       id: img.id,
