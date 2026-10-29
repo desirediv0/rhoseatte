@@ -357,6 +357,12 @@ export default function BundleDetailPage({ params }) {
                           </h3>
                         </Link>
 
+                        {!(product.reviewCount > 0) && (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-500">
+                            <IconStar size={15} stroke={0} fill="#D1D5DB" />
+                            <span>No reviews yet</span>
+                          </div>
+                        )}
                         {product.reviewCount > 0 && (
                           <div className="mt-1.5 flex items-center gap-1.5 text-xs text-black">
                             <IconStar size={15} stroke={0} fill="#F5B301" />
