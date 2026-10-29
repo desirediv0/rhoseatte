@@ -9,11 +9,13 @@ import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
 import { IconCheck, IconShoppingCart, IconX, IconStar } from "@tabler/icons-react";
 import BundleReviewForm from "./BundleReviewForm";
+import ReviewLightbox from "@/components/ReviewLightbox";
 
 export default function BundleDetailPage({ params }) {
   const slug = params?.slug;
   const { addBundleToCart } = useCart();
   const router = useRouter();
+  const [lightbox, setLightbox] = useState(null);
   const [bundle, setBundle] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -579,9 +581,9 @@ export default function BundleDetailPage({ params }) {
                   {r.images?.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
                       {r.images.map((src, i) => (
-                        <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+                        <button key={i} type="button" onClick={() => setLightbox({ images: r.images, index: i })} aria-label={`Open photo ${i + 1}`}>
                           <img src={src} alt="Customer photo" loading="lazy" className="h-16 w-16 object-cover rounded border border-gray-200" />
-                        </a>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -597,6 +599,9 @@ export default function BundleDetailPage({ params }) {
           </div>
         )}
       </div>
+      {lightbox && (
+        <ReviewLightbox images={lightbox.images} startIndex={lightbox.index} onClose={() => setLightbox(null)} />
+      )}
     </div>
   );
 }

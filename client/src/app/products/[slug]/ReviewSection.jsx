@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import ReviewLightbox from "@/components/ReviewLightbox";
 
 export default function ReviewSection({ product }) {
   const { isAuthenticated } = useAuth();
@@ -19,6 +20,8 @@ export default function ReviewSection({ product }) {
   });
   const [showForm, setShowForm] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [lightbox, setLightbox] = useState(null); // { images, index }
+  const [visibleCount, setVisibleCount] = useState(4);
   const [photos, setPhotos] = useState([]); // File[] (max 5)
   const previews = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos]);
   useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
@@ -218,92 +221,151 @@ export default function ReviewSection({ product }) {
     </form>
   );
 
+  const reviews = product.reviews || [];
+  const avg = parseFloat(product.avgRating) || 0;
+  const total = product.reviewCount || reviews.length;
+  const allPhotos = reviews.flatMap((r) => r.images || []);
+  const startWriting = () => {
+    if (!isAuthenticated) {
+      router.push(`/auth?redirect=/products/${product.slug}&review=true`);
+      return;
+    }
+    setShowForm(true);
+  };
+  const stars = (value, size = "h-4 w-4") =>
+    [1, 2, 3, 4, 5].map((i) => (
+      <IconStar key={i} className={size} style={{ color: i <= Math.round(value) ? "#F5B301" : "#E5E7EB" }} fill={i <= Math.round(value) ? "#F5B301" : "#E5E7EB"} stroke={0} />
+    ));
+
   return (
     <div>
-      {product.reviews && product.reviews.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-display text-lg" style={{ color: "#111111" }}>Customer Reviews</h3>
-              <div className="flex items-center">
-                <div className="flex mr-2">
-                  {[...Array(5)].map((_, i) => <IconStar key={i} className="h-4 w-4" style={{ color: i < Math.round(product.avgRating || 0) ? "#B8976A" : "#EAEAEA" }} fill={i < Math.round(product.avgRating || 0) ? "#B8976A" : "none"} stroke={0} />)}
-                </div>
-                <span className="text-[12px]" style={{ color: "#666666" }}>Based on {product.reviewCount} reviews</span>
+      {/* Summary */}
+      <div className="flex flex-col gap-6 pb-8 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: "1px solid #EAEAEA" }}>
+        <h3 className="font-display text-2xl" style={{ color: "#111111" }}>Customer Reviews</h3>
+        <div className="flex flex-wrap items-center gap-6">
+          {reviews.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="font-display text-4xl leading-none" style={{ color: "#111111" }}>{avg.toFixed(1)}</span>
+              <div>
+                <div className="flex gap-0.5">{stars(avg, "h-5 w-5")}</div>
+                <p className="mt-1 text-[12px]" style={{ color: "#666666" }}>Based on {total} {total === 1 ? "review" : "reviews"}</p>
               </div>
             </div>
+          )}
+          {!showForm && (
+            <button onClick={startWriting}
+              className="px-7 py-3 text-[11px] uppercase tracking-[0.18em] font-medium transition-opacity hover:opacity-85"
+              style={{ backgroundColor: "#111111", color: "#fff", borderRadius: "8px" }}>
+              Write a Review
+            </button>
+          )}
+        </div>
+      </div>
 
-            <div className="space-y-8 max-h-[600px] overflow-y-auto pr-4">
-              {product.reviews.map((review) => (
-                <div key={review.id} className="pb-8" style={{ borderBottom: "1px solid #EAEAEA" }}>
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-medium text-[14px]" style={{ color: "#111111" }}>{review.user?.name || review.reviewerName || "Customer"}</p>
-                      <div className="flex mt-1">
-                        {[...Array(5)].map((_, i) => <IconStar key={i} className="h-3.5 w-3.5" style={{ color: i < review.rating ? "#B8976A" : "#EAEAEA" }} fill={i < review.rating ? "#B8976A" : "none"} stroke={0} />)}
-                      </div>
+      {/* Write a review */}
+      {showForm && (
+        <div className="mt-8 p-6" style={{ backgroundColor: "#FAFAFA", border: "1px solid #EAEAEA", borderRadius: "12px" }}>
+          <h4 className="font-display text-lg mb-5" style={{ color: "#111111" }}>Write a Review</h4>
+          <ReviewFormComponent />
+        </div>
+      )}
+      {!isAuthenticated && !showForm && (
+        <p className="mt-4 flex items-center text-[12px]" style={{ color: "#8a7a5c" }}>
+          <IconAlertCircle className="h-4 w-4 mr-2 flex-shrink-0" stroke={1.5} />
+          Sign in to write a review. Only customers who bought this product can review it.
+        </p>
+      )}
+
+      {reviews.length === 0 ? (
+        <div className="mt-8 text-center py-14" style={{ backgroundColor: "#FAFAFA", border: "1px solid #EAEAEA", borderRadius: "12px" }}>
+          <div className="flex justify-center gap-1 mb-3">{stars(0, "h-6 w-6")}</div>
+          <p className="text-[14px] font-light" style={{ color: "#666666" }}>No reviews yet. Be the first to review this product!</p>
+        </div>
+      ) : (
+        <>
+          {/* Photos from customers */}
+          {allPhotos.length > 0 && (
+            <div className="mt-8">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: "#111111" }}>Photos from customers</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {allPhotos.slice(0, 10).map((src, i) => (
+                  <button key={i} type="button" onClick={() => setLightbox({ images: allPhotos, index: i })}
+                    className="relative h-20 w-20 flex-shrink-0 overflow-hidden transition-transform hover:scale-[1.04]"
+                    style={{ borderRadius: "8px", border: "1px solid #EAEAEA" }} aria-label={`Open customer photo ${i + 1}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt="Customer photo" loading="lazy" className="h-full w-full object-cover" />
+                    {i === 9 && allPhotos.length > 10 && (
+                      <span className="absolute inset-0 flex items-center justify-center text-sm font-medium text-white" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>+{allPhotos.length - 10}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Review cards */}
+          <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
+            {reviews.slice(0, visibleCount).map((review) => {
+              const name = review.user?.name || review.reviewerName || "Customer";
+              const hasTitle = review.title && review.title !== "Review";
+              return (
+                <article key={review.id} className="p-5" style={{ border: "1px solid #EAEAEA", borderRadius: "12px", backgroundColor: "#fff" }}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold uppercase" style={{ backgroundColor: "#F3EBDD", color: "#8a6d3b" }}>
+                      {name.trim().charAt(0) || "C"}
                     </div>
-                    <span className="text-[12px]" style={{ color: "#666666" }}>{new Date(review.createdAt).toLocaleDateString()}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-[14px] font-medium" style={{ color: "#111111" }}>{name}</p>
+                        <span className="flex-shrink-0 text-[11px]" style={{ color: "#888888" }}>{new Date(review.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="mt-1 flex gap-0.5">{stars(review.rating, "h-3.5 w-3.5")}</div>
+                    </div>
                   </div>
 
-                  <h4 className="font-medium text-[14px] mt-3" style={{ color: "#111111" }}>{review.title}</h4>
-                  <p className="mt-2 text-[13px] leading-relaxed font-light" style={{ color: "#666666" }}>{review.comment}</p>
+                  {hasTitle && (
+                    <h4 className="mt-4 text-[14px] font-semibold" style={{ color: "#111111" }}>{review.title}</h4>
+                  )}
+                  <p className={`${hasTitle ? "mt-1.5" : "mt-4"} whitespace-pre-line text-[13px] leading-relaxed`} style={{ color: "#555555" }}>{review.comment}</p>
+
                   {review.images?.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       {review.images.map((src, i) => (
-                        <a key={i} href={src} target="_blank" rel="noopener noreferrer">
-                          <img src={src} alt="Customer photo" loading="lazy" className="h-16 w-16 object-cover" style={{ borderRadius: "6px", border: "1px solid #EAEAEA" }} />
-                        </a>
+                        <button key={i} type="button" onClick={() => setLightbox({ images: review.images, index: i })}
+                          className="h-[72px] w-[72px] overflow-hidden transition-transform hover:scale-[1.04]"
+                          style={{ borderRadius: "8px", border: "1px solid #EAEAEA" }} aria-label={`Open photo ${i + 1} of ${review.images.length}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt="Customer photo" loading="lazy" className="h-full w-full object-cover" />
+                        </button>
                       ))}
                     </div>
                   )}
 
                   {review.adminReply && (
-                    <div className="mt-4 p-4" style={{ backgroundColor: "#FAFAFA", border: "1px solid #EAEAEA", borderRadius: "8px" }}>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.15em]" style={{ color: "#B8976A" }}>Response from RHOSEATTE:</p>
-                      <p className="mt-2 text-[13px] leading-relaxed font-light" style={{ color: "#666666" }}>{review.adminReply}</p>
-                      {review.adminReplyDate && <p className="mt-2 text-[11px]" style={{ color: "#999999" }}>Replied on {new Date(review.adminReplyDate).toLocaleDateString()}</p>}
+                    <div className="mt-4 p-3.5" style={{ backgroundColor: "#FAF7F2", borderLeft: "3px solid #B8976A", borderRadius: "6px" }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: "#8a6d3b" }}>Response from RHOSEATTE</p>
+                      <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: "#555555" }}>{review.adminReply}</p>
                     </div>
                   )}
-                </div>
-              ))}
-            </div>
+                </article>
+              );
+            })}
           </div>
 
-          <div className="p-6" style={{ backgroundColor: "#FAFAFA", border: "1px solid #EAEAEA", borderRadius: "8px" }}>
-            <h3 className="font-display text-lg mb-5" style={{ color: "#111111" }}>Write a Review</h3>
-
-            {!showForm ? (
-              <button onClick={() => { if (!isAuthenticated) { router.push(`/auth?redirect=/products/${product.slug}&review=true`); return; } setShowForm(true); }}
-                className="px-8 py-3 text-[11px] uppercase tracking-[0.18em] font-medium transition-colors duration-300"
-                style={{ backgroundColor: "#111111", color: "#fff", borderRadius: "8px" }}>
-                Write a Review
+          {visibleCount < reviews.length && (
+            <div className="mt-6 text-center">
+              <button type="button" onClick={() => setVisibleCount((n) => n + 6)}
+                className="px-8 py-3 text-[11px] uppercase tracking-[0.18em] font-medium"
+                style={{ border: "1px solid #111111", color: "#111111", borderRadius: "8px" }}>
+                Show more reviews ({reviews.length - visibleCount})
               </button>
-            ) : <ReviewFormComponent />}
-
-            {!canReview() && (
-              <div className="mt-4 p-3 flex items-center text-[12px]" style={{ backgroundColor: "#FAFAFA", border: "1px solid rgba(184,151,106,0.3)", color: "#B8976A", borderRadius: "8px" }}>
-                <IconAlertCircle className="h-4 w-4 mr-2 flex-shrink-0" stroke={1.5} />
-                You need to purchase this product to write a review
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-12" style={{ backgroundColor: "#FAFAFA", border: "1px solid #EAEAEA", borderRadius: "8px" }}>
-          <p className="text-[14px] mb-6 font-light" style={{ color: "#666666" }}>No reviews yet. Be the first to review this product!</p>
-          <button onClick={() => { if (!isAuthenticated) { router.push(`/auth?redirect=/products/${product.slug}&review=true`); return; } setShowForm(true); }}
-            className="px-8 py-3 text-[11px] uppercase tracking-[0.18em] font-medium transition-colors duration-300"
-            style={{ backgroundColor: "#111111", color: "#fff", borderRadius: "8px" }}>
-            Write a Review
-          </button>
-
-          {showForm && (
-            <div className="max-w-lg mx-auto mt-8 p-6 bg-white" style={{ border: "1px solid #EAEAEA", borderRadius: "8px" }}>
-              <ReviewFormComponent />
             </div>
           )}
-        </div>
+        </>
+      )}
+
+      {lightbox && (
+        <ReviewLightbox images={lightbox.images} startIndex={lightbox.index} onClose={() => setLightbox(null)} />
       )}
     </div>
   );
