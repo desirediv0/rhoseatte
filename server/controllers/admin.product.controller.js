@@ -294,6 +294,10 @@ export const getProducts = asyncHandler(async (req, res, next) => {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
         { description: { contains: search, mode: "insensitive" } },
+        { slug: { contains: search, mode: "insensitive" } },
+        { variants: { some: { sku: { contains: search, mode: "insensitive" } } } },
+        { brand: { name: { contains: search, mode: "insensitive" } } },
+        { categories: { some: { category: { name: { contains: search, mode: "insensitive" } } } } },
       ],
     }),
     ...(category && {

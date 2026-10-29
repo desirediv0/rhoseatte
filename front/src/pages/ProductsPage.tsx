@@ -3441,17 +3441,22 @@ function ProductsList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery.trim(), 400);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [visibilityFilter, setVisibilityFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  // Full-page spinner only for the very first load, so the search box is never
+  // unmounted (and loses focus) while typing, even when a search finds nothing.
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Reset to page 1 whenever debounced search query or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, selectedCategory, visibilityFilter]);
+  }, [debouncedSearchQuery, selectedCategory, visibilityFilter, statusFilter]);
 
   // States for delete dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -3461,6 +3466,8 @@ function ProductsList() {
 
   // Fetch products
   useEffect(() => {
+    // A newer search/page must win: ignore the answer of any older request
+    let cancelled = false;
     const fetchProducts = async () => {
       try {
         setIsLoading(true);
@@ -3470,28 +3477,38 @@ function ProductsList() {
           ...(debouncedSearchQuery && { search: debouncedSearchQuery }),
           ...(selectedCategory && { category: selectedCategory }),
           ...(visibilityFilter && { visibility: visibilityFilter }),
+          ...(statusFilter && { isActive: statusFilter === "active" ? "true" : "false" }),
         };
 
         const response = await products.getProducts(params);
+        if (cancelled) return;
 
         if (response.data.success) {
           const products = response.data.data?.products || [];
 
           setProductsList(products);
           setTotalPages(response.data.data?.pagination?.pages || 1);
+          setError(null);
         } else {
           setError(response.data.message || "Failed to fetch products");
         }
       } catch (error: any) {
+        if (cancelled) return;
         console.error("Error fetching products:", error);
         setError("Failed to load products. Please try again.");
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+          setIsFirstLoad(false);
+        }
       }
     };
 
     fetchProducts();
-  }, [currentPage, debouncedSearchQuery, selectedCategory, visibilityFilter]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPage, debouncedSearchQuery, selectedCategory, visibilityFilter, statusFilter, reloadKey]);
 
   // Fetch categories for filter
   useEffect(() => {
@@ -3726,7 +3743,7 @@ function ProductsList() {
   };
 
   // Loading state
-  if (isLoading && productsList.length === 0) {
+  if (isFirstLoad && isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center py-20">
         <div className="flex flex-col items-center">
@@ -3737,8 +3754,8 @@ function ProductsList() {
     );
   }
 
-  // Error state
-  if (error && productsList.length === 0) {
+  // Error state: only when the very first load failed and there is nothing to show
+  if (error && isFirstLoad === false && productsList.length === 0 && !debouncedSearchQuery && !selectedCategory && !visibilityFilter && !statusFilter) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center py-20">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FEF2F2] mb-4">
@@ -3754,7 +3771,7 @@ function ProductsList() {
           onClick={() => {
             setError(null);
             setCurrentPage(1);
-            setIsLoading(true);
+            setReloadKey((k) => k + 1);
           }}
         >
           Try Again
@@ -3883,14 +3900,17 @@ function ProductsList() {
         </select>
         <select
           className="rounded-full border border-[#E5E7EB] bg-[#FFFFFF] px-4 py-2 text-sm text-[#4B5563] focus:outline-none focus:border-primary"
-          value=""
-          onChange={() => { }}
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="">{t("products.list.all_status")}</option>
           <option value="active">{t("products.list.status.active")}</option>
           <option value="draft">{t("products.list.status.inactive")}</option>
         </select>
-        {(selectedCategory || searchQuery || visibilityFilter) && (
+        {(selectedCategory || searchQuery || visibilityFilter || statusFilter) && (
           <Button
             variant="ghost"
             size="sm"
@@ -3899,6 +3919,7 @@ function ProductsList() {
               setSelectedCategory("");
               setSearchQuery("");
               setVisibilityFilter("");
+              setStatusFilter("");
             }}
           >
             <X className="h-3 w-3 mr-1" />
@@ -3906,6 +3927,15 @@ function ProductsList() {
           </Button>
         )}
       </div>
+
+      {error && (
+        <div className="flex items-center justify-between rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={() => { setError(null); setReloadKey((k) => k + 1); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Premium Products List - Card-Table Hybrid */}
       {isLoading && productsList.length > 0 && (
