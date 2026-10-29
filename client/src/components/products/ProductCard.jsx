@@ -404,7 +404,7 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
           )}
           {discountPercent > 0 && (
             <span className="text-[9px] tracking-[0.12em] text-white px-2.5 py-1.5 bg-noir font-medium" style={{ borderRadius: "4px" }}>
-              −{discountPercent}%
+              {discountPercent}% OFF
             </span>
           )}
         </div>
