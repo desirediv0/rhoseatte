@@ -22,7 +22,19 @@ const formatReel = (reel) => ({
       variantId: rp.product.variants?.[0]?.id || null,
     },
   })) || [],
+  bundles: reel.bundles?.map((rb) => ({
+    id: rb.id,
+    bundleCampaignId: rb.bundleCampaignId,
+    title: rb.bundleCampaign?.title,
+    slug: rb.bundleCampaign?.slug,
+  })) || [],
 });
+
+const bundleInclude = {
+  include: { bundleCampaign: { select: { id: true, title: true, slug: true } } },
+  orderBy: { position: "asc" },
+};
+const parseIds = (v) => (v ? (typeof v === "string" ? JSON.parse(v) : v) : []);
 
 // Get all video reels (admin)
 export const getVideoReels = asyncHandler(async (req, res, next) => {
@@ -62,6 +74,7 @@ export const getVideoReels = asyncHandler(async (req, res, next) => {
         },
         orderBy: { position: "asc" },
       },
+      bundles: bundleInclude,
     },
     orderBy: [{ [sort]: order }, { createdAt: "desc" }],
     skip,
@@ -103,6 +116,7 @@ export const getVideoReelById = asyncHandler(async (req, res, next) => {
         },
         orderBy: { position: "asc" },
       },
+      bundles: bundleInclude,
     },
   });
 
@@ -144,7 +158,7 @@ async function assertProductReelLimit(productIds, excludeReelId = null) {
 }
 
 export const createVideoReel = asyncHandler(async (req, res, next) => {
-  const { title, isActive, productIds } = req.body;
+  const { title, isActive, productIds, bundleIds } = req.body;
 
   if (!title) {
     throw new ApiError(400, "Title is required");
@@ -190,6 +204,12 @@ export const createVideoReel = asyncHandler(async (req, res, next) => {
           position: index,
         })),
       },
+      bundles: {
+        create: parseIds(bundleIds).map((bid, index) => ({
+          bundleCampaignId: bid,
+          position: index,
+        })),
+      },
     },
     include: {
       products: {
@@ -202,6 +222,7 @@ export const createVideoReel = asyncHandler(async (req, res, next) => {
           },
         },
       },
+      bundles: bundleInclude,
     },
   });
 
@@ -213,7 +234,7 @@ export const createVideoReel = asyncHandler(async (req, res, next) => {
 // Update video reel (admin) - position reorder: if manual position set, shift others
 export const updateVideoReel = asyncHandler(async (req, res, next) => {
   const { reelId } = req.params;
-  const { title, position, isActive, productIds } = req.body;
+  const { title, position, isActive, productIds, bundleIds } = req.body;
 
   const existingReel = await prisma.videoReel.findUnique({
     where: { id: reelId },
@@ -309,6 +330,21 @@ export const updateVideoReel = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // Update attached bundles if provided
+  if (bundleIds !== undefined) {
+    const parsedBundleIds = parseIds(bundleIds);
+    await prisma.videoReelBundle.deleteMany({ where: { videoReelId: reelId } });
+    if (parsedBundleIds.length > 0) {
+      await prisma.videoReelBundle.createMany({
+        data: parsedBundleIds.map((bid, index) => ({
+          videoReelId: reelId,
+          bundleCampaignId: bid,
+          position: index,
+        })),
+      });
+    }
+  }
+
   const reel = await prisma.videoReel.update({
     where: { id: reelId },
     data: updateData,
@@ -324,6 +360,7 @@ export const updateVideoReel = asyncHandler(async (req, res, next) => {
         },
         orderBy: { position: "asc" },
       },
+      bundles: bundleInclude,
     },
   });
 

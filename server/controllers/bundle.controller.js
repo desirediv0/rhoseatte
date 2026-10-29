@@ -93,11 +93,29 @@ export const getBundleBySlug = asyncHandler(async (req, res, next) => {
     prisma.review.count({ where: { bundleCampaignId: bundle.id, status: "APPROVED" } }),
   ]);
 
+  // Behind-the-scenes videos attached to this bundle
+  let videos = [];
+  try {
+    const reelLinks = await prisma.videoReelBundle.findMany({
+      where: { bundleCampaignId: bundle.id, videoReel: { isActive: true } },
+      include: { videoReel: true },
+      orderBy: { position: "asc" },
+    });
+    videos = reelLinks.map((l) => ({
+      id: l.videoReel.id,
+      title: l.videoReel.title,
+      videoUrl: l.videoReel.videoUrl ? getFileUrl(l.videoReel.videoUrl) : null,
+    }));
+  } catch (e) {
+    console.warn("Could not load bundle videos:", e.message);
+  }
+
   res.status(200).json(
     new ApiResponsive(
       200,
       {
         id: bundle.id,
+        videos,
         reviews: bundleReviews.map((r) => ({
           id: r.id,
           rating: r.rating,

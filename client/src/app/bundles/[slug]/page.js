@@ -396,6 +396,28 @@ export default function BundleDetailPage({ params }) {
           </div>
         </div>
 
+        {/* Behind the scenes videos */}
+        {bundle.videos?.length > 0 && (
+          <div className="mt-14 max-w-4xl">
+            <h2 className="text-lg font-medium mb-5">Behind the Scenes</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {bundle.videos.map((video) => (
+                <div key={video.id} className="rounded-lg overflow-hidden border border-gray-200">
+                  <div className="aspect-video w-full bg-black">
+                    <video
+                      src={video.videoUrl}
+                      controls
+                      preload="metadata"
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Customer reviews */}
         <div id="reviews" className="mt-14 max-w-3xl scroll-mt-24">
           <div className="mb-8">

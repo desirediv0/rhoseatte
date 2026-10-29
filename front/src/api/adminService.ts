@@ -1415,6 +1415,7 @@ export const videoReels = {
     title: string;
     isActive?: boolean;
     productIds?: string[];
+    bundleIds?: string[];
     video: File;
   }) => {
     const formData = new FormData();
@@ -1423,6 +1424,8 @@ export const videoReels = {
       formData.append("isActive", data.isActive.toString());
     if (data.productIds)
       formData.append("productIds", JSON.stringify(data.productIds));
+    if (data.bundleIds)
+      formData.append("bundleIds", JSON.stringify(data.bundleIds));
     formData.append("video", data.video);
 
     return api.post("/api/admin/video-reels", formData, {
@@ -1436,6 +1439,7 @@ export const videoReels = {
       position?: number;
       isActive?: boolean;
       productIds?: string[];
+      bundleIds?: string[];
       video?: File | null;
     }
   ) => {
@@ -1447,6 +1451,8 @@ export const videoReels = {
       formData.append("isActive", data.isActive.toString());
     if (data.productIds)
       formData.append("productIds", JSON.stringify(data.productIds));
+    if (data.bundleIds)
+      formData.append("bundleIds", JSON.stringify(data.bundleIds));
     if (data.video) formData.append("video", data.video);
 
     return api.put(`/api/admin/video-reels/${reelId}`, formData, {

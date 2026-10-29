@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
-import { videoReels, products } from "@/api/adminService";
+import { videoReels, products, bundles as bundlesApi } from "@/api/adminService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,6 +92,34 @@ function VideoReelForm({
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [allProducts, setAllProducts] = useState<ProductItem[]>([]);
+  const [selectedBundles, setSelectedBundles] = useState<{ id: string; title: string }[]>([]);
+  const [bundleSearch, setBundleSearch] = useState("");
+  const [bundleResults, setBundleResults] = useState<{ id: string; title: string }[]>([]);
+
+  // Search bundles (debounced)
+  useEffect(() => {
+    if (!bundleSearch.trim()) {
+      setBundleResults([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await bundlesApi.getBundles({ page: 1, limit: 8, search: bundleSearch.trim() });
+        if (!cancelled) {
+          setBundleResults(
+            (res.data.data?.campaigns || []).map((b: any) => ({ id: b.id, title: b.title }))
+          );
+        }
+      } catch {
+        if (!cancelled) setBundleResults([]);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [bundleSearch]);
 
   // Load reel data for edit mode
   useEffect(() => {
@@ -112,6 +140,9 @@ function VideoReelForm({
               (rp: ReelProduct) => rp.productId
             );
             setSelectedProductIds(productIds);
+            setSelectedBundles(
+              (reel.bundles || []).map((b: any) => ({ id: b.bundleCampaignId, title: b.title || b.bundleCampaignId }))
+            );
             // Store products for display
             setAllProducts(
               (reel.products || []).map((rp: ReelProduct) => ({
@@ -236,6 +267,7 @@ function VideoReelForm({
         title: formData.title,
         isActive: formData.isActive,
         productIds: selectedProductIds,
+        bundleIds: selectedBundles.map((b) => b.id),
       };
 
       // Only send position on edit (not create - auto-assigned)
@@ -548,6 +580,62 @@ function VideoReelForm({
                 <div className="text-center py-6 text-sm text-[#9CA3AF]">
                   No products attached yet. Search above to add.
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Bundles (shown in the bundle page's Behind the Scenes section) */}
+          <Card className="bg-white border-[#E5E7EB]">
+            <CardHeader className="px-6 py-4">
+              <CardTitle className="text-lg font-semibold">Bundles</CardTitle>
+              <p className="text-sm text-[#9CA3AF]">
+                Show this video in the Behind the Scenes section of these bundles
+              </p>
+            </CardHeader>
+            <CardContent className="px-6 pb-6 space-y-3">
+              <Input
+                placeholder="Search bundles..."
+                value={bundleSearch}
+                onChange={(e) => setBundleSearch(e.target.value)}
+              />
+              {bundleResults.length > 0 && (
+                <div className="border border-[#E5E7EB] rounded-lg divide-y">
+                  {bundleResults
+                    .filter((b) => !selectedBundles.some((s) => s.id === b.id))
+                    .map((b) => (
+                      <button
+                        type="button"
+                        key={b.id}
+                        className="w-full text-left p-2.5 text-sm hover:bg-[#F9FAFB]"
+                        onClick={() => {
+                          setSelectedBundles((prev) => [...prev, b]);
+                          setBundleSearch("");
+                          setBundleResults([]);
+                        }}
+                      >
+                        {b.title}
+                      </button>
+                    ))}
+                </div>
+              )}
+              {selectedBundles.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedBundles.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between rounded-lg border border-[#E5E7EB] p-2.5 text-sm">
+                      <span className="truncate">{b.title}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedBundles((prev) => prev.filter((x) => x.id !== b.id))}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-[#9CA3AF]">No bundles attached.</p>
               )}
             </CardContent>
           </Card>

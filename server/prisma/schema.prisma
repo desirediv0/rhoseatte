@@ -1345,8 +1345,22 @@ model VideoReel {
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
   products  VideoReelProduct[]
+  bundles   VideoReelBundle[]
 
   @@index([isActive, position])
+}
+
+model VideoReelBundle {
+  id               String         @id @default(uuid())
+  videoReelId      String
+  bundleCampaignId String
+  position         Int            @default(0)
+  createdAt        DateTime       @default(now())
+  videoReel        VideoReel      @relation(fields: [videoReelId], references: [id], onDelete: Cascade)
+  bundleCampaign   BundleCampaign @relation(fields: [bundleCampaignId], references: [id], onDelete: Cascade)
+
+  @@unique([videoReelId, bundleCampaignId])
+  @@index([videoReelId, position])
 }
 
 model VideoReelProduct {
@@ -1411,6 +1425,7 @@ model BundleCampaign {
   cartItems       CartItem[]
   orderBundles    OrderBundle[]
   reviews         Review[]
+  videoReels      VideoReelBundle[]
 
   @@index([isActive, showOnWebsite, displayOrder])
   @@index([slug])
