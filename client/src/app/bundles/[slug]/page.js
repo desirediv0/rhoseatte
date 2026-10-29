@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ import BundleReviewForm from "./BundleReviewForm";
 export default function BundleDetailPage({ params }) {
   const slug = params?.slug;
   const { addBundleToCart } = useCart();
+  const router = useRouter();
   const [bundle, setBundle] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +107,7 @@ export default function BundleDetailPage({ params }) {
       }, 0);
   };
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (goToCart = false) => {
     if (selectedProducts.length === 0) {
       toast.error("Please select at least one product");
       return;
@@ -131,6 +133,7 @@ export default function BundleDetailPage({ params }) {
       });
       toast.success("Bundle added to cart!");
       setSelectedProducts([]);
+      if (goToCart === true) router.push("/cart");
     } catch (err) {
       toast.error(err.message || "Failed to add bundle to cart");
     } finally {
@@ -206,9 +209,89 @@ export default function BundleDetailPage({ params }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Products Grid */}
           <div className="lg:col-span-2">
-            <h2 className="text-lg font-medium text-[#111111] mb-6 uppercase tracking-wider">
+            <h2 className="text-lg font-medium text-[#111111] mb-4 uppercase tracking-wider">
               Select Your Products
             </h2>
+
+            {/* Bundle tray: picks so far, price tiers, prices, checkout */}
+            <div className="sticky top-2 z-30 mb-6 rounded-3xl bg-black p-3 sm:p-4 shadow-xl">
+              <div className="flex gap-2.5 overflow-x-auto pb-3 no-scrollbar">
+                {selectedProducts.map((id) => {
+                  const p = products.find((x) => x.id === id);
+                  if (!p) return null;
+                  return (
+                    <div key={id} className="relative h-[104px] w-[88px] shrink-0 overflow-hidden rounded-2xl border-2 border-white bg-white">
+                      {p.images?.[0]?.url && (
+                        <Image src={p.images[0].url} alt={p.name} fill sizes="88px" className="object-cover" />
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${p.name}`}
+                        onClick={() => toggleProduct(id)}
+                        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow"
+                      >
+                        <IconX size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {(bundle.pricingSlabs || [])
+                  .filter((s) => s.itemCount > selectedProducts.length)
+                  .map((s) => (
+                    <div
+                      key={s.itemCount}
+                      className="relative flex h-[104px] w-[132px] shrink-0 flex-col items-center justify-center rounded-2xl bg-white px-2 text-center"
+                    >
+                      <span className="text-sm font-medium text-black">
+                        {s.itemCount} for ₹{parseFloat(s.price).toLocaleString()}
+                      </span>
+                      <span className="absolute bottom-2 right-3 text-xl font-medium text-black">{s.itemCount}</span>
+                    </div>
+                  ))}
+                {selectedProducts.length === 0 && (!bundle.pricingSlabs || bundle.pricingSlabs.length === 0) && (
+                  <p className="py-6 text-sm text-gray-300">Pick products below to build your bundle.</p>
+                )}
+              </div>
+
+              <div className="rounded-2xl bg-white/25 px-4 py-2.5 text-white">
+                <div className="flex items-center justify-between text-base sm:text-lg">
+                  <span>Actual Price</span>
+                  <span>₹ {actualPrice > 0 ? Math.round(actualPrice).toLocaleString() : "–"}</span>
+                </div>
+                <div className="flex items-center justify-between text-base sm:text-lg">
+                  <span>Bundle Price</span>
+                  <span>₹ {bundlePrice > 0 ? parseFloat(bundlePrice).toLocaleString() : "–"}</span>
+                </div>
+              </div>
+              {selectedProducts.length > 0 && bundlePrice === 0 && (
+                <p className="mt-2 text-center text-xs text-orange-300">
+                  Select {bundle.rule?.minItems || 2} or more items to see the bundle price
+                </p>
+              )}
+
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  aria-label="Browse products"
+                  onClick={() => document.getElementById("bundle-products")?.scrollIntoView({ behavior: "smooth" })}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M21 21l-4.3-4.3" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddToCart(true)}
+                  disabled={addingToCart || selectedProducts.length === 0 || bundlePrice === 0}
+                  className="h-12 flex-1 rounded-full bg-white text-base font-semibold uppercase tracking-wide text-black disabled:opacity-50"
+                >
+                  {addingToCart ? "Adding..." : "Checkout"}
+                </button>
+              </div>
+            </div>
+            <div id="bundle-products" className="scroll-mt-4" />
 
             {productsLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -230,98 +313,91 @@ export default function BundleDetailPage({ params }) {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 {products.map((product) => {
                   const isSelected = selectedProducts.includes(product.id);
                   const variant = product.variants?.[0];
-                  const price = variant?.salePrice || variant?.price || 0;
+                  const mrp = parseFloat(variant?.price || 0);
+                  const sale = variant?.salePrice ? parseFloat(variant.salePrice) : null;
+                  const price = sale && sale < mrp ? sale : mrp;
+                  const savePct = sale && sale < mrp ? Math.round(((mrp - sale) / mrp) * 100) : 0;
+                  const tag = product.categories?.[0]?.name || product.brand?.name;
+                  const chips = (variant?.attributes || []).map((a) => a.value).filter(Boolean).slice(0, 3);
 
                   return (
                     <div
                       key={product.id}
-                      className={`relative bg-white overflow-hidden text-left transition-all ${isSelected
-                        ? "ring-2 ring-gold-dark shadow-md"
-                        : "hover:shadow-md"
-                        }`}
-                      style={{
-                        border: "1px solid #EAEAEA",
-                        borderRadius: "8px",
-                      }}
+                      className={`relative flex flex-col overflow-hidden rounded-2xl bg-white transition-all ${isSelected ? "border-2 border-black" : "border border-gray-300"}`}
                     >
-                      {/* Selection Indicator */}
-                      <div
-                        className={`absolute top-2 right-2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-colors pointer-events-none ${isSelected
-                          ? "bg-gold-dark text-white"
-                          : "bg-white/80 text-gray-400"
-                          }`}
-                      >
-                        {isSelected ? (
-                          <IconCheck size={14} />
-                        ) : (
-                          <IconX size={14} className="opacity-0" />
-                        )}
-                      </div>
-
-                      {/* Product Image (opens the product page) */}
-                      <Link href={`/products/${product.slug}?bundle=${slug}`} className="block">
-                      <div className="relative aspect-square overflow-hidden">
+                      <Link href={`/products/${product.slug}?bundle=${slug}`} className="relative block aspect-[4/5] overflow-hidden bg-ivory-deep">
                         {product.images?.[0]?.url ? (
                           <Image
                             src={product.images[0].url}
                             alt={product.name}
                             fill
+                            sizes="(max-width: 768px) 50vw, 25vw"
                             className="object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full bg-ivory-deep flex items-center justify-center">
-                            <span className="text-gray-400 text-xs">
-                              No Image
-                            </span>
+                          <div className="flex h-full w-full items-center justify-center">
+                            <span className="text-xs text-gray-400">No Image</span>
                           </div>
                         )}
-                      </div>
-
+                        {tag && (
+                          <span className="absolute right-2 top-2 rounded-full bg-black px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-white">
+                            {tag}
+                          </span>
+                        )}
                       </Link>
 
-                      {/* Product Info */}
-                      <div className="p-3">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                          {product.brand?.name || product.categories?.[0]?.name}
-                        </p>
+                      <div className="flex flex-1 flex-col p-3">
                         <Link href={`/products/${product.slug}?bundle=${slug}`}>
-                          <h3 className="text-sm font-medium text-[#111111] line-clamp-2 hover:underline">
+                          <h3 className="line-clamp-2 text-sm font-bold uppercase leading-snug text-black">
                             {product.name}
                           </h3>
                         </Link>
+
                         {product.reviewCount > 0 && (
-                          <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-600">
-                            <IconStar size={14} stroke={0} fill="#B8976A" />
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-black">
+                            <IconStar size={15} stroke={0} fill="#F5B301" />
                             <span className="font-medium">{product.avgRating}</span>
-                            <span className="text-gray-400">|</span>
+                            <span className="h-3.5 w-px bg-gray-400" />
+                            <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+                              <circle cx="12" cy="12" r="11" fill="#1D6FEB" />
+                              <path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
                             <span>({product.reviewCount} {product.reviewCount === 1 ? "Review" : "Reviews"})</span>
                           </div>
                         )}
-                        {variant && variant.attributes && variant.attributes.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {variant.attributes.map((attr, idx) => (
-                              <span key={idx} className="text-[10px] bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">
-                                {attr.attribute}: {attr.value}
+
+                        {chips.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {chips.map((c, i) => (
+                              <span key={i} className="rounded-full border border-gray-400 px-2.5 py-0.5 text-[11px] text-gray-700">
+                                {c}
                               </span>
                             ))}
                           </div>
                         )}
-                        <p className="text-sm text-gold-dark font-medium mt-1">
-                          ₹{parseFloat(price).toLocaleString()}
-                        </p>
+
+                        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-lg font-extrabold text-black">₹{price.toLocaleString()}</span>
+                          {savePct > 0 && (
+                            <>
+                              <span className="text-xs text-gray-400 line-through">₹{mrp.toLocaleString()}</span>
+                              <span className="rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+                                SAVE {savePct}%
+                              </span>
+                            </>
+                          )}
+                        </div>
+
                         <button
                           type="button"
                           onClick={() => toggleProduct(product.id)}
-                          className={`mt-3 w-full py-2 text-xs uppercase tracking-wider font-medium transition-colors rounded ${isSelected
-                            ? "bg-gold-dark text-white"
-                            : "border border-gray-300 text-[#111111] hover:border-black"
-                            }`}
+                          className={`mt-3 h-11 w-full rounded-full border-2 border-black text-sm font-semibold uppercase tracking-wide transition-colors ${isSelected ? "bg-black text-white" : "bg-white text-black"}`}
                         >
-                          {isSelected ? "Added to bundle ✓" : "Add to bundle"}
+                          {isSelected ? "Added ✓" : "Add"}
                         </button>
                       </div>
                     </div>
@@ -332,7 +408,7 @@ export default function BundleDetailPage({ params }) {
           </div>
 
           {/* Bundle Summary Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="hidden lg:col-span-1 lg:block">
             <div
               className="bg-white p-6 sticky top-24"
               style={{ border: "1px solid #EAEAEA", borderRadius: "8px" }}
@@ -409,7 +485,7 @@ export default function BundleDetailPage({ params }) {
 
               {/* Add to Cart Button */}
               <button
-                onClick={handleAddToCart}
+                onClick={() => handleAddToCart(false)}
                 disabled={
                   addingToCart ||
                   selectedProducts.length === 0 ||
