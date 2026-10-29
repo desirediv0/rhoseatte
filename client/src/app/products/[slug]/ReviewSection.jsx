@@ -224,7 +224,16 @@ export default function ReviewSection({ product }) {
   const reviews = product.reviews || [];
   const avg = parseFloat(product.avgRating) || 0;
   const total = product.reviewCount || reviews.length;
+  const detailOf = (r) => ({
+    name: r.user?.name || r.reviewerName || "Customer",
+    rating: r.rating,
+    date: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "",
+    title: r.title,
+    comment: r.comment,
+    adminReply: r.adminReply,
+  });
   const allPhotos = reviews.flatMap((r) => r.images || []);
+  const allPhotoDetails = reviews.flatMap((r) => (r.images || []).map(() => detailOf(r)));
   const startWriting = () => {
     if (!isAuthenticated) {
       router.push(`/auth?redirect=/products/${product.slug}&review=true`);
@@ -289,7 +298,7 @@ export default function ReviewSection({ product }) {
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: "#111111" }}>Photos from customers</p>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {allPhotos.slice(0, 10).map((src, i) => (
-                  <button key={i} type="button" onClick={() => setLightbox({ images: allPhotos, index: i })}
+                  <button key={i} type="button" onClick={() => setLightbox({ images: allPhotos, details: allPhotoDetails, index: i })}
                     className="relative h-20 w-20 flex-shrink-0 overflow-hidden transition-transform hover:scale-[1.04]"
                     style={{ borderRadius: "8px", border: "1px solid #EAEAEA" }} aria-label={`Open customer photo ${i + 1}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -331,7 +340,7 @@ export default function ReviewSection({ product }) {
                   {review.images?.length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-2">
                       {review.images.map((src, i) => (
-                        <button key={i} type="button" onClick={() => setLightbox({ images: review.images, index: i })}
+                        <button key={i} type="button" onClick={() => setLightbox({ images: review.images, details: review.images.map(() => detailOf(review)), index: i })}
                           className="h-[72px] w-[72px] overflow-hidden transition-transform hover:scale-[1.04]"
                           style={{ borderRadius: "8px", border: "1px solid #EAEAEA" }} aria-label={`Open photo ${i + 1} of ${review.images.length}`}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -365,7 +374,7 @@ export default function ReviewSection({ product }) {
       )}
 
       {lightbox && (
-        <ReviewLightbox images={lightbox.images} startIndex={lightbox.index} onClose={() => setLightbox(null)} />
+        <ReviewLightbox images={lightbox.images} details={lightbox.details} startIndex={lightbox.index} onClose={() => setLightbox(null)} />
       )}
     </div>
   );

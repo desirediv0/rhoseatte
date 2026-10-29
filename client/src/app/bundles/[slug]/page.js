@@ -581,7 +581,7 @@ export default function BundleDetailPage({ params }) {
                   {r.images?.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
                       {r.images.map((src, i) => (
-                        <button key={i} type="button" onClick={() => setLightbox({ images: r.images, index: i })} aria-label={`Open photo ${i + 1}`}>
+                        <button key={i} type="button" onClick={() => setLightbox({ images: r.images, details: r.images.map(() => ({ name: r.user?.name, rating: r.rating, date: new Date(r.createdAt).toLocaleDateString(), title: r.title, comment: r.comment, adminReply: r.adminReply })), index: i })} aria-label={`Open photo ${i + 1}`}>
                           <img src={src} alt="Customer photo" loading="lazy" className="h-16 w-16 object-cover rounded border border-gray-200" />
                         </button>
                       ))}
@@ -600,7 +600,7 @@ export default function BundleDetailPage({ params }) {
         )}
       </div>
       {lightbox && (
-        <ReviewLightbox images={lightbox.images} startIndex={lightbox.index} onClose={() => setLightbox(null)} />
+        <ReviewLightbox images={lightbox.images} details={lightbox.details} startIndex={lightbox.index} onClose={() => setLightbox(null)} />
       )}
     </div>
   );
