@@ -188,7 +188,13 @@ function ProductsContent() {
     router.push(pairs.length ? `?${pairs.join("&")}` : window.location.pathname, { scroll: false });
   };
 
+  // Always bring the customer back to the top when the results change
+  const scrollToTop = () => {
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleFilterChange = (name, value) => {
+    scrollToTop();
     const nf = { ...filters, [name]: value };
     setFilters(nf);
     updateURL(nf);
@@ -205,6 +211,7 @@ function ProductsContent() {
   };
 
   const clearFilters = () => {
+    scrollToTop();
     const cf = { search: "", category: "", productType: "", color: "", size: "", gender: "", minPrice: "", maxPrice: "", sort: "createdAt", order: "desc" };
     setFilters(cf); setSelectedColors([]); setSelectedSizes([]); setSelectedAttributes({});
     setPriceRange({ min: 0, max: 1000 });
@@ -220,6 +227,7 @@ function ProductsContent() {
       featured: ["featured", "desc"]
     };
     const [sort, order] = map[e.target.value] || ["createdAt", "desc"];
+    scrollToTop();
     const nf = { ...filters, sort, order };
     setFilters(nf);
     updateURL(nf);
@@ -227,6 +235,7 @@ function ProductsContent() {
 
   const handlePageChange = (p) => {
     if (p < 1 || p > pagination.pages) return;
+    scrollToTop();
     setPagination((prev) => ({ ...prev, page: p }));
     const params = new URLSearchParams(searchParams.toString());
     p > 1 ? params.set("page", p) : params.delete("page");

@@ -600,13 +600,45 @@ export default function ProductContent({ slug }) {
               )}
             </div>
 
-            {/* Rating — hidden for now, see SHOW_REVIEWS */}
-            {SHOW_REVIEWS && (
-              <div className="flex items-center gap-2.5 mb-6">
-                <div className="flex gap-0.5">{[1, 2, 3, 4, 5].map(i => <IconStar key={i} className="h-3.5 w-3.5" style={{ color: "#B8976A" }} fill="#B8976A" stroke={0} />)}</div>
-                <span className="text-[11px] tracking-[0.12em] uppercase" style={{ color: "#666666" }}>({product.reviewCount || 0} reviews)</span>
-              </div>
-            )}
+            {/* Rating — click scrolls down to the reviews */}
+            {SHOW_REVIEWS && (() => {
+              const count = product.reviewCount || 0;
+              const avg = parseFloat(product.avgRating) || 0;
+              return (
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="flex items-center gap-2 mb-6 text-left"
+                  aria-label="Go to customer reviews"
+                >
+                  {count > 0 ? (
+                    <>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <IconStar key={i} className="h-4 w-4" style={{ color: i <= Math.round(avg) ? "#F5B301" : "#E5E7EB" }} fill={i <= Math.round(avg) ? "#F5B301" : "#E5E7EB"} stroke={0} />
+                        ))}
+                      </div>
+                      <span className="text-[13px] font-semibold" style={{ color: "#111111" }}>{avg.toFixed(1)}</span>
+                      <span className="h-3.5 w-px" style={{ backgroundColor: "#CCCCCC" }} />
+                      <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="11" fill="#1D6FEB" />
+                        <path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="text-[12px] underline underline-offset-4" style={{ color: "#444444" }}>({count} {count === 1 ? "Review" : "Reviews"})</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <IconStar key={i} className="h-4 w-4" style={{ color: "#E5E7EB" }} fill="#E5E7EB" stroke={0} />
+                        ))}
+                      </div>
+                      <span className="text-[12px] underline underline-offset-4" style={{ color: "#666666" }}>No reviews yet · Write the first review</span>
+                    </>
+                  )}
+                </button>
+              );
+            })()}
 
             {/* Product Notes */}
             {product.notes && product.notes.length > 0 && (
