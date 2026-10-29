@@ -32,6 +32,30 @@ const parsePrice = (value) => {
   return isNaN(parsed) ? null : parsed;
 };
 
+// ⭐ 4.7 | ✔ (167 Reviews), or a muted "No reviews yet" when nothing is approved
+function RatingRow({ rating, count, className = "" }) {
+  if (!(count > 0)) {
+    return (
+      <div className={`flex items-center gap-1.5 text-[11px] text-stone ${className}`}>
+        <Star className="h-3.5 w-3.5" style={{ color: "#D1D5DB", fill: "#D1D5DB" }} />
+        <span>No reviews yet</span>
+      </div>
+    );
+  }
+  return (
+    <div className={`flex items-center gap-1.5 text-[11px] text-noir ${className}`}>
+      <Star className="h-3.5 w-3.5" style={{ color: "#F5B301", fill: "#F5B301" }} />
+      <span className="font-medium">{rating}</span>
+      <span className="h-3 w-px bg-stone/50" />
+      <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="11" fill="#1D6FEB" />
+        <path d="M7 12.5l3.2 3.2L17 9" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span>({count} {count === 1 ? "Review" : "Reviews"})</span>
+    </div>
+  );
+}
+
 export const ProductCard = ({ product, viewMode = "grid" }) => {
   const isList = viewMode === "list";
   const { isAuthenticated, openAuthModal } = useAuth();
@@ -312,6 +336,7 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
             <Link href={`/products/${product.slug}`}>
               <h3 className="font-display text-[15px] mb-0.5 line-clamp-1 text-noir hover:text-gold-dark transition-colors">{product.name}</h3>
             </Link>
+            <RatingRow rating={product.avgRating} count={product.reviewCount} className="mb-1" />
             <div className="flex items-center gap-2 flex-wrap">
               {product.category?.name && (
                 <span className="text-[10px] uppercase tracking-[0.2em] text-stone">{product.category.name}</span>
@@ -442,6 +467,7 @@ export const ProductCard = ({ product, viewMode = "grid" }) => {
             {product.name}
           </h3>
         </Link>
+        <RatingRow rating={product.avgRating} count={product.reviewCount} className="mb-2" />
 
         {/* Price */}
         <div className="mt-auto">

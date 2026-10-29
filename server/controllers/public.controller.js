@@ -2,6 +2,7 @@ import { prisma } from "../config/db.js";
 import { ApiResponsive } from "../utils/ApiResponsive.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { getFileUrl } from "../utils/deleteFromS3.js";
+import { getRatingMap } from "../utils/productRatings.js";
 
 export const getBrandsByTag = asyncHandler(async (req, res) => {
   const { tag } = req.query;
@@ -218,6 +219,7 @@ export const getBrandBySlug = asyncHandler(async (req, res) => {
   });
 
   // Format products like in product.controller.js
+  const ratingMap = await getRatingMap(products.map((p) => p.id));
   const formattedProducts = products.map((product) => {
     const primaryCategory =
       product.categories.length > 0 ? product.categories[0].category : null;
@@ -284,6 +286,7 @@ export const getBrandBySlug = asyncHandler(async (req, res) => {
       regularPrice,
       variantCount: product._count.variants,
       reviewCount: product._count.reviews,
+      avgRating: ratingMap.get(product.id) ?? null,
       flashSale: flashSale ? {
         ...flashSale,
         flashSalePrice,

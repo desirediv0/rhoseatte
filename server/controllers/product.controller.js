@@ -5,6 +5,7 @@ import { prisma } from "../config/db.js";
 import { getFileUrl } from "../utils/deleteFromS3.js";
 import { formatVariantWithAttributes } from "../utils/variant-attributes.js";
 import { reviewImageUrls } from "../utils/reviewImages.js";
+import { getRatingMap } from "../utils/productRatings.js";
 
 // Reviews added from the admin panel have no user account — show the name the
 // admin entered so the storefront never sees a null user.
@@ -281,6 +282,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   });
 
   // Format products for response
+  const ratingMap = await getRatingMap(products.map((p) => p.id));
   const formattedProducts = products.map((product) => {
     // Get primary category (first in the list)
     const primaryCategory =
@@ -358,6 +360,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
       regularPrice,
       variantCount: product._count.variants,
       reviewCount: product._count.reviews,
+      avgRating: ratingMap.get(product.id) ?? null,
       // Flash sale data
       flashSale: flashSale ? {
         ...flashSale,
@@ -772,6 +775,7 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
     })
     : [];
 
+  const relatedRatings = await getRatingMap(relatedProducts.map((p) => p.id));
   const formattedRelated = relatedProducts.map((p) => ({
     id: p.id,
     name: p.name,
@@ -785,6 +789,7 @@ export const getProductBySlug = asyncHandler(async (req, res) => {
     regularPrice:
       p.variants.length > 0 ? parseFloat(p.variants[0].price) : null,
     reviewCount: p._count.reviews,
+    avgRating: relatedRatings.get(p.id) ?? null,
     variants: p.variants.map((variant) => ({
       ...variant,
       attributes: formatVariantWithAttributes(variant).attributes,
@@ -1334,6 +1339,7 @@ export const getProductsByType = asyncHandler(async (req, res) => {
   });
 
   // Format the response data
+  const ratingMap = await getRatingMap(products.map((p) => p.id));
   const formattedProducts = products.map((product) => {
     // Get primary category
     const primaryCategory =
@@ -1408,6 +1414,7 @@ export const getProductsByType = asyncHandler(async (req, res) => {
       regularPrice,
       variantCount: product._count.variants,
       reviewCount: product._count.reviews,
+      avgRating: ratingMap.get(product.id) ?? null,
       flashSale: flashSale ? {
         ...flashSale,
         flashSalePrice,
@@ -1510,6 +1517,7 @@ export const getSecretProducts = asyncHandler(async (req, res) => {
     take: parseInt(limit),
   });
 
+  const ratingMap = await getRatingMap(products.map((p) => p.id));
   const formattedProducts = products.map((product) => {
     const primaryCategory = product.categories.find(
       (pc) => pc.isPrimary
@@ -1581,6 +1589,7 @@ export const getSecretProducts = asyncHandler(async (req, res) => {
       regularPrice,
       variantCount: product._count.variants,
       reviewCount: product._count.reviews,
+      avgRating: ratingMap.get(product.id) ?? null,
     };
   });
 
